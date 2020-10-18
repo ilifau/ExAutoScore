@@ -68,4 +68,12 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
             102 => 'ilExAssTypeAutoScoreTeamGUI'
         ];
     }
+
+    /**
+     * Get the plugin durectory in the file storage
+     * @return string
+     */
+    static function getStorageDirectory() {
+        return 'exautoscore';
+    }
 }

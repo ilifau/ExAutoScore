@@ -9,3 +9,9 @@
 <!-- language file start -->
 type_autoscore_user#:#Programmieraufgabe (Einzelnutzer)
 type_autoscore_team#:#Programmieraufgabe (als Team)
+execution_container#:#Ausführungs-Container
+use_existing_file#:#Vorhandene Datei benutzen
+upload_new_file#:#Neue Datei hochladen
+container_upload#:#Container hochladen
+container_public#:#Öffentlich
+container_public_info#:#Der Container ist auch für andere Übungen auswählbar
