@@ -10,8 +10,13 @@
 type_autoscore_user#:#Programmieraufgabe (Einzelnutzer)
 type_autoscore_team#:#Programmieraufgabe (als Team)
 execution_container#:#Ausführungs-Container
-use_existing_file#:#Vorhandene Datei benutzen
+container#:#Container
+use_existing_file#:#Ausgewählte Datei benutzen
+use_other_file#:#Andere Datei benutzen
 upload_new_file#:#Neue Datei hochladen
 container_upload#:#Container hochladen
 container_public#:#Öffentlich
-container_public_info#:#Der Container ist auch für andere Übungen auswählbar
+container_public_info#:#Der Container ist auch für andere Übungen auswählbar. Wo er bereits verwendet wird, bleibt er erhalten.
+is_own_container#:#(aus dieser Übung)
+is_other_container#:#(aus anderer Übung)
+cont_upload_title_info#:#Der Titel wird nur zur Auswahl und Anzeige benutzt. Der Server zur Ausführung erhält den hochgeladenen Dateinamen.

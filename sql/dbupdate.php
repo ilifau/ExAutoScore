@@ -12,27 +12,28 @@
      */
 
     $fields = array(
-    'id' => array(
-        'notnull' => '1',
-        'type' => 'integer',
-        'length' => '4',
+        'id' => array(
+            'notnull' => '1',
+            'type' => 'integer',
+            'length' => '4',
 
-    ),
-    'container_id' => array(
-        'notnull' => '1',
-        'type' => 'integer',
-        'length' => '4',
+        ),
+        'exercise_id' => array(
+            'notnull' => '1',
+            'type' => 'integer',
+            'length' => '4',
 
-    ),
+        ),
+        'container_id' => array(
+            'notnull' => '1',
+            'type' => 'integer',
+            'length' => '4',
 
+        ),
     );
-    if (! $ilDB->tableExists('exautoscore_assignment')) {
+    if (!$ilDB->tableExists('exautoscore_assignment')) {
         $ilDB->createTable('exautoscore_assignment', $fields);
         $ilDB->addPrimaryKey('exautoscore_assignment', array( 'id' ));
-
-        if (! $ilDB->sequenceExists('exautoscore_assignment')) {
-            $ilDB->createSequence('exautoscore_assignment');
-        }
     }
 ?>
 <#2>
@@ -64,7 +65,7 @@
             'length' => '50',
 
         ),
-        'orig_assignment_id' => array(
+        'orig_exercise_id' => array(
             'type' => 'integer',
             'length' => '4',
 
