@@ -12,9 +12,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
 {
     use ilExAssignmentTypeGUIBase;
 
-    /**
-     * @var ilLanguage
-     */
+    /** @var ilLanguage */
     protected $lng;
 
     /** @var ilExAutoScorePlugin */
@@ -36,26 +34,74 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
     /**
      * @inheritdoc
      */
-    public function addEditFormCustomProperties(ilPropertyFormGUI $form)
+    public function addEditFormCustomProperties(ilPropertyFormGUI $form, $exercise_id = null, $assignment_id = null)
     {
-        $cont_radio = new ilRadioGroupInputGUI($this->plugin->txt('execution_container'), 'cont_radio');
-        $cont_opt_select = new ilRadioOption($this->plugin->txt('use_existing_file'), 'cont_use_existing');
-        $cont_opt_upload =  new ilRadioOption($this->plugin->txt('upload_new_file'), 'cont_upload_new');
-        $cont_radio->addOption($cont_opt_select);
-        $cont_radio->addOption($cont_opt_upload);
+        $assAuto = ilExAutoScoreAssignment::findOrGetInstance(isset($this->assignment) ? $this->assignment->getId() : 0);
+        $assCont = ilExAutoScoreContainer::findOrGetInstance($assAuto->getContainerId());
 
-        $cont_upload_file = new ilFileInputGUI($this->plugin->txt('container_upload'), 'cont_file_upload');
+        $contRadio = new ilRadioGroupInputGUI($this->plugin->txt('execution_container'), 'exautoscore_cont_radio');
+        $form->addItem($contRadio);
+
+        // use already selected container
+        $contOptExisting = new ilRadioOption($this->plugin->txt('use_existing_file'), 'cont_use_existing');
+        $contRadio->addOption($contOptExisting);
+        if (empty($assCont->getId())) {
+            $contOptExisting->setDisabled(true);
+        }
+        else {
+            $contExistingTitle = new ilNonEditableValueGUI($this->plugin->txt('container'), 'cont_existing_title');
+            $contExistingTitle->setValue($assCont->getTitle());
+            $contOptExisting->addSubItem($contExistingTitle);
+
+            $contExistingPublic = new ilCheckboxInputGUI($this->plugin->txt('container_public'), 'exautoscore_cont_public');
+            $contExistingPublic->setInfo($this->plugin->txt('container_public_info'));
+            $contOptExisting->addSubItem($contExistingPublic);
+
+            // container is uploaded with this assignment
+            if ($assCont->getOrigExerciseId() == $exercise_id) {
+                $contExistingTitle->setInfo($assCont->getFilename() . ' ' . $this->plugin->txt('is_own_container'));
+            }
+            else {
+                $contExistingTitle->setInfo($assCont->getFilename() . ' ' . $this->plugin->txt('is_other_container'));
+                $contExistingPublic->setDisabled(true);
+            }
+        }
+
+        // select an existing container
+        $contOptSelect = new ilRadioOption($this->plugin->txt('use_other_file'), 'cont_use_other');
+        $contRadio->addOption($contOptSelect);
+        $list = $assAuto->getSelectableContainers();
+        if (empty($list)) {
+            $contOptSelect->setDisabled(true);
+        }
+        else {
+            $options = [];
+            foreach ($list as $assCont) {
+                $title =  $assCont->getTitle();
+                if ($assCont->getOrigExerciseId() == $exercise_id) {
+                    $title .= ' '. $this->plugin->txt('is_own_container');
+                }
+                else {
+                    $title .= ' ' . $this->plugin->txt('is_other_container');
+                }
+                $options[$assCont->getId()] = $title;
+            }
+            $cont_select = new ilSelectInputGUI($this->plugin->txt('container'), 'exautoscore_cont_select');
+            $cont_select->setOptions($options);
+            $contOptSelect->addSubItem($cont_select);
+        }
+
+        // upload a new container
+        $contOptUpload =  new ilRadioOption($this->plugin->txt('upload_new_file'), 'cont_upload_new');
+        $contRadio->addOption($contOptUpload);
+        $cont_upload_file = new ilFileInputGUI($this->plugin->txt('container_upload'), 'exautoscore_cont_file_upload');
         $cont_upload_file->setRequired(true);
-        $cont_upload_title = new ilTextInputGUI($this->lng->txt('title'),'cont_upload_title');
+        $cont_upload_title = new ilTextInputGUI($this->lng->txt('title'),'exautoscore_cont_upload_title');
+        $cont_upload_title->setSize(50);
+        $cont_upload_title->setInfo($this->plugin->txt('cont_upload_title_info'));
         $cont_upload_title->setRequired(true);
-        $cont_upload_public = new ilCheckboxInputGUI($this->plugin->txt('container_public'), 'cont_upload_public');
-        $cont_upload_public->setInfo($this->plugin->txt('container_public_info'));
-
-        $cont_opt_upload->addSubItem($cont_upload_file);
-        $cont_opt_upload->addSubItem($cont_upload_title);
-        $cont_opt_upload->addSubItem($cont_upload_public);
-
-        $form->addItem($cont_radio);
+        $contOptUpload->addSubItem($cont_upload_file);
+        $contOptUpload->addSubItem($cont_upload_title);
     }
 
     /**
@@ -65,35 +111,53 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
     {
         global $DIC;
 
+        $assAuto = ilExAutoScoreAssignment::findOrGetInstance($ass->getId());
         $request = $DIC->http()->request();
         $params = $request->getParsedBody();
 
-        // echo '<pre>'; var_dump($params);
+        switch((string) $params['exautoscore_cont_radio'])
+        {
+            // container is unchanged
+            case 'cont_use_existing':
+                $assCont = $assAuto->getContainer();
+                // container is uploaded in this assignment, so public can be switched
+                if ($assCont->getOrigExerciseId() == $ass->getExerciseId()) {
+                    $assCont->setPublic((bool) $params['exautoscore_cont_public']);
+                    $assCont->save();
+                }
+                break;
 
-        $assAuto = new ilExAutoScoreAssignment();
-        $assAuto->setId($ass->getId());
+            // other container is selected
+            case 'cont_use_other':
+                $assCont = ilExAutoScoreContainer::findOrGetInstance((int) $params['exautoscore_cont_select']);
+                if ($assCont->getId() && $assCont->getId() != $assAuto->getContainerId()) {
+                    if ($assCont->isPublic() || $assCont->getOrigExerciseId() == $ass->getExerciseId()) {
+                        $assAuto->removeContainer();
+                        $assAuto->setContainerId($assCont->getId());
+                        $assAuto->save();
+                    }
+                }
+                break;
 
-        $cont_radio = (string) $params['cont_radio'];
+            // new container is uploaded
+            case 'cont_upload_new':
+                if (isset($params['exautoscore_cont_file_upload']['tmp_name'])) {
+                    $assCont = new ilExAutoScoreContainer();
+                    $assCont->setOrigExerciseId($ass->getExerciseId());
+                    $assCont->setTitle((string) $params['exautoscore_cont_upload_title']);
+                    $assCont->setPublic(false);
+                    $assCont->save();
 
-        if ($cont_radio == 'cont_use_existing') {
-
-        }
-        elseif ($cont_radio == 'cont_upload_new') {
-           if (isset($params['cont_file_upload']['tmp_name'])) {
-               $assCont = new ilExAutoScoreContainer();
-               $assCont->setOrigAssignmentId($ass->getId());
-               $assCont->setTitle((string) $request->getAttribute('cont_upload_title'));
-               $assCont->setPublic((bool) $request->getAttribute('cont_upload_public'));
-               $assCont->save();
-
-               if (!$assCont->storeUploadedFile($params['cont_file_upload']['tmp_name'])) {
-                    $assCont->delete();
-               }
-               else {
-                   $assAuto->setContainerId($assCont->getId());
-                   $assAuto->save();
-               }
-           }
+                    if (!$assCont->storeUploadedFile($params['exautoscore_cont_file_upload']['tmp_name'])) {
+                        $assCont->delete();
+                    }
+                    else {
+                        $assAuto->removeContainer();
+                        $assAuto->setContainerId($assCont->getId());
+                        $assAuto->save();
+                    }
+                }
+                break;
         }
     }
 
@@ -102,7 +166,14 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
      */
     public function getFormValuesArray(ilExAssignment $ass)
     {
-        return [];
+        $assAuto = ilExAutoScoreAssignment::findOrGetInstance($ass->getId());
+        $assCont = ilExAutoScoreContainer::findOrGetInstance($assAuto->getContainerId());
+
+        return [
+            'exautoscore_cont_radio' => empty($assCont->getId()) ? 'cont_upload_new' : 'cont_use_existing',
+            'exautoscore_cont_select' => $assCont->getId(),
+            'exautoscore_cont_public' => $assCont->isPublic()
+        ];
     }
 
     /**

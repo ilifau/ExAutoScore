@@ -81,7 +81,7 @@ class ilExAutoScoreContainer extends ActiveRecord
      * @con_length    4
      * @con_is_notnull false
      */
-    protected $orig_assignment_id;
+    protected $orig_exercise_id;
 
 
     /**
@@ -96,9 +96,20 @@ class ilExAutoScoreContainer extends ActiveRecord
 
 
     /**
+     * Wrapper to declare the return type
+     * @return self
+     */
+    public static function findOrGetInstance($primary_key, array $add_constructor_args = array())
+    {
+        /** @var self $record */
+        $record =  parent::findOrGetInstance($primary_key, $add_constructor_args);
+        return $record;
+    }
+
+    /**
      * @return int
      */
-    public function getId() : int
+    public function getId()
     {
         return $this->id;
     }
@@ -115,7 +126,7 @@ class ilExAutoScoreContainer extends ActiveRecord
     /**
      * @return string
      */
-    public function getTitle() : string
+    public function getTitle()
     {
         return $this->title;
     }
@@ -131,7 +142,7 @@ class ilExAutoScoreContainer extends ActiveRecord
     /**
      * @return string
      */
-    public function getFilename() : string
+    public function getFilename()
     {
         return $this->filename;
     }
@@ -147,7 +158,7 @@ class ilExAutoScoreContainer extends ActiveRecord
     /**
      * @return int
      */
-    public function getSize() : int
+    public function getSize()
     {
         return $this->size;
     }
@@ -163,7 +174,7 @@ class ilExAutoScoreContainer extends ActiveRecord
     /**
      * @return string
      */
-    public function getHash() : string
+    public function getHash()
     {
         return $this->hash;
     }
@@ -179,23 +190,23 @@ class ilExAutoScoreContainer extends ActiveRecord
     /**
      * @return int
      */
-    public function getOrigAssignmentId() : int
+    public function getOrigExerciseId()
     {
-        return $this->orig_assignment_id;
+        return $this->orig_exercise_id;
     }
 
     /**
-     * @param int $orig_assignment_id
+     * @param int $orig_exercise_id
      */
-    public function setOrigAssignmentId(int $orig_assignment_id)
+    public function setOrigExerciseId(int $orig_exercise_id)
     {
-        $this->orig_assignment_id = $orig_assignment_id;
+        $this->orig_exercise_id = $orig_exercise_id;
     }
 
     /**
      * @return bool
      */
-    public function isPublic() : bool
+    public function isPublic()
     {
         return $this->is_public;
     }
@@ -227,6 +238,9 @@ class ilExAutoScoreContainer extends ActiveRecord
                 $this->setHash(md5_file($tmpPath));
                 $this->setSize($result->getSize());
                 $this->setFilename($result->getName());
+                if (empty($this->getTitle())) {
+                    $this->setTitle($this->getFilename());
+                }
                 $this->save();
 
                 $upload->moveOneFileTo($result, $this->getStorageDirectory(), Location::STORAGE);
@@ -237,6 +251,19 @@ class ilExAutoScoreContainer extends ActiveRecord
         return false;
     }
 
+    /**
+     * Delete a container (extended to delete the container file)
+     */
+    public function delete() {
+        global $DIC;
+
+        $storage = $DIC->filesystem()->storage();
+        if ($storage->hasDir($this->getStorageDirectory())) {
+            $storage->deleteDir($this->getStorageDirectory());
+        }
+        parent::delete();
+    }
+
 
     /**
      * Get the storage directory for container
@@ -245,5 +272,4 @@ class ilExAutoScoreContainer extends ActiveRecord
     protected function getStorageDirectory() {
         return ilExAutoScorePlugin::getStorageDirectory() . '/' . ilFileSystemStorage::_createPathFromId($this->getId(), 'container');
     }
-
 }
