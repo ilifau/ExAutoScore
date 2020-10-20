@@ -20,3 +20,4 @@ container_public_info#:#Der Container ist auch für andere Übungen auswählbar.
 is_own_container#:#(aus dieser Übung)
 is_other_container#:#(aus anderer Übung)
 cont_upload_title_info#:#Der Titel wird nur zur Auswahl und Anzeige benutzt. Der Server zur Ausführung erhält den hochgeladenen Dateinamen.
+provided_files#:#Bereitgestellte Dateien
