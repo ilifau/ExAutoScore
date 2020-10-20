@@ -1,19 +1,18 @@
 <?php
-
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreContainer.php');
+require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
 
 /**
- * Auto Score Team Assignment Type GUI
+ * Auto Score Base Assignment Type GUI
+ * (control structure is provided in child classes)
  */
 abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInterface
 {
     use ilExAssignmentTypeGUIBase;
-
-    /** @var ilLanguage */
-    protected $lng;
+    use ilExAutoScoreGUIBase;
 
     /** @var ilExAutoScorePlugin */
     protected $plugin;
@@ -25,10 +24,36 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
      */
     public function __construct($plugin)
     {
-        global $DIC;
-        $this->lng = $DIC->language();
+        $this->initGlobals();
         $this->plugin = $plugin;
     }
+
+    /**
+     * Execute command
+     */
+    public function executeCommand()
+    {
+        $next_class = $this->ctrl->getNextClass($this);
+        $cmd = $this->ctrl->getCmd();
+
+        switch ($next_class) {
+            case 'ilexautoscoreprovidedfilesgui':
+                require_once(__DIR__ . '/class.ilExAutoScoreProvidedFilesGUI.php');
+                $gui = new ilExAutoScoreProvidedFilesGUI($this->plugin, $this->assignment);
+                $this->tabs->activateTab('exautoscore_provided_files');
+                $this->ctrl->forwardCommand($gui);
+                break;
+
+            default:
+                switch ($cmd) {
+                    default:
+                        if (in_array($cmd, [])) {
+                           $this->$cmd();
+                        }
+                }
+        }
+    }
+
 
 
     /**
@@ -181,5 +206,17 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
      */
     public function getOverviewContent(ilInfoScreenGUI $a_info, ilExSubmission $a_submission)
     {
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function handleEditorTabs(ilTabsGUI $tabs)
+    {
+        $tabs->removeTab('ass_files');
+
+        $tabs->addTab('exautoscore_provided_files',
+            $this->plugin->txt('provided_files'),
+           $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui', strtolower(get_class($this)),'ilexautoscoreprovidedfilesgui']));
     }
 }
