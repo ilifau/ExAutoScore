@@ -9,15 +9,19 @@
 <!-- language file start -->
 type_autoscore_user#:#Programmieraufgabe (Einzelnutzer)
 type_autoscore_team#:#Programmieraufgabe (als Team)
-execution_container#:#Ausführungs-Container
-container#:#Container
-use_existing_file#:#Ausgewählte Datei benutzen
-use_other_file#:#Andere Datei benutzen
+base_image#:#Container-Image
+dockerfile#:#Dockerfile
+use_existing_file#:#Vorhandene Datei
 upload_new_file#:#Neue Datei hochladen
-container_upload#:#Container hochladen
-container_public#:#Öffentlich
-container_public_info#:#Der Container ist auch für andere Übungen auswählbar. Wo er bereits verwendet wird, bleibt er erhalten.
-is_own_container#:#(aus dieser Übung)
-is_other_container#:#(aus anderer Übung)
-cont_upload_title_info#:#Der Titel wird nur zur Auswahl und Anzeige benutzt. Der Server zur Ausführung erhält den hochgeladenen Dateinamen.
+docker_upload#:#Dockerfile hochladen
+docker_description_info#:#Die Beschreibung wird nur hier angezeigt. Hier können sie Angaben zur Version oder Besonderheiten machen, die zu beachten sind.
 provided_files#:#Bereitgestellte Dateien
+service_assignment_url#:#Registrierungs-URL
+service_assignment_url_info#:#URL zur Registrierung eine Programmieraufgabe. An diese URL werden das Dockerfile, die Unterstützungsdateien und die Musterlosung zum Test geschickt. Der Service baut daraus dasContainer-Image und führt die Musterläsung probeweise aus.
+service_task_url#:#Abgabe-URL
+service_task_url_info#:#URL zur Abgabe einer Teilnehmelösung. An diese URL werden die eingereichten Dateien zur Bewertung geschickt.
+service_api_key#:#API-Key
+service_api_key_info#:#Der API-Key authentifiziert die Service-Aufrufe.
+update_languages#:#Sprachen aktualisieren
+generate_db_update#:#Datenbank-Update generieren
+basic_configuration#:#Basis-Konfiguration

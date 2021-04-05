@@ -4,8 +4,23 @@
 use ILIAS\FileUpload\Location;
 use ILIAS\FileUpload\DTO\ProcessingStatus;
 
-class ilExAutoScoreContainer extends ActiveRecord
+class ilExAutoScoreProvidedFile extends ActiveRecord
 {
+    /**
+     * Dockerfile to create the container image
+     */
+    CONST PURPOSE_DOCKER = 'docker';
+
+    /**
+     * Support file for running the test
+     */
+    CONST PURPOSE_SUPPORT = 'support';
+
+    /**
+     * Example file for a solution
+     */
+    CONST PURPOSE_EXAMPLE = 'example';
+
 
     /**
      * @return string
@@ -13,7 +28,7 @@ class ilExAutoScoreContainer extends ActiveRecord
      */
     public static function returnDbTableName()
     {
-        return 'exautoscore_container';
+        return 'exautoscore_prov_file';
     }
 
     /**
@@ -29,16 +44,17 @@ class ilExAutoScoreContainer extends ActiveRecord
      */
     protected $id;
 
-
     /**
-     * @var string
+     * @var int
      *
-     * @con_has_field true
-     * @con_fieldtype text
-     * @con_length    250
-     * @con_is_notnull false
+     * @con_is_primary false
+     * @con_is_unique  true
+     * @con_has_field  true
+     * @con_fieldtype  integer
+     * @con_is_notnull true
+     * @con_length     4
      */
-    protected $title;
+    protected $assignment_id;
 
 
     /**
@@ -72,17 +88,26 @@ class ilExAutoScoreContainer extends ActiveRecord
      */
     protected $hash;
 
-
     /**
-     * @var int
+     * @var string
      *
      * @con_has_field true
-     * @con_fieldtype integer
-     * @con_length    4
+     * @con_fieldtype text
+     * @con_length    10
      * @con_is_notnull false
      */
-    protected $orig_exercise_id;
+    protected $purpose;
 
+
+    /**
+     * @var string
+     *
+     * @con_has_field true
+     * @con_fieldtype text
+     * @con_length    250
+     * @con_is_notnull false
+     */
+    protected $description;
 
     /**
      * @var bool
@@ -111,7 +136,7 @@ class ilExAutoScoreContainer extends ActiveRecord
      */
     public function getId()
     {
-        return $this->id;
+        return (int) $this->id;
     }
 
     /**
@@ -122,29 +147,28 @@ class ilExAutoScoreContainer extends ActiveRecord
         $this->id = $id;
     }
 
+    /**
+     * @return int
+     */
+    public function getAssignmentId(): int
+    {
+        return (int) $this->assignment_id;
+    }
+
+    /**
+     * @param int $id
+     */
+    public function setAssignmentId(int $id)
+    {
+        $this->assignment_id = $id;
+    }
 
     /**
      * @return string
      */
-    public function getTitle()
+    public function getFilename(): string
     {
-        return $this->title;
-    }
-
-    /**
-     * @param string $title
-     */
-    public function setTitle(string $title)
-    {
-        $this->title = $title;
-    }
-
-    /**
-     * @return string
-     */
-    public function getFilename()
-    {
-        return $this->filename;
+        return (string) $this->filename;
     }
 
     /**
@@ -158,9 +182,9 @@ class ilExAutoScoreContainer extends ActiveRecord
     /**
      * @return int
      */
-    public function getSize()
+    public function getSize(): int
     {
-        return $this->size;
+        return (int) $this->size;
     }
 
     /**
@@ -174,9 +198,9 @@ class ilExAutoScoreContainer extends ActiveRecord
     /**
      * @return string
      */
-    public function getHash()
+    public function getHash(): string
     {
-        return $this->hash;
+        return (string) $this->hash;
     }
 
     /**
@@ -188,20 +212,37 @@ class ilExAutoScoreContainer extends ActiveRecord
     }
 
     /**
-     * @return int
+     * @return string
      */
-    public function getOrigExerciseId()
+    public function getPurpose() : string
     {
-        return $this->orig_exercise_id;
+        return (string) $this->purpose;
     }
 
     /**
-     * @param int $orig_exercise_id
+     * @param string $purpose
      */
-    public function setOrigExerciseId(int $orig_exercise_id)
+    public function setPurpose(string $purpose)
     {
-        $this->orig_exercise_id = $orig_exercise_id;
+        $this->purpose = $purpose;
     }
+
+    /**
+     * @return string
+     */
+    public function getDescription() : string
+    {
+        return (string) $this->description;
+    }
+
+    /**
+     * @param string $description
+     */
+    public function setDescription(string $description)
+    {
+        $this->description = $description;
+    }
+
 
     /**
      * @return bool
@@ -238,9 +279,6 @@ class ilExAutoScoreContainer extends ActiveRecord
                 $this->setHash(md5_file($tmpPath));
                 $this->setSize($result->getSize());
                 $this->setFilename($result->getName());
-                if (empty($this->getTitle())) {
-                    $this->setTitle($this->getFilename());
-                }
                 $this->save();
 
                 $upload->moveOneFileTo($result, $this->getStorageDirectory(), Location::STORAGE);
@@ -254,7 +292,8 @@ class ilExAutoScoreContainer extends ActiveRecord
     /**
      * Delete a container (extended to delete the container file)
      */
-    public function delete() {
+    public function delete()
+    {
         global $DIC;
 
         $storage = $DIC->filesystem()->storage();
@@ -269,7 +308,30 @@ class ilExAutoScoreContainer extends ActiveRecord
      * Get the storage directory for container
      * @return string
      */
-    protected function getStorageDirectory() {
+    protected function getStorageDirectory()
+    {
         return ilExAutoScorePlugin::getStorageDirectory() . '/' . ilFileSystemStorage::_createPathFromId($this->getId(), 'container');
+    }
+
+
+    /**
+     * Get the Dockerfile of an assignment
+     * @param int $assignment_id
+     * @return self
+     */
+    public static function getAssignmentDocker($assignment_id)
+    {
+        $records = self::getCollection()
+            ->where(['assignment_id' => $assignment_id])
+            ->where(['purpose' => self::PURPOSE_DOCKER])
+            ->get();
+
+        if (empty($records)) {
+            $record = new self;
+            $record->setPurpose(self::PURPOSE_DOCKER);
+            return $record;
+        }
+
+        return array_pop($records);
     }
 }
