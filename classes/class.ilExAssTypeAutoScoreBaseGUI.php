@@ -60,31 +60,25 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
      */
     public function addEditFormCustomProperties(ilPropertyFormGUI $form, $exercise_id = null, $assignment_id = null)
     {
-        $contRadio = new ilRadioGroupInputGUI($this->plugin->txt('dockerfile'), 'exautoscore_docker_radio');
-        $form->addItem($contRadio);
-
-        // use already selected image
-        $contOptExisting = new ilRadioOption($this->plugin->txt('use_existing_file'), 'existing');
-        $contRadio->addOption($contOptExisting);
-
-        $contExistingFilename = new ilNonEditableValueGUI($this->lng->txt('filename'), 'exautoscore_docker_filename');
-        $contOptExisting->addSubItem($contExistingFilename);
-
-        $contExistingDescription = new ilTextAreaInputGUI($this->lng->txt('description'),'exautoscore_docker_existing_description');
-        $contExistingDescription->setInfo($this->plugin->txt('docker_description_info'));
-        $contOptExisting->addSubItem($contExistingDescription);
-
-        // upload a new image
-        $contOptUpload =  new ilRadioOption($this->plugin->txt('upload_new_file'), 'new');
-        $contRadio->addOption($contOptUpload);
-
         $contUploadFile = new ilFileInputGUI($this->plugin->txt('docker_upload'), 'exautoscore_docker_upload');
-        $contUploadFile->setRequired(true);
-        $contOptUpload->addSubItem($contUploadFile);
+        $contUploadFile->setInfo($this->plugin->txt('docker_upload_info'));
+        $form->addItem($contUploadFile);
 
-        $contUploadDescription = new ilTextAreaInputGUI($this->lng->txt('description'),'exautoscore_docker_upload_description');
-        $contUploadDescription->setInfo($this->plugin->txt('docker_description_info'));
-        $contOptUpload->addSubItem($contUploadDescription);
+        $contExistingFilename = new ilNonEditableValueGUI($this->plugin->txt('existing_file'), 'exautoscore_docker_filename');
+        $form->addItem($contExistingFilename);
+
+        $contDescription = new ilTextAreaInputGUI($this->lng->txt('description'),'exautoscore_docker_description');
+        $contDescription->setInfo($this->plugin->txt('docker_description_info'));
+        $form->addItem($contDescription);
+
+        $contCommand = new ilTextInputGUI($this->plugin->txt('docker_command'), 'exautoscore_docker_command');
+        $contCommand->setInfo($this->plugin->txt('docker_command_info'));
+        $form->addItem($contCommand);
+
+        $assUuid = new ilNonEditableValueGUI($this->plugin->txt('assignment_uuid'), 'exautoscore_assignment_uuid');
+        $assUuid->setInfo($this->plugin->txt('assignment_uuid_info'));
+        $form->addItem($assUuid);
+
     }
 
 
@@ -103,31 +97,26 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
         $request = $DIC->http()->request();
         $params = $request->getParsedBody();
 
+        if (!empty($params['exautoscore_docker_upload']['tmp_name'])) {
+            $assCont = new ilExAutoScoreProvidedFile();
+            $assCont->setAssignmentId($ass->getId());
+            $assCont->setDescription((string) $params['exautoscore_docker_description']);
+            $assCont->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_DOCKER);
+            $assCont->setPublic(false);
+            $assCont->save();
 
-        switch($params['exautoscore_docker_radio']) {
-            case 'new':
-                if (isset($params['exautoscore_docker_upload']['tmp_name'])) {
-
-                    $assCont = new ilExAutoScoreProvidedFile();
-                    $assCont->setAssignmentId($ass->getId());
-                    $assCont->setDescription((string) $params['exautoscore_docker_upload_description']);
-                    $assCont->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_DOCKER);
-                    $assCont->setPublic(false);
-                    $assCont->save();
-
-                    if (!$assCont->storeUploadedFile($params['exautoscore_docker_upload']['tmp_name'])) {
-                        $assCont->delete();
-                    } else {
-                        $assContOld->delete();
-                    }
-                }
-                break;
-
-            case 'existing':
-                $assContOld->setDescription($params['exautoscore_docker_existing_description']);
-                $assContOld->save();
-                break;
+            if (!$assCont->storeUploadedFile($params['exautoscore_docker_upload']['tmp_name'])) {
+                $assCont->delete();
+            } else {
+                $assContOld->delete();
+            }
         }
+        else {
+            $assContOld->setDescription($params['exautoscore_docker_description']);
+            $assContOld->save();
+        }
+
+        $assAuto->setCommand($params['exautoscore_docker_command']);
     }
 
 
@@ -138,12 +127,14 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
      */
     public function getFormValuesArray(ilExAssignment $ass)
     {
+        $assAuto = ilExAutoScoreAssignment::findOrGetInstance($ass->getId());
         $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($ass->getId());
 
         return [
-            'exautoscore_docker_radio' => empty($assCont->getId()) ? 'new' : 'existing',
             'exautoscore_docker_filename' => $assCont->getFilename(),
-            'exautoscore_docker_existing_description' => $assCont->getDescription()
+            'exautoscore_docker_description' => $assCont->getDescription(),
+            'exautoscore_docker_command' =>  $assAuto->getCommand(),
+            'exautoscore_assignment_uuid' => $assAuto->getUuid()
         ];
     }
 
@@ -155,4 +146,18 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
     public function getOverviewContent(ilInfoScreenGUI $a_info, ilExSubmission $a_submission)
     {
     }
+
+
+    /**
+     * @inheritdoc
+     */
+    public function handleEditorTabs(ilTabsGUI $tabs)
+    {
+        $tabs->removeTab('ass_files');
+
+        $tabs->addTab('exautoscore_provided_files',
+            $this->plugin->txt('provided_files'),
+            $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui', strtolower(get_class($this)),'ilexautoscoreprovidedfilesgui']));
+    }
+
 }
