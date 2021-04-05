@@ -7,6 +7,13 @@ require_once ('./Modules/Exercise/classes/class.ilAssignmentHookPlugin.php');
  */
 class ilExAutoScorePlugin extends ilAssignmentHookPlugin
 {
+    /** @var ilExAutoScoreConfig */
+    protected $config;
+
+    /** @var self */
+    protected static $instance;
+
+
     /**
      * Get Plugin Name. Must be same as in class name il<Name>Plugin
      * and must correspond to plugins subdirectory name.
@@ -14,6 +21,44 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      */
     function getPluginName() {
         return "ExAutoScore";
+    }
+
+    /**
+     * Uninstall custom data of this plugin
+     */
+    protected function uninstallCustom()
+    {
+        global $DIC;
+        $db = $DIC->database();
+
+        $db->dropTable('exautoscore_assignment', false);
+        $db->dropTable('exautoscore_provided_file', false);
+    }
+
+    /**
+     * Get the plugin instance
+     * @return ilExAutoScorePlugin
+     */
+    public static function getInstance() {
+        if (!isset(self::$instance)) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+
+    /**
+     * Get the plugin configuration
+     * @return ilExAutoScoreConfig
+     */
+    public function getConfig()
+    {
+        if (!isset($this->config))
+        {
+            require_once (__DIR__ . '/param/class.ilExAutoScoreConfig.php');
+            $this->config = new ilExAutoScoreConfig($this);
+        }
+        return $this->config;
     }
 
     /**

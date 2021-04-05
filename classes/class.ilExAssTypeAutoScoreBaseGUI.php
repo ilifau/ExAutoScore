@@ -2,7 +2,7 @@
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
-require_once (__DIR__ . '/models/class.ilExAutoScoreContainer.php');
+require_once (__DIR__ . '/models/class.ilExAutoScoreProvidedFile.php');
 require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
 
 /**
@@ -55,168 +55,104 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
     }
 
 
-
     /**
      * @inheritdoc
      */
     public function addEditFormCustomProperties(ilPropertyFormGUI $form, $exercise_id = null, $assignment_id = null)
     {
-        $assAuto = ilExAutoScoreAssignment::findOrGetInstance(isset($this->assignment) ? $this->assignment->getId() : 0);
-        $assCont = ilExAutoScoreContainer::findOrGetInstance($assAuto->getContainerId());
-
-        $contRadio = new ilRadioGroupInputGUI($this->plugin->txt('execution_container'), 'exautoscore_cont_radio');
+        $contRadio = new ilRadioGroupInputGUI($this->plugin->txt('dockerfile'), 'exautoscore_docker_radio');
         $form->addItem($contRadio);
 
-        // use already selected container
-        $contOptExisting = new ilRadioOption($this->plugin->txt('use_existing_file'), 'cont_use_existing');
+        // use already selected image
+        $contOptExisting = new ilRadioOption($this->plugin->txt('use_existing_file'), 'existing');
         $contRadio->addOption($contOptExisting);
-        if (empty($assCont->getId())) {
-            $contOptExisting->setDisabled(true);
-        }
-        else {
-            $contExistingTitle = new ilNonEditableValueGUI($this->plugin->txt('container'), 'cont_existing_title');
-            $contExistingTitle->setValue($assCont->getTitle());
-            $contOptExisting->addSubItem($contExistingTitle);
 
-            $contExistingPublic = new ilCheckboxInputGUI($this->plugin->txt('container_public'), 'exautoscore_cont_public');
-            $contExistingPublic->setInfo($this->plugin->txt('container_public_info'));
-            $contOptExisting->addSubItem($contExistingPublic);
+        $contExistingFilename = new ilNonEditableValueGUI($this->lng->txt('filename'), 'exautoscore_docker_filename');
+        $contOptExisting->addSubItem($contExistingFilename);
 
-            // container is uploaded with this assignment
-            if ($assCont->getOrigExerciseId() == $exercise_id) {
-                $contExistingTitle->setInfo($assCont->getFilename() . ' ' . $this->plugin->txt('is_own_container'));
-            }
-            else {
-                $contExistingTitle->setInfo($assCont->getFilename() . ' ' . $this->plugin->txt('is_other_container'));
-                $contExistingPublic->setDisabled(true);
-            }
-        }
+        $contExistingDescription = new ilTextAreaInputGUI($this->lng->txt('description'),'exautoscore_docker_existing_description');
+        $contExistingDescription->setInfo($this->plugin->txt('docker_description_info'));
+        $contOptExisting->addSubItem($contExistingDescription);
 
-        // select an existing container
-        $contOptSelect = new ilRadioOption($this->plugin->txt('use_other_file'), 'cont_use_other');
-        $contRadio->addOption($contOptSelect);
-        $list = $assAuto->getSelectableContainers();
-        if (empty($list)) {
-            $contOptSelect->setDisabled(true);
-        }
-        else {
-            $options = [];
-            foreach ($list as $assCont) {
-                $title =  $assCont->getTitle();
-                if ($assCont->getOrigExerciseId() == $exercise_id) {
-                    $title .= ' '. $this->plugin->txt('is_own_container');
-                }
-                else {
-                    $title .= ' ' . $this->plugin->txt('is_other_container');
-                }
-                $options[$assCont->getId()] = $title;
-            }
-            $cont_select = new ilSelectInputGUI($this->plugin->txt('container'), 'exautoscore_cont_select');
-            $cont_select->setOptions($options);
-            $contOptSelect->addSubItem($cont_select);
-        }
-
-        // upload a new container
-        $contOptUpload =  new ilRadioOption($this->plugin->txt('upload_new_file'), 'cont_upload_new');
+        // upload a new image
+        $contOptUpload =  new ilRadioOption($this->plugin->txt('upload_new_file'), 'new');
         $contRadio->addOption($contOptUpload);
-        $cont_upload_file = new ilFileInputGUI($this->plugin->txt('container_upload'), 'exautoscore_cont_file_upload');
-        $cont_upload_file->setRequired(true);
-        $cont_upload_title = new ilTextInputGUI($this->lng->txt('title'),'exautoscore_cont_upload_title');
-        $cont_upload_title->setSize(50);
-        $cont_upload_title->setInfo($this->plugin->txt('cont_upload_title_info'));
-        $cont_upload_title->setRequired(true);
-        $contOptUpload->addSubItem($cont_upload_file);
-        $contOptUpload->addSubItem($cont_upload_title);
+
+        $contUploadFile = new ilFileInputGUI($this->plugin->txt('docker_upload'), 'exautoscore_docker_upload');
+        $contUploadFile->setRequired(true);
+        $contOptUpload->addSubItem($contUploadFile);
+
+        $contUploadDescription = new ilTextAreaInputGUI($this->lng->txt('description'),'exautoscore_docker_upload_description');
+        $contUploadDescription->setInfo($this->plugin->txt('docker_description_info'));
+        $contOptUpload->addSubItem($contUploadDescription);
     }
 
+
     /**
-     * @inheritdoc
+     * Get values from form and put them into assignment
+     * @param ilExAssignment $ass
+     * @param ilPropertyFormGUI $form
      */
     public function importFormToAssignment(ilExAssignment $ass, ilPropertyFormGUI $form)
     {
         global $DIC;
 
         $assAuto = ilExAutoScoreAssignment::findOrGetInstance($ass->getId());
+        $assContOld = ilExAutoScoreProvidedFile::getAssignmentDocker($ass->getId());
+
         $request = $DIC->http()->request();
         $params = $request->getParsedBody();
 
-        switch((string) $params['exautoscore_cont_radio'])
-        {
-            // container is unchanged
-            case 'cont_use_existing':
-                $assCont = $assAuto->getContainer();
-                // container is uploaded in this assignment, so public can be switched
-                if ($assCont->getOrigExerciseId() == $ass->getExerciseId()) {
-                    $assCont->setPublic((bool) $params['exautoscore_cont_public']);
-                    $assCont->save();
-                }
-                break;
 
-            // other container is selected
-            case 'cont_use_other':
-                $assCont = ilExAutoScoreContainer::findOrGetInstance((int) $params['exautoscore_cont_select']);
-                if ($assCont->getId() && $assCont->getId() != $assAuto->getContainerId()) {
-                    if ($assCont->isPublic() || $assCont->getOrigExerciseId() == $ass->getExerciseId()) {
-                        $assAuto->removeContainer();
-                        $assAuto->setContainerId($assCont->getId());
-                        $assAuto->save();
-                    }
-                }
-                break;
+        switch($params['exautoscore_docker_radio']) {
+            case 'new':
+                if (isset($params['exautoscore_docker_upload']['tmp_name'])) {
 
-            // new container is uploaded
-            case 'cont_upload_new':
-                if (isset($params['exautoscore_cont_file_upload']['tmp_name'])) {
-                    $assCont = new ilExAutoScoreContainer();
-                    $assCont->setOrigExerciseId($ass->getExerciseId());
-                    $assCont->setTitle((string) $params['exautoscore_cont_upload_title']);
+                    $assCont = new ilExAutoScoreProvidedFile();
+                    $assCont->setAssignmentId($ass->getId());
+                    $assCont->setDescription((string) $params['exautoscore_docker_upload_description']);
+                    $assCont->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_DOCKER);
                     $assCont->setPublic(false);
                     $assCont->save();
 
-                    if (!$assCont->storeUploadedFile($params['exautoscore_cont_file_upload']['tmp_name'])) {
+                    if (!$assCont->storeUploadedFile($params['exautoscore_docker_upload']['tmp_name'])) {
                         $assCont->delete();
-                    }
-                    else {
-                        $assAuto->removeContainer();
-                        $assAuto->setContainerId($assCont->getId());
-                        $assAuto->save();
+                    } else {
+                        $assContOld->delete();
                     }
                 }
+                break;
+
+            case 'existing':
+                $assContOld->setDescription($params['exautoscore_docker_existing_description']);
+                $assContOld->save();
                 break;
         }
     }
 
+
     /**
-     * @inheritdoc
+     * Get form values array from assignment
+     * @param ilExAssignment $ass
+     * @return array
      */
     public function getFormValuesArray(ilExAssignment $ass)
     {
-        $assAuto = ilExAutoScoreAssignment::findOrGetInstance($ass->getId());
-        $assCont = ilExAutoScoreContainer::findOrGetInstance($assAuto->getContainerId());
+        $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($ass->getId());
 
         return [
-            'exautoscore_cont_radio' => empty($assCont->getId()) ? 'cont_upload_new' : 'cont_use_existing',
-            'exautoscore_cont_select' => $assCont->getId(),
-            'exautoscore_cont_public' => $assCont->isPublic()
+            'exautoscore_docker_radio' => empty($assCont->getId()) ? 'new' : 'existing',
+            'exautoscore_docker_filename' => $assCont->getFilename(),
+            'exautoscore_docker_existing_description' => $assCont->getDescription()
         ];
     }
 
     /**
-     * @inheritdoc
+     * Add overview content of submission to info screen object
+     * @param ilInfoScreenGUI $a_info
+     * @param ilExSubmission $a_submission
      */
     public function getOverviewContent(ilInfoScreenGUI $a_info, ilExSubmission $a_submission)
     {
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function handleEditorTabs(ilTabsGUI $tabs)
-    {
-        $tabs->removeTab('ass_files');
-
-        $tabs->addTab('exautoscore_provided_files',
-            $this->plugin->txt('provided_files'),
-           $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui', strtolower(get_class($this)),'ilexautoscoreprovidedfilesgui']));
     }
 }

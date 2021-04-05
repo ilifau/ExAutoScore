@@ -31,14 +31,30 @@ class ilExAutoScoreAssignment extends ActiveRecord
      */
     protected $exercise_id = 0;
 
+
     /**
-     * @var int
-     * @con_has_field  true
-     * @con_fieldtype  integer
-     * @con_length     4
-     * @con_is_notnull true
+     * @var string
+     *
+     * @con_has_field true
+     * @con_fieldtype text
+     * @con_length    250
+     * @con_is_notnull false
      */
-    protected $container_id = 0;
+    protected $uuid;
+
+
+    /**
+     * @var string
+     *
+     * @con_has_field true
+     * @con_fieldtype text
+     * @con_length    250
+     * @con_is_notnull false
+     */
+    protected $command;
+
+
+
 
     /**
      * Wrapper to declare the return type
@@ -89,22 +105,6 @@ class ilExAutoScoreAssignment extends ActiveRecord
 
 
     /**
-     * @return int
-     */
-    public function getContainerId()
-    {
-        return $this->container_id;
-    }
-
-    /**
-     * @param int $container_id
-     */
-    public function setContainerId(int $container_id)
-    {
-        $this->container_id = $container_id;
-    }
-
-    /**
      * Save the record
      * ensure the matching exercise id being saved
      */
@@ -116,45 +116,4 @@ class ilExAutoScoreAssignment extends ActiveRecord
         parent::store();
     }
 
-
-
-    /**
-     * Get the selectable containers for an assignment
-     * @return ilExAutoScoreContainer[]
-     */
-    public function getSelectableContainers()
-    {
-        global $DIC;
-        $db = $DIC->database();
-
-        $where = 'is_public = 1 '
-            . ' OR orig_exercise_id = ' . $db->quote($this->getExerciseId(), 'integer')
-            . ' OR id = ' . $db->quote($this->getContainerId(), 'integer');
-
-        return ilExAutoScoreContainer::where($where)->orderBy('title')->get();
-    }
-
-    /**
-     * Remove a container
-     * - if it is created for this exercise
-     * - if it is not public for other assignments
-     */
-    public function removeContainer() {
-        $curCont = $this->getContainer();
-        if ($curCont->getId() && $curCont->getOrigExerciseId() == $this->getExerciseId() && !$curCont->isPublic()) {
-            $usages = self::where(['container_id' => $curCont->getId()])->count();
-            if ($usages <= 1 ) {
-                $curCont->delete();
-            }
-        }
-    }
-
-    /**
-     * Get the used container
-     * @return ilExAutoScoreContainer
-     */
-    public function getContainer()
-    {
-        return new ilExAutoScoreContainer($this->getContainerId());
-    }
 }

@@ -55,4 +55,6 @@ class ilExAutoScoreProvidedFilesGUI
     {
         $this->tpl->setContent('listing files');
     }
+
+
 }
