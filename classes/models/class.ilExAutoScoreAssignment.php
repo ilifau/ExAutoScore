@@ -103,6 +103,38 @@ class ilExAutoScoreAssignment extends ActiveRecord
         $this->exercise_id = $exercise_id;
     }
 
+    /**
+     * @return string
+     */
+    public function getUuid() : string
+    {
+        return (string) $this->uuid;
+    }
+
+    /**
+     * @param string $uuid
+     */
+    public function setUuid(string $uuid)
+    {
+        $this->uuid = $uuid;
+    }
+
+    /**
+     * @return string
+     */
+    public function getCommand() : string
+    {
+        return (string) $this->command;
+    }
+
+    /**
+     * @param string $command
+     */
+    public function setCommand(string $command)
+    {
+        $this->command = $command;
+    }
+
 
     /**
      * Save the record
@@ -115,5 +147,4 @@ class ilExAutoScoreAssignment extends ActiveRecord
         }
         parent::store();
     }
-
 }

@@ -9,13 +9,6 @@
 <!-- language file start -->
 type_autoscore_user#:#Programmieraufgabe (Einzelnutzer)
 type_autoscore_team#:#Programmieraufgabe (als Team)
-base_image#:#Container-Image
-dockerfile#:#Dockerfile
-use_existing_file#:#Vorhandene Datei
-upload_new_file#:#Neue Datei hochladen
-docker_upload#:#Dockerfile hochladen
-docker_description_info#:#Die Beschreibung wird nur hier angezeigt. Hier können sie Angaben zur Version oder Besonderheiten machen, die zu beachten sind.
-provided_files#:#Bereitgestellte Dateien
 service_assignment_url#:#Registrierungs-URL
 service_assignment_url_info#:#URL zur Registrierung eine Programmieraufgabe. An diese URL werden das Dockerfile, die Unterstützungsdateien und die Musterlosung zum Test geschickt. Der Service baut daraus dasContainer-Image und führt die Musterläsung probeweise aus.
 service_task_url#:#Abgabe-URL
@@ -25,3 +18,35 @@ service_api_key_info#:#Der API-Key authentifiziert die Service-Aufrufe.
 update_languages#:#Sprachen aktualisieren
 generate_db_update#:#Datenbank-Update generieren
 basic_configuration#:#Basis-Konfiguration
+docker_upload#:#Dockerfile hochladen
+docker_upload_info#:#Kommandodatei für Docker, um ein Container-Image zur Korrektur dieser Übung zu erzeugen. Laden Sie weitere benötigte Dateien nach dem Anlegen dieser Übungseinheit auf dem Reiter "Bereitgestellte Dateien hoch".
+existing_file#:#Vorhandene Datei
+docker_description_info#:#Die Beschreibung wird nur hier angezeigt. Hier können sie Angaben zur Version oder Besonderheiten machen, die zu beachten sind.
+docker_command#:#Korrektur-Kommando
+docker_command_info#:#Kommando, das im Container-Image zur Korrektur einer Einreichung aufgerufen wird.
+assignment_uuid#:#UUID
+assignment_uuid_info#:#Die UUID wird vom Container-Service dieser Übungseinheit zugewiesen, wenn das Dockerfile und die bereitgestellten Dateien zum Erzeugen des Container-Images hochgeladen werden. Es wird bei der Korrektur der Einreichungen verwendet, um diese Übungseinheit zu identifizieren.
+provided_files#:#Bereitgestellte Dateien
+purpose#:#Verwendung
+purpose_docker#:#Dockerfile
+purpose_docker_info#:#Es darf nur ein Dockerfile pro Übunngseinheit geben
+purpose_support#:#Unterstützungsdatei
+purpose_support_info#:#Datei, die beim Erzeugen des Container-Images hochgeladen wird. Sie kann das auszuführende Kommando oder eine Hilfsdatei sein. Mehrere Dateien dieser Art werden an den Container-Serviece mit gzip komprimiert übergeben (Endung .tgz).
+purpose_example#:#Beispiel-Datei
+purpose_example_info#:#Datei einer Musterlösung, so wie sie auch von den Studierenden hochgeladen würde. Mit dieser Datei wird das Funktionieren der Korrektur getestet. Mehrere Dateien dieser Art werden an den Container-Service mit gzip komprimiert übergeben (Endung .tgz).
+file_description_info#:#Wenn die Datei öffentlich ist, wird auch die Besschreibung den Studierenden angezeigt.
+is_public_info#:#Die Datei wird zusammen mit der Aufgabenstellung den Studierenden zum Download angeboten.
+file_upload#:#Datei hochladen
+filename#:#Dateiname
+file_size#:#Größe (Bytes)
+is_public#:#Öffentlich
+edit_file#:#Datei bearbeiten
+update_file#:#Datei aktualisieren
+delete_files#:#Dateien löschen
+add_file#:#Datei hinzufügen
+file_created#:#Die Datei wurde angelegt
+file_updated#:#Die Datei wurde aktualisiert
+files_deleted#:#Die Datei(en) wurden gelöscht
+back_to_list#:#Zurück zur Liste
+confirm_delete_files#:#Möchten Sie die ausgewählten Dateien löschen?
+

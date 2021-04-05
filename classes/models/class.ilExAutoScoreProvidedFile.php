@@ -261,11 +261,12 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
     }
 
     /**
-     * Store an uploaded container file
+     * Store an uploaded file
      * @param string $tmpPath   temporary path of the uploaded file
      * @return bool
      */
-    public function storeUploadedFile($tmpPath) {
+    public function storeUploadedFile($tmpPath)
+    {
         global $DIC;
 
         $upload = $DIC->upload();
@@ -281,7 +282,7 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
                 $this->setFilename($result->getName());
                 $this->save();
 
-                $upload->moveOneFileTo($result, $this->getStorageDirectory(), Location::STORAGE);
+                $upload->moveOneFileTo($result, $this->getStorageDirectory(), Location::STORAGE, 'file'. $this->getId(), true);
                 return true;
             }
         }
@@ -290,14 +291,18 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
     }
 
     /**
-     * Delete a container (extended to delete the container file)
+     * Delete a file
      */
     public function delete()
     {
         global $DIC;
 
         $storage = $DIC->filesystem()->storage();
-        if ($storage->hasDir($this->getStorageDirectory())) {
+        if ($storage->has($this->getStorageDirectory() . '/' . $this->getStorageFilename())) {
+            $storage->delete($this->getStorageDirectory() . '/' . $this->getStorageFilename());
+        }
+
+        if ($storage->hasDir($this->getStorageDirectory()) && empty($storage->listContents($this->getStorageDirectory()))) {
             $storage->deleteDir($this->getStorageDirectory());
         }
         parent::delete();
@@ -305,14 +310,23 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
 
 
     /**
-     * Get the storage directory for container
+     * Get the storage directory for a file
      * @return string
      */
     protected function getStorageDirectory()
     {
-        return ilExAutoScorePlugin::getStorageDirectory() . '/' . ilFileSystemStorage::_createPathFromId($this->getId(), 'container');
+        return ilExAutoScorePlugin::getStorageDirectory() . '/' . ilFileSystemStorage::_createPathFromId($this->getAssignmentId(), 'assignment');
     }
 
+    /**
+     * Get the stored filename
+     * The uploaded filename is not used because it may be insecure
+     * @return string
+     */
+    protected function getStorageFilename()
+    {
+        return 'file' . $this->getId();
+    }
 
     /**
      * Get the Dockerfile of an assignment
