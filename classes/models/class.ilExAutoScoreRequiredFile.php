@@ -4,18 +4,8 @@
 use ILIAS\FileUpload\Location;
 use ILIAS\FileUpload\DTO\ProcessingStatus;
 
-class ilExAutoScoreProvidedFile extends ActiveRecord
+class ilExAutoScoreRequiredFile extends ActiveRecord
 {
-    /**
-     * Dockerfile to create the container image
-     */
-    CONST PURPOSE_DOCKER = 'docker';
-
-    /**
-     * Support file for running the test
-     */
-    CONST PURPOSE_SUPPORT = 'support';
-
 
     /**
      * @return string
@@ -23,7 +13,7 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
      */
     public static function returnDbTableName()
     {
-        return 'exautoscore_prov_file';
+        return 'exautoscore_req_file';
     }
 
     /**
@@ -64,34 +54,14 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
 
 
     /**
-     * @var int
-     *
-     * @con_has_field  true
-     * @con_fieldtype  integer
-     * @con_length     4
-     * @con_is_notnull false
-     */
-    protected $size;
-
-    /**
      * @var string
      *
      * @con_has_field true
      * @con_fieldtype text
-     * @con_length    50
+     * @con_length    2000
      * @con_is_notnull false
      */
-    protected $hash;
-
-    /**
-     * @var string
-     *
-     * @con_has_field true
-     * @con_fieldtype text
-     * @con_length    10
-     * @con_is_notnull false
-     */
-    protected $purpose;
+    protected $description;
 
 
     /**
@@ -102,21 +72,45 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
      * @con_length    250
      * @con_is_notnull false
      */
-    protected $description;
+    protected $encoding;
+
 
     /**
-     * @var bool
+     * @var int
      *
-     * @con_has_field true
-     * @con_fieldtype integer
-     * @con_length    4
+     * @con_has_field  true
+     * @con_fieldtype  integer
+     * @con_length     4
      * @con_is_notnull false
      */
-    protected $is_public;
+    protected $max_size;
+
+
+    /**
+     * @var int
+     *
+     * @con_has_field  true
+     * @con_fieldtype  integer
+     * @con_length     4
+     * @con_is_notnull false
+     */
+    protected $example_size;
+
+    /**
+     * @var string
+     *
+     * @con_has_field true
+     * @con_fieldtype text
+     * @con_length    50
+     * @con_is_notnull false
+     */
+    protected $example_hash;
 
 
     /**
      * Wrapper to declare the return type
+     * @param       $primary_key
+     * @param array $add_constructor_args
      * @return self
      */
     public static function findOrGetInstance($primary_key, array $add_constructor_args = array())
@@ -124,6 +118,23 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
         /** @var self $record */
         $record =  parent::findOrGetInstance($primary_key, $add_constructor_args);
         return $record;
+    }
+
+    /**
+     * Get the selectable encoding options
+     */
+    public static function getEncodingOptions() {
+        return [
+            '' => '',
+            'ASCII' => 'ASCII',
+            'BASE64' => 'BASE64',
+            'ISO-8859-1' => 'ISO-8859-1',
+            'UTF-8' => 'UTF-8',
+            'UTF-16' => 'UTF-16',
+            'UTF-32' => 'UTF-32',
+            'Windows-1251' => 'Windows-1251',
+            'Windows-1252' => 'Windows-1252'
+        ];
     }
 
     /**
@@ -161,70 +172,6 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
     /**
      * @return string
      */
-    public function getFilename(): string
-    {
-        return (string) $this->filename;
-    }
-
-    /**
-     * @param string $filename
-     */
-    public function setFilename(string $filename)
-    {
-        $this->filename = $filename;
-    }
-
-    /**
-     * @return int
-     */
-    public function getSize(): int
-    {
-        return (int) $this->size;
-    }
-
-    /**
-     * @param int $size
-     */
-    public function setSize(int $size)
-    {
-        $this->size = $size;
-    }
-
-    /**
-     * @return string
-     */
-    public function getHash(): string
-    {
-        return (string) $this->hash;
-    }
-
-    /**
-     * @param string $hash
-     */
-    public function setHash(string $hash)
-    {
-        $this->hash = $hash;
-    }
-
-    /**
-     * @return string
-     */
-    public function getPurpose() : string
-    {
-        return (string) $this->purpose;
-    }
-
-    /**
-     * @param string $purpose
-     */
-    public function setPurpose(string $purpose)
-    {
-        $this->purpose = $purpose;
-    }
-
-    /**
-     * @return string
-     */
     public function getDescription() : string
     {
         return (string) $this->description;
@@ -238,22 +185,87 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
         $this->description = $description;
     }
 
-
     /**
-     * @return bool
+     * @return string
      */
-    public function isPublic()
+    public function getFilename() : string
     {
-        return $this->is_public;
+        return (string) $this->filename;
     }
 
     /**
-     * @param bool $is_public
+     * @param string $filename
      */
-    public function setPublic(bool $is_public)
+    public function setFilename(string $filename)
     {
-        $this->is_public = $is_public;
+        $this->filename = $filename;
     }
+
+
+    /**
+     * @return string
+     */
+    public function getEncoding() : string
+    {
+        return (string) $this->encoding;
+    }
+
+    /**
+     * @param string $encoding
+     */
+    public function setEncoding(string $encoding)
+    {
+        $this->encoding = $encoding;
+    }
+
+    /**
+     * @return int
+     */
+    public function getMaxSize() : int
+    {
+        return (int) $this->max_size;
+    }
+
+    /**
+     * @param int $max_size
+     */
+    public function setMaxSize(int $max_size)
+    {
+        $this->max_size = $max_size;
+    }
+
+    /**
+     * @return int
+     */
+    public function getExampleSize() : int
+    {
+        return (int) $this->example_size;
+    }
+
+    /**
+     * @param int $example_size
+     */
+    public function setExampleSize(int $example_size)
+    {
+        $this->example_size = $example_size;
+    }
+
+    /**
+     * @return string
+     */
+    public function getExampleHash() : string
+    {
+        return (string) $this->example_hash;
+    }
+
+    /**
+     * @param string $example_hash
+     */
+    public function setExampleHash(string $example_hash)
+    {
+        $this->example_hash = $example_hash;
+    }
+
 
     /**
      * Store an uploaded file
@@ -272,8 +284,8 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
         foreach ($upload->getResults() as $result) {
             if ( $result->getPath() == $tmpPath && $result->getStatus() == ProcessingStatus::OK) {
 
-                $this->setHash(md5_file($tmpPath));
-                $this->setSize($result->getSize());
+                $this->setExampleHash(md5_file($tmpPath));
+                $this->setExampleSize($result->getSize());
                 $this->setFilename($result->getName());
                 $this->save();
 
@@ -320,27 +332,7 @@ class ilExAutoScoreProvidedFile extends ActiveRecord
      */
     protected function getStorageFilename()
     {
-        return 'provided' . $this->getId();
+        return 'example' . $this->getId();
     }
 
-    /**
-     * Get the Dockerfile of an assignment
-     * @param int $assignment_id
-     * @return self
-     */
-    public static function getAssignmentDocker($assignment_id)
-    {
-        $records = self::getCollection()
-            ->where(['assignment_id' => $assignment_id])
-            ->where(['purpose' => self::PURPOSE_DOCKER])
-            ->get();
-
-        if (empty($records)) {
-            $record = new self;
-            $record->setPurpose(self::PURPOSE_DOCKER);
-            return $record;
-        }
-
-        return array_pop($records);
-    }
 }

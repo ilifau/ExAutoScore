@@ -1,13 +1,13 @@
 <?php
 require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
-require_once (__DIR__ . '/models/class.ilExAutoScoreProvidedFile.php');
+require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
 
 /**
- * Class ilExAutoScoreProvidedFilesGUI
+ * Class ilExAutoScoreRequiredFilesGUI
  *
- * @ilCtrl_isCalledBy ilExAutoScoreProvidedFilesGUI: ilExAssTypeAutoScoreUserGUI, ilExAssTypeAutoScoreTeamGUI
+ * @ilCtrl_isCalledBy ilExAutoScoreRequiredFilesGUI: ilExAssTypeAutoScoreUserGUI, ilExAssTypeAutoScoreTeamGUI
  */
-class ilExAutoScoreProvidedFilesGUI
+class ilExAutoScoreRequiredFilesGUI
 {
     use ilExAutoScoreGUIBase;
 
@@ -52,12 +52,12 @@ class ilExAutoScoreProvidedFilesGUI
     }
 
     /**
-     * List the provided files
+     * List the Required files
      */
     public function listFiles()
     {
-        require_once (__DIR__ . '/class.ilExAutoScoreProvidedFilesTableGUI.php');
-        $table = new ilExAutoScoreProvidedFilesTableGUI($this, 'listFiles');
+        require_once (__DIR__ . '/class.ilExAutoScoreRequiredFilesTableGUI.php');
+        $table = new ilExAutoScoreRequiredFilesTableGUI($this, 'listFiles');
         $table->loadData($this->assignment->getId());
         $this->setListToolbar();
         $this->tpl->setContent($table->getHTML());
@@ -69,7 +69,7 @@ class ilExAutoScoreProvidedFilesGUI
      */
     protected function addFile()
     {
-        $file = new ilExAutoScoreProvidedFile();
+        $file = new ilExAutoScoreRequiredFile();
         $form = $this->initFileForm($file);
         $this->tpl->setContent($form->getHTML());
     }
@@ -81,7 +81,7 @@ class ilExAutoScoreProvidedFilesGUI
     {
         global $DIC;
 
-        $file = new ilExAutoScoreProvidedFile();
+        $file = new ilExAutoScoreRequiredFile();
         $file->setAssignmentId($this->assignment->getId());
 
         $form = $this->initFileForm($file);
@@ -91,9 +91,9 @@ class ilExAutoScoreProvidedFilesGUI
             $request = $DIC->http()->request();
             $params = $request->getParsedBody();
 
+            $file->setMaxSize((int) $params['exautoscore_file_max_size'] * 1000);
+            $file->setEncoding((string) $params['exautoscore_file_encoding']);
             $file->setDescription((string) $params['exautoscore_file_description']);
-            $file->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_SUPPORT);
-            $file->setPublic((bool) $params['exautoscore_file_public']);
             $file->save();
 
             if (!empty($params['exautoscore_file_upload']['tmp_name'])) {
@@ -115,8 +115,8 @@ class ilExAutoScoreProvidedFilesGUI
         $this->ctrl->saveParameter($this, 'id');
         $this->setfileToolbar();
 
-        /** @var ilExAutoScoreProvidedFile $file */
-        $file = ilExAutoScoreProvidedFile::find((int) $_GET['id']);
+        /** @var ilExAutoScoreRequiredFile $file */
+        $file = ilExAutoScoreRequiredFile::find((int) $_GET['id']);
 
         $form = $this->initFileForm($file);
         $this->tpl->setContent( $form->getHTML());
@@ -131,8 +131,8 @@ class ilExAutoScoreProvidedFilesGUI
 
         $this->ctrl->saveParameter($this, 'id');
 
-        /** @var ilExAutoScoreProvidedFile $file */
-        $file = ilExAutoScoreProvidedFile::find((int) $_GET['id']);
+        /** @var ilExAutoScoreRequiredFile $file */
+        $file = ilExAutoScoreRequiredFile::find((int) $_GET['id']);
 
         $form = $this->initFileForm($file);
         $form->setValuesByPost();
@@ -141,9 +141,9 @@ class ilExAutoScoreProvidedFilesGUI
             $request = $DIC->http()->request();
             $params = $request->getParsedBody();
 
+            $file->setMaxSize((int) $params['exautoscore_file_max_size'] * 1000);
+            $file->setEncoding((string) $params['exautoscore_file_encoding']);
             $file->setDescription((string) $params['exautoscore_file_description']);
-            $file->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_SUPPORT);
-            $file->setPublic((bool) $params['exautoscore_file_public']);
             $file->update();
 
             if (!empty($params['exautoscore_file_upload']['tmp_name'])) {
@@ -160,7 +160,7 @@ class ilExAutoScoreProvidedFilesGUI
 
     /**
      * Init the form to  create or update a file
-     * @param ilExAutoScoreProvidedFile $file
+     * @param ilExAutoScoreRequiredFile $file
      * @return ilPropertyFormGUI
      */
     protected function initFileForm($file)
@@ -172,21 +172,29 @@ class ilExAutoScoreProvidedFilesGUI
         $fileUpload = new ilFileInputGUI($this->plugin->txt('file_upload'), 'exautoscore_file_upload');
         if (empty($file->getId())) {
             $fileUpload->setRequired(true);
-            $fileUpload->setInfo($this->plugin->txt('purpose_support_info'));
+            $fileUpload->setInfo($this->plugin->txt('purpose_example_info'));
         }
         else {
             $fileUpload->setInfo('<strong>' . $this->plugin->txt('existing_file') . ': ' . $file->getFilename(). '</strong>');
         };
         $form->addItem($fileUpload);
 
-        $fileIsPublic = new ilCheckboxInputGUI($this->plugin->txt('is_public'), 'exautoscore_file_public');
-        $fileIsPublic->setChecked($file->isPublic());
-        $fileIsPublic->setInfo($this->plugin->txt('is_public_info'));
-        $form->addItem($fileIsPublic);
+        $fileEncoding = new ilSelectInputGUI($this->plugin->txt('encoding'), 'exautoscore_file_encoding');
+        $fileEncoding->setOptions(ilExAutoScoreRequiredFile::getEncodingOptions());
+        $fileEncoding->setValue($file->getEncoding());
+        $form->addItem($fileEncoding);
+
+        $fileMaxSize = new ilNumberInputGUI($this->plugin->txt('max_size'), 'exautoscore_file_max_size');
+        $fileMaxSize->setSuffix('KB');
+        $fileMaxSize->allowDecimals(false);
+        $fileMaxSize->setSize(10);
+        if ($file->getMaxSize()) {
+            $fileMaxSize->setValue(ceil($fileMaxSize / 1000));
+        }
+        $form->addItem($fileMaxSize);
 
         $fileDescription = new ilTextAreaInputGUI($this->lng->txt('description'),'exautoscore_file_description');
         $fileDescription->setValue($file->getDescription());
-        $fileDescription->setInfo($this->plugin->txt('file_description_info'));
         $form->addItem($fileDescription);
 
         if (empty($file->getId())) {
@@ -216,8 +224,8 @@ class ilExAutoScoreProvidedFilesGUI
         $conf_gui->setConfirm($this->lng->txt('delete'),'deleteFiles');
         $conf_gui->setCancel($this->lng->txt('cancel'), 'listFiles');
 
-        /** @var ilExAutoScoreProvidedFile[] $files */
-        $files = ilExAutoScoreProvidedFile::where(['id' => $_POST['ids']])->get();
+        /** @var ilExAutoScoreRequiredFile[] $files */
+        $files = ilExAutoScoreRequiredFile::where(['id' => $_POST['ids']])->get();
 
         foreach($files as $file) {
             $conf_gui->addItem('ids[]', $file->getId(), $file->getFilename());
@@ -231,8 +239,8 @@ class ilExAutoScoreProvidedFilesGUI
      */
     protected function deleteFiles()
     {
-        /** @var ilExAutoScoreProvidedFile[] $files */
-        $files = ilExAutoScoreProvidedFile::where(['id' => $_POST['ids']])->get();
+        /** @var ilExAutoScoreRequiredFile[] $files */
+        $files = ilExAutoScoreRequiredFile::where(['id' => $_POST['ids']])->get();
 
         foreach($files as $file) {
             $file->delete();

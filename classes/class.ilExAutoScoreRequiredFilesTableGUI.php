@@ -4,9 +4,9 @@
 /**
  * Record table
  */
-class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
+class ilExAutoScoreRequiredFilesTableGUI extends ilTable2GUI
 {
-    /** @var ilExAutoScoreProvidedFilesGUI */
+    /** @var ilExAutoScoreRequiredFilesGUI */
     protected $parent_obj;
 
     /** @var string $parent_cmd */
@@ -20,7 +20,7 @@ class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
 
     /**
      * Constructor
-     * @param ilExAutoScoreProvidedFilesGUI $a_parent_obj
+     * @param ilExAutoScoreRequiredFilesGUI $a_parent_obj
      * @param string $a_parent_cmd
      */
     public function __construct($a_parent_obj, $a_parent_cmd)
@@ -33,24 +33,26 @@ class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
         $this->parent_cmd = $a_parent_cmd;
         $this->plugin = $a_parent_obj->plugin;
 
-        $this->setId('ilExAutoScoreProvidedFilesGUI');
-        $this->setPrefix('ilExAutoScoreProvidedFilesGUI');
+        $this->setId('ilExAutoScoreRequiredFilesGUI');
+        $this->setPrefix('ilExAutoScoreRequiredFilesGUI');
 
         parent::__construct($a_parent_obj, $a_parent_cmd);
 
         $this->addColumn('', '', '1%', true);
         $this->addColumn($this->plugin->txt('filename'), 'filename');
-        $this->addColumn($this->plugin->txt('file_size'), 'size');
-        $this->addColumn($this->plugin->txt('is_public'), 'is_public');
+        $this->addColumn($this->plugin->txt('encoding'), 'encoding');
+        $this->addColumn($this->plugin->txt('max_size'), 'max_size');
+        $this->addColumn($this->plugin->txt('example_size'), 'example_size');
         $this->addColumn($this->lng->txt('description'), 'description');
+
         $this->addColumn($this->lng->txt('actions'));
 
-        $this->setTitle($this->plugin->txt('provided_files'));
+        $this->setTitle($this->plugin->txt('required_files'));
         $this->setFormName('provided_files');
         $this->setFormAction($this->ctrl->getFormAction($a_parent_obj, $a_parent_cmd));
 
         $this->setStyle('table', 'fullwidth');
-        $this->setRowTemplate("tpl.exautoscore_provided_files_row.html", $this->plugin->getDirectory());
+        $this->setRowTemplate("tpl.exautoscore_required_files_row.html", $this->plugin->getDirectory());
 
         $this->setExternalSorting(true);
         $this->setExternalSegmentation(true);
@@ -72,9 +74,9 @@ class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
     {
         $this->assignment_id = $assignment_id;
 
-        /** @var ilExAutoScoreProvidedFile $file */
-        $filesList = ilExAutoScoreProvidedFile::getCollection();
-        $filesList->where(['assignment_id' => $assignment_id, 'purpose' => ilExAutoScoreProvidedFile::PURPOSE_SUPPORT]);
+        /** @var ilExAutoScoreRequiredFile $file */
+        $filesList = ilExAutoScoreRequiredFile::getCollection();
+        $filesList->where(['assignment_id' => $assignment_id]);
 
         // paging
         $this->determineOffsetAndOrder();
@@ -105,7 +107,7 @@ class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
 	 */
 	function numericOrdering($a_field)
 	{
-	    if ($a_field == 'size') {
+	    if ($a_field == 'mas_size' || $a_field == 'example_size') {
 	        return true;
         }
 	    return false;
@@ -119,17 +121,17 @@ class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
 	{
 		$id = $data['id'];
 
-		/** @var ilExAutoScoreProvidedFile $file */
+		/** @var ilExAutoScoreRequiredFile $file */
 		$file = $data['file'];
         $this->ctrl->setParameter($this->parent_obj, 'id', $id);
 
         // checkbox
         $this->tpl->setVariable('ID', $id);
         $this->tpl->setVariable('FILENAME', $file->getFilename());
-        $this->tpl->setVariable('FILE_SIZE', $file->getSize());
-        $this->tpl->setVariable('IS_PUBLIC', $this->lng->txt($file->isPublic() ?  'yes': 'no'));
+        $this->tpl->setVariable('ENCODING', $file->getEncoding());
+        $this->tpl->setVariable('MAX_SIZE', $file->getMaxSize() ? ceil($file->getMaxSize() / 1000) . ' KB' : '');
+        $this->tpl->setVariable('EXAMPLE_SIZE', $file->getExampleSize() ? ceil($file->getExampleSize() / 1000) . ' KB' : '');
         $this->tpl->setVariable('DESCRIPTION', $file->getDescription());
-
 
         // show action column
         $list = new ilAdvancedSelectionListGUI();
