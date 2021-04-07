@@ -32,9 +32,9 @@ purpose_docker#:#Dockerfile
 purpose_docker_info#:#Es darf nur ein Dockerfile pro Übunngseinheit geben
 purpose_support#:#Unterstützungsdatei
 purpose_support_info#:#Datei, die beim Erzeugen des Container-Images hochgeladen wird. Sie kann das auszuführende Kommando oder eine Hilfsdatei sein. Mehrere Dateien dieser Art werden an den Container-Serviece mit gzip komprimiert übergeben (Endung .tgz).
-purpose_example#:#Beispiel-Datei
-purpose_example_info#:#Datei einer Musterlösung, so wie sie auch von den Studierenden hochgeladen würde. Mit dieser Datei wird das Funktionieren der Korrektur getestet. Mehrere Dateien dieser Art werden an den Container-Service mit gzip komprimiert übergeben (Endung .tgz).
-file_description_info#:#Wenn die Datei öffentlich ist, wird auch die Besschreibung den Studierenden angezeigt.
+purpose_example#:#Musterlösung
+purpose_example_info#:#Datei einer Musterlösung. Die Studierenden müssen eine Datei mit deren Namen hochladen. Mit dieser Datei wird das Funktionieren der Korrektur getestet. Mehrere Dateien dieser Art werden an den Container-Service mit gzip komprimiert übergeben (Endung .tgz).
+file_description_info#:#Wenn die Datei öffentlich ist, wird auch die Beschreibung den Studierenden angezeigt.
 is_public_info#:#Die Datei wird zusammen mit der Aufgabenstellung den Studierenden zum Download angeboten.
 file_upload#:#Datei hochladen
 filename#:#Dateiname
@@ -49,4 +49,10 @@ file_updated#:#Die Datei wurde aktualisiert
 files_deleted#:#Die Datei(en) wurden gelöscht
 back_to_list#:#Zurück zur Liste
 confirm_delete_files#:#Möchten Sie die ausgewählten Dateien löschen?
+required_files#:#Geforderte Dateien
+encoding#:#Erlaubte Kodierung
+max_size#:#Max. Größe
+example_upload#:#Musterlösung
+example_size#:#Größe Musterlösung
+
 

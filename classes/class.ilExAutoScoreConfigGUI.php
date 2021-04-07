@@ -33,6 +33,7 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
 
     /**
 	 * Handles all commands, default is "configure"
+     * @param string $cmd
      * @throws Exception
 	 */
 	public function performCommand($cmd)
@@ -121,8 +122,8 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
      */
 	protected function generateDBUpdate()
     {
-        require_once (__DIR__ . '/models/class.ilExAutoScoreProvidedFile.php');
-        $arBuilder = new arBuilder(new ilExAutoScoreProvidedFile());
+        require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
+        $arBuilder = new arBuilder(new ilExAutoScoreRequiredFile());
         $arBuilder->generateDBUpdateForInstallation();
     }
 
