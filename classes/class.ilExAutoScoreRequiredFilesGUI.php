@@ -45,8 +45,10 @@ class ilExAutoScoreRequiredFilesGUI
                     case 'updateFile':
                     case 'confirmDeleteFiles':
                     case 'deleteFiles':
-                    default:
                         $this->$cmd();
+                        break;
+                    default:
+                        $this->tpl->setContent($cmd);
                 }
         }
     }
