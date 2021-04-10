@@ -20,13 +20,10 @@ class ilExAutoScoreConnector
     protected $config;
 
     /** @var string */
-    protected $assignment_uuid;
+    protected $result_uuid;
 
     /** @var string */
-    protected $task_uuid;
-
-    /** @var string */
-    protected $message;
+    protected $result_message;
 
 
 
@@ -76,41 +73,8 @@ class ilExAutoScoreConnector
             }
         }
 
-        //return $post;
-
-        $curlConnection = new ilCurlConnection($url);
-        $curlConnection->init();
-        $proxy = ilProxySettings::_getInstance();
-        if ($proxy->isActive()) {
-            $curlConnection->setOpt(CURLOPT_HTTPPROXYTUNNEL, true);
-            if (!empty($proxy->getHost())) {
-                $curlConnection->setOpt(CURLOPT_PROXY, $proxy->getHost());
-            }
-            if (!empty($proxy->getPort())) {
-                $curlConnection->setOpt(CURLOPT_PROXYPORT, $proxy->getPort());
-            }
-        }
-        $curlConnection->setOpt(CURLOPT_RETURNTRANSFER, true);
-        $curlConnection->setOpt(CURLOPT_VERBOSE, false);
-        $curlConnection->setOpt(CURLOPT_TIMEOUT, $timeout);
-        $curlConnection->setOpt(CURLOPT_POST, 1);
-        $curlConnection->setOpt(CURLOPT_POSTFIELDS, $post);
-
-        try {
-            $result = $curlConnection->exec();
-            $curlConnection->close();
-
-            $result = json_decode($result, true);
-            $this->assignment_uuid = (string) $result['assignment_uuid'];
-            $this->message = (string) $result['message'];
-            return (bool) $result['success'];
-        }
-        catch(Exception $e) {
-            $curlConnection->close();
-            $this->assignment_uuid = null;
-            $this->message = $e->getMessage();
-            return false;
-        }
+        return $post;
+        //return $this->callService($url, $post, $timeout);
     }
 
     /**
@@ -138,61 +102,71 @@ class ilExAutoScoreConnector
             }
         }
 
-//        return $post;
+        return $post;
+        //return $this->callService($url, $post, $timeout);
+    }
 
-        $curlConnection = new ilCurlConnection($url);
-        $curlConnection->init();
-        $proxy = ilProxySettings::_getInstance();
-        if ($proxy->isActive()) {
-            $curlConnection->setOpt(CURLOPT_HTTPPROXYTUNNEL, true);
-            if (!empty($proxy->getHost())) {
-                $curlConnection->setOpt(CURLOPT_PROXY, $proxy->getHost());
-            }
-            if (!empty($proxy->getPort())) {
-                $curlConnection->setOpt(CURLOPT_PROXYPORT, $proxy->getPort());
-            }
-        }
-        $curlConnection->setOpt(CURLOPT_RETURNTRANSFER, true);
-        $curlConnection->setOpt(CURLOPT_VERBOSE, false);
-        $curlConnection->setOpt(CURLOPT_TIMEOUT, $timeout);
-        $curlConnection->setOpt(CURLOPT_POST, 1);
-        $curlConnection->setOpt(CURLOPT_POSTFIELDS, $post);
-
+    /**
+     * Call the external service
+     * @param string $url
+     * @param array  $post
+     * @param int    $timeout
+     * @return string
+     */
+    public function callService($url, $post, $timeout)
+    {
         try {
-            $result = $curlConnection->exec();
-            $curlConnection->close();
+            $curlConnection = new ilCurlConnection($url);
+            $curlConnection->init();
+            $proxy = ilProxySettings::_getInstance();
+            if ($proxy->isActive()) {
+                $curlConnection->setOpt(CURLOPT_HTTPPROXYTUNNEL, true);
+                if (!empty($proxy->getHost())) {
+                    $curlConnection->setOpt(CURLOPT_PROXY, $proxy->getHost());
+                }
+                if (!empty($proxy->getPort())) {
+                    $curlConnection->setOpt(CURLOPT_PROXYPORT, $proxy->getPort());
+                }
+            }
+            $curlConnection->setOpt(CURLOPT_RETURNTRANSFER, true);
+            $curlConnection->setOpt(CURLOPT_VERBOSE, false);
+            $curlConnection->setOpt(CURLOPT_TIMEOUT, $timeout);
+            $curlConnection->setOpt(CURLOPT_POST, 1);
+            $curlConnection->setOpt(CURLOPT_POSTFIELDS, $post);
 
+            $result = $curlConnection->exec();
             $result = json_decode($result, true);
-            $this->task_uuid = (string) $result['task_uuid'];
-            $this->message = (string) $result['message'];
+            if (isset($result['assignment_uuid'])) {
+                $this->result_uuid = (string) $result['assignment_uuid'];
+            }
+            if (isset($result['task_uuid'])) {
+                $this->result_uuid = (string) $result['task_uuid'];
+            }
+            $this->result_message = (string) $result['message'];
             return (bool) $result['success'];
         }
         catch(Exception $e) {
-            $curlConnection->close();
-            $this->task_uuid = null;
-            $this->message = $e->getMessage();
+            if (isset($curlConnection)) {
+                $curlConnection->close();
+            }
+            $this->result_uuid = null;
+            $this->result_message = $e->getMessage();
             return false;
         }
     }
 
     /**
+     * Get the assignment uuid that is returned
      * @return string
      */
-    public function getAssignmentUuid() {
-        return $this->assignment_uuid;
+    public function getResultUuid() {
+        return $this->result_uuid;
     }
 
     /**
      * @return string
      */
-    public function getTaskUuid() {
-        return $this->task_uuid;
-    }
-
-    /**
-     * @return string
-     */
-    public function getMessage() {
-        return $this->message;
+    public function getResultMessage() {
+        return $this->result_message;
     }
 }

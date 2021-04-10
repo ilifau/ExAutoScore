@@ -73,6 +73,7 @@ class ilExAutoScoreProvidedFilesGUI
     {
         $file = new ilExAutoScoreProvidedFile();
         $form = $this->initFileForm($file);
+        $this->setFileToolbar();
         $this->tpl->setContent($form->getHTML());
     }
 
@@ -106,6 +107,7 @@ class ilExAutoScoreProvidedFilesGUI
             $this->ctrl->setParameter($this, 'id', $file->getId());
             $this->ctrl->redirect($this, "editFile");
         }
+        $this->setFileToolbar();
         $this->tpl->setContent($form->getHTML());
     }
 
@@ -115,7 +117,7 @@ class ilExAutoScoreProvidedFilesGUI
     protected function editFile()
     {
         $this->ctrl->saveParameter($this, 'id');
-        $this->setfileToolbar();
+        $this->setFileToolbar();
 
         /** @var ilExAutoScoreProvidedFile $file */
         $file = ilExAutoScoreProvidedFile::find((int) $_GET['id']);
@@ -153,10 +155,10 @@ class ilExAutoScoreProvidedFilesGUI
             }
 
             ilUtil::sendSuccess($this->plugin->txt("file_updated"), true);
-            $this->ctrl->redirect($this, "editfile");
+            $this->ctrl->redirect($this, "editFile");
         }
 
-        $this->setfileToolbar();
+        $this->setFileToolbar();
         $this->tpl->setContent($form->getHTML());
     }
 
