@@ -56,5 +56,9 @@ encoding#:#Erlaubte Kodierung
 max_size#:#Max. Größe
 example_upload#:#Musterlösung
 example_size#:#Größe Musterlösung
+autoscore_settings#:#Korrektur-Einstellungen
+send_assignment#:#Korektur einrichten
+send_example_task#:#Musterlösung testen
+head_send_assignment_result#:#Ergebnis der Einrichtung
 
 
