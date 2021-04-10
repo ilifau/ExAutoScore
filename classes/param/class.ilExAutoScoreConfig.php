@@ -50,6 +50,15 @@ class ilExAutoScoreConfig
             ''
         );
 
+        $params[] = ilExAutoScoreParam::_create(
+            'service_timeout',
+            $this->plugin->txt('service_timeout'),
+            $this->plugin->txt('service_timeout_info'),
+            ilExAutoScoreParam::TYPE_INT,
+            ''
+        );
+
+
         foreach ($params as $param)
         {
             $this->params[$param->name] = $param;

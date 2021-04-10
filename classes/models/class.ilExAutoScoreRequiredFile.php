@@ -322,7 +322,7 @@ class ilExAutoScoreRequiredFile extends ActiveRecord
      */
     protected function getStorageDirectory()
     {
-        return ilExAutoScorePlugin::getStorageDirectory() . '/' . ilFileSystemStorage::_createPathFromId($this->getAssignmentId(), 'assignment');
+        return ilExAutoScorePlugin::getStorageDirectory() . '/' . ilFileSystemStorage::_createPathFromId($this->getAssignmentId(), 'assignment') . '/example';
     }
 
     /**
@@ -332,7 +332,39 @@ class ilExAutoScoreRequiredFile extends ActiveRecord
      */
     protected function getStorageFilename()
     {
-        return 'example' . $this->getId();
+        return 'file' . $this->getId();
     }
+
+    /**
+     * Get the full path of the stored file
+     * @return string|null
+     */
+    public function getAbsolutePath()
+    {
+        global $DIC;
+
+        $storage = $DIC->filesystem()->storage();
+        if ($storage->has($this->getStorageDirectory() . '/' . $this->getStorageFilename())) {
+            return CLIENT_DATA_DIR . '/' . $this->getStorageDirectory() . '/' . $this->getStorageFilename();
+        }
+        else {
+            return null;
+        }
+    }
+
+
+    /**
+     * Get the reqired files of an assignment
+     * @param int $assignment_id
+     * @return self[]
+     */
+    public static function getAssignmentFiles($assignment_id)
+    {
+        $records = self::getCollection()
+                       ->where(['assignment_id' => $assignment_id])
+                       ->get();
+        return $records;
+    }
+
 
 }

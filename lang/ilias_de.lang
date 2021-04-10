@@ -15,6 +15,8 @@ service_task_url#:#Abgabe-URL
 service_task_url_info#:#URL zur Abgabe einer Teilnehmelösung. An diese URL werden die eingereichten Dateien zur Bewertung geschickt.
 service_api_key#:#API-Key
 service_api_key_info#:#Der API-Key authentifiziert die Service-Aufrufe.
+service_timeout#:#Timeout
+service_timeout_info#:#Maximalzeit in Sekunden, in der auf eine Antwort des Services gewartet wird
 update_languages#:#Sprachen aktualisieren
 generate_db_update#:#Datenbank-Update generieren
 basic_configuration#:#Basis-Konfiguration

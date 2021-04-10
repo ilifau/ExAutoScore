@@ -49,6 +49,13 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
                 $this->tabs->activateTab('exautoscore_required_files');
                 $this->ctrl->forwardCommand($gui);
                 break;
+            case 'ilexautoscoredebuggui':
+                require_once(__DIR__ . '/class.ilExAutoScoreDebugGUI.php');
+                $gui = new ilExAutoScoreDebugGUI($this->plugin, $this->assignment);
+                $this->tabs->activateTab('exautoscore_debug');
+                $this->ctrl->forwardCommand($gui);
+                break;
+
 
 
             default:
@@ -124,6 +131,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
         }
 
         $assAuto->setCommand($params['exautoscore_docker_command']);
+        $assAuto->save();
     }
 
 
@@ -169,6 +177,11 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInter
         $tabs->addTab('exautoscore_required_files',
             $this->plugin->txt('required_files'),
             $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui', strtolower(get_class($this)),'ilexautoscorerequiredfilesgui']));
+
+        $tabs->addTab('exautoscore_debug',
+            $this->plugin->txt('debug'),
+            $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui', strtolower(get_class($this)),'ilexautoscoredebuggui']));
+
     }
 
 }
