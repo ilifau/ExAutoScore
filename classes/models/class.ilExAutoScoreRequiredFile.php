@@ -1,56 +1,21 @@
 <?php
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
-use ILIAS\FileUpload\Location;
-use ILIAS\FileUpload\DTO\ProcessingStatus;
+require_once(__DIR__ . '/class.ilExAutoScoreFileBase.php');
 
-class ilExAutoScoreRequiredFile extends ActiveRecord
+class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
 {
-
     /**
-     * @return string
-     * @description Return the Name of your Database Table
-     */
-    public static function returnDbTableName()
-    {
-        return 'exautoscore_req_file';
-    }
-
-    /**
-     * @var int
-     *
-     * @con_is_primary true
-     * @con_is_unique  true
-     * @con_has_field  true
-     * @con_fieldtype  integer
-     * @con_is_notnull true
-     * @con_length     4
-     * @con_sequence   true
-     */
-    protected $id;
-
-    /**
-     * @var int
-     *
-     * @con_is_primary false
-     * @con_is_unique  true
-     * @con_has_field  true
-     * @con_fieldtype  integer
-     * @con_is_notnull true
-     * @con_length     4
-     */
-    protected $assignment_id;
-
-
-    /**
+     * Override: name of the database table
      * @var string
-     *
-     * @con_has_field true
-     * @con_fieldtype text
-     * @con_length    250
-     * @con_is_notnull false
      */
-    protected $filename;
+    protected $connector_container_name = 'exautoscore_req_file';
+
+    /**
+     *  Override: name of the sub sub directory for storing the files
+     * @var string
+     */
+    protected $storage_sub_directory = 'required';
 
 
     /**
@@ -72,7 +37,7 @@ class ilExAutoScoreRequiredFile extends ActiveRecord
      * @con_length    250
      * @con_is_notnull false
      */
-    protected $encoding;
+    protected $required_encoding;
 
 
     /**
@@ -85,40 +50,6 @@ class ilExAutoScoreRequiredFile extends ActiveRecord
      */
     protected $max_size;
 
-
-    /**
-     * @var int
-     *
-     * @con_has_field  true
-     * @con_fieldtype  integer
-     * @con_length     4
-     * @con_is_notnull false
-     */
-    protected $example_size;
-
-    /**
-     * @var string
-     *
-     * @con_has_field true
-     * @con_fieldtype text
-     * @con_length    50
-     * @con_is_notnull false
-     */
-    protected $example_hash;
-
-
-    /**
-     * Wrapper to declare the return type
-     * @param       $primary_key
-     * @param array $add_constructor_args
-     * @return self
-     */
-    public static function findOrGetInstance($primary_key, array $add_constructor_args = array())
-    {
-        /** @var self $record */
-        $record =  parent::findOrGetInstance($primary_key, $add_constructor_args);
-        return $record;
-    }
 
     /**
      * Get the selectable encoding options
@@ -135,38 +66,6 @@ class ilExAutoScoreRequiredFile extends ActiveRecord
             'Windows-1251' => 'Windows-1251',
             'Windows-1252' => 'Windows-1252'
         ];
-    }
-
-    /**
-     * @return int
-     */
-    public function getId()
-    {
-        return (int) $this->id;
-    }
-
-    /**
-     * @param int $id
-     */
-    public function setId(int $id)
-    {
-        $this->id = $id;
-    }
-
-    /**
-     * @return int
-     */
-    public function getAssignmentId(): int
-    {
-        return (int) $this->assignment_id;
-    }
-
-    /**
-     * @param int $id
-     */
-    public function setAssignmentId(int $id)
-    {
-        $this->assignment_id = $id;
     }
 
     /**
@@ -188,34 +87,17 @@ class ilExAutoScoreRequiredFile extends ActiveRecord
     /**
      * @return string
      */
-    public function getFilename() : string
+    public function getRequiredEncoding() : string
     {
-        return (string) $this->filename;
-    }
-
-    /**
-     * @param string $filename
-     */
-    public function setFilename(string $filename)
-    {
-        $this->filename = $filename;
-    }
-
-
-    /**
-     * @return string
-     */
-    public function getEncoding() : string
-    {
-        return (string) $this->encoding;
+        return (string) $this->required_encoding;
     }
 
     /**
      * @param string $encoding
      */
-    public function setEncoding(string $encoding)
+    public function setRequiredEncoding(string $encoding)
     {
-        $this->encoding = $encoding;
+        $this->required_encoding = $encoding;
     }
 
     /**
@@ -233,138 +115,4 @@ class ilExAutoScoreRequiredFile extends ActiveRecord
     {
         $this->max_size = $max_size;
     }
-
-    /**
-     * @return int
-     */
-    public function getExampleSize() : int
-    {
-        return (int) $this->example_size;
-    }
-
-    /**
-     * @param int $example_size
-     */
-    public function setExampleSize(int $example_size)
-    {
-        $this->example_size = $example_size;
-    }
-
-    /**
-     * @return string
-     */
-    public function getExampleHash() : string
-    {
-        return (string) $this->example_hash;
-    }
-
-    /**
-     * @param string $example_hash
-     */
-    public function setExampleHash(string $example_hash)
-    {
-        $this->example_hash = $example_hash;
-    }
-
-
-    /**
-     * Store an uploaded file
-     * @param string $tmpPath   temporary path of the uploaded file
-     * @return bool
-     */
-    public function storeUploadedFile($tmpPath)
-    {
-        global $DIC;
-
-        $upload = $DIC->upload();
-        if (!$upload->hasBeenProcessed()) {
-            $upload->process();
-        }
-
-        foreach ($upload->getResults() as $result) {
-            if ( $result->getPath() == $tmpPath && $result->getStatus() == ProcessingStatus::OK) {
-
-                $this->setExampleHash(md5_file($tmpPath));
-                $this->setExampleSize($result->getSize());
-                $this->setFilename($result->getName());
-                $this->save();
-
-                $upload->moveOneFileTo($result, $this->getStorageDirectory(), Location::STORAGE, 'file'. $this->getId(), true);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Delete a file
-     */
-    public function delete()
-    {
-        global $DIC;
-
-        $storage = $DIC->filesystem()->storage();
-        if ($storage->has($this->getStorageDirectory() . '/' . $this->getStorageFilename())) {
-            $storage->delete($this->getStorageDirectory() . '/' . $this->getStorageFilename());
-        }
-
-        if ($storage->hasDir($this->getStorageDirectory()) && empty($storage->listContents($this->getStorageDirectory()))) {
-            $storage->deleteDir($this->getStorageDirectory());
-        }
-        parent::delete();
-    }
-
-
-    /**
-     * Get the storage directory for a file
-     * @return string
-     */
-    protected function getStorageDirectory()
-    {
-        return ilExAutoScorePlugin::getStorageDirectory() . '/' . ilFileSystemStorage::_createPathFromId($this->getAssignmentId(), 'assignment') . '/example';
-    }
-
-    /**
-     * Get the stored filename
-     * The uploaded filename is not used because it may be insecure
-     * @return string
-     */
-    protected function getStorageFilename()
-    {
-        return 'file' . $this->getId();
-    }
-
-    /**
-     * Get the full path of the stored file
-     * @return string|null
-     */
-    public function getAbsolutePath()
-    {
-        global $DIC;
-
-        $storage = $DIC->filesystem()->storage();
-        if ($storage->has($this->getStorageDirectory() . '/' . $this->getStorageFilename())) {
-            return CLIENT_DATA_DIR . '/' . $this->getStorageDirectory() . '/' . $this->getStorageFilename();
-        }
-        else {
-            return null;
-        }
-    }
-
-
-    /**
-     * Get the reqired files of an assignment
-     * @param int $assignment_id
-     * @return self[]
-     */
-    public static function getAssignmentFiles($assignment_id)
-    {
-        $records = self::getCollection()
-                       ->where(['assignment_id' => $assignment_id])
-                       ->get();
-        return $records;
-    }
-
-
 }

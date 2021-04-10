@@ -130,12 +130,22 @@
             'length' => '250',
 
         ),
+        'size' => array(
+            'type' => 'integer',
+            'length' => '4',
+
+        ),
+        'hash' => array(
+            'type' => 'text',
+            'length' => '50',
+
+        ),
         'description' => array(
             'type' => 'text',
             'length' => '2000',
 
         ),
-        'encoding' => array(
+        'required_encoding' => array(
             'type' => 'text',
             'length' => '250',
 
@@ -143,17 +153,6 @@
         'max_size' => array(
             'type' => 'integer',
             'length' => '4',
-
-        ),
-        'example_size' => array(
-            'type' => 'integer',
-            'length' => '4',
-
-        ),
-        'example_hash' => array(
-            'type' => 'text',
-            'length' => '50',
-
         ),
 
     );

@@ -94,7 +94,7 @@ class ilExAutoScoreRequiredFilesGUI
             $params = $request->getParsedBody();
 
             $file->setMaxSize((int) $params['exautoscore_file_max_size'] * 1000);
-            $file->setEncoding((string) $params['exautoscore_file_encoding']);
+            $file->setRequiredEncoding((string) $params['exautoscore_file_encoding']);
             $file->setDescription((string) $params['exautoscore_file_description']);
             $file->save();
 
@@ -144,7 +144,7 @@ class ilExAutoScoreRequiredFilesGUI
             $params = $request->getParsedBody();
 
             $file->setMaxSize((int) $params['exautoscore_file_max_size'] * 1000);
-            $file->setEncoding((string) $params['exautoscore_file_encoding']);
+            $file->setRequiredEncoding((string) $params['exautoscore_file_encoding']);
             $file->setDescription((string) $params['exautoscore_file_description']);
             $file->update();
 
@@ -183,7 +183,7 @@ class ilExAutoScoreRequiredFilesGUI
 
         $fileEncoding = new ilSelectInputGUI($this->plugin->txt('encoding'), 'exautoscore_file_encoding');
         $fileEncoding->setOptions(ilExAutoScoreRequiredFile::getEncodingOptions());
-        $fileEncoding->setValue($file->getEncoding());
+        $fileEncoding->setValue($file->getRequiredEncoding());
         $form->addItem($fileEncoding);
 
         $fileMaxSize = new ilNumberInputGUI($this->plugin->txt('max_size'), 'exautoscore_file_max_size');

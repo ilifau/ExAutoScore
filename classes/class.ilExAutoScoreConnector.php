@@ -60,7 +60,7 @@ class ilExAutoScoreConnector
             $post['dockerfile'] = new CURLFile($docker->getAbsolutePath(), '', $docker->getFilename());
         }
 
-        $example = ilExAutoScoreRequiredFile::getAssignmentFiles($assignment->getId());
+        $example = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
         if (!empty($example)) {
             $file = array_pop($example);
             if (!empty($file->getAbsolutePath())) {
@@ -130,7 +130,7 @@ class ilExAutoScoreConnector
         $post['assignment'] = "dfb5e5d0-03d5-44a5-8b4a-eb8ffdb5b0f7";
         $post['user_identifier'] = $user->getLogin();
 
-        $example = ilExAutoScoreRequiredFile::getAssignmentFiles($assignment->getId());
+        $example = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
         if (!empty($example)) {
             $file = array_pop($example);
             if (!empty($file->getAbsolutePath())) {
