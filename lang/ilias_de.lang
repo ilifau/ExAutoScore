@@ -59,6 +59,14 @@ example_size#:#Größe Musterlösung
 autoscore_settings#:#Korrektur-Einstellungen
 send_assignment#:#Korektur einrichten
 send_example_task#:#Musterlösung testen
-head_send_assignment_result#:#Ergebnis der Einrichtung
+head_send_assignment_result#:#Ergebnis der Einrichtung / Test der Musterlösung
+submit_time#:#Aufruf-Zeit
+submit_success#:#Erfolgreich
+submit_message#:#Meldung
+return_time#:#Ergebnis-Zeit
+return_code#:#Ergebnis-Code
+return_points#:#Erreichte Punkte
+task_duration#:#Dauer (s)
+
 
 

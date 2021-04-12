@@ -115,6 +115,13 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     }
 
     /**
+     * Get the Url for sending back results
+     */
+    public function getResultUrl() {
+        return ILIAS_HTTP_PATH . '/Customizing/global/plugins/Modules/Exercise/AssignmentHook/ExAutoScore/results.php';
+    }
+
+    /**
      * Get the plugin durectory in the file storage
      * @return string
      */

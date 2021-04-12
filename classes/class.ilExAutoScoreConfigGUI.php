@@ -122,8 +122,8 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
      */
 	protected function generateDBUpdate()
     {
-        require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
-        $arBuilder = new arBuilder(new ilExAutoScoreRequiredFile());
+        require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
+        $arBuilder = new arBuilder(new ilExAutoScoreTask());
         $arBuilder->generateDBUpdateForInstallation();
     }
 

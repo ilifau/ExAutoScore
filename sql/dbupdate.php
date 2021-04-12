@@ -32,7 +32,7 @@
         ),
         'uuid' => array(
             'type' => 'text',
-            'length' => '250',
+            'length' => '50',
 
         ),
         'command' => array(
@@ -50,6 +50,7 @@
             $ilDB->createSequence('exautoscore_assignment');
         }
         $ilDB->addIndex('exautoscore_assignment', ['exercise_id'], 'i1');
+        $ilDB->addIndex('exautoscore_assignment', ['uuid'], 'i2');
     }
 
 ?>
@@ -164,5 +165,82 @@
             $ilDB->createSequence('exautoscore_req_file');
         }
         $ilDB->addIndex('exautoscore_req_file', ['assignment_id'], 'i1');
+    }
+?>
+<#5>
+<?php
+    $fields = array(
+        'id' => array(
+            'notnull' => '1',
+            'type' => 'integer',
+            'length' => '4',
+
+        ),
+        'assignment_id' => array(
+            'notnull' => '1',
+            'type' => 'integer',
+            'length' => '4',
+
+        ),
+        'uuid' => array(
+            'type' => 'text',
+            'length' => '50',
+
+        ),
+        'user_id' => array(
+            'type' => 'integer',
+            'length' => '4',
+
+        ),
+        'team_id' => array(
+            'type' => 'integer',
+            'length' => '4',
+
+        ),
+        'submit_time' => array(
+            'type' => 'timestamp',
+
+        ),
+        'submit_success' => array(
+            'type' => 'integer',
+            'length' => '4',
+
+        ),
+        'submit_message' => array(
+            'type' => 'text',
+            'length' => '250',
+
+        ),
+        'task_returncode' => array(
+            'type' => 'integer',
+            'length' => '4',
+
+        ),
+        'task_duration' => array(
+            'type' => 'float',
+
+        ),
+        'return_time' => array(
+            'type' => 'timestamp',
+
+        ),
+        'return_points' => array(
+            'type' => 'float',
+
+        ),
+
+    );
+    if (! $ilDB->tableExists('exautoscore_task')) {
+        $ilDB->createTable('exautoscore_task', $fields);
+        $ilDB->addPrimaryKey('exautoscore_task', array( 'id' ));
+
+        if (! $ilDB->sequenceExists('exautoscore_task')) {
+            $ilDB->createSequence('exautoscore_task');
+        }
+
+        $ilDB->addIndex('exautoscore_task', ['assignment_id'], 'i1');
+        $ilDB->addIndex('exautoscore_task', ['uuid'], 'i2');
+        $ilDB->addIndex('exautoscore_task', ['user_id'], 'i3');
+        $ilDB->addIndex('exautoscore_task', ['team_id'], 'i4');
     }
 ?>
