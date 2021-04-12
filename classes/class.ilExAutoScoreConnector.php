@@ -5,6 +5,7 @@
 
 require_once (__DIR__ . '/class.ilExAutoScorePlugin.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
+require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreProvidedFile.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
 
@@ -39,6 +40,7 @@ class ilExAutoScoreConnector
     public function sendAssignment($assignment)
     {
         $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($assignment->getId());
+        $scoreTask = ilExAutoScoreTask::getExampleTask($assignment->getId());
 
         $url = $this->config->get('service_assignment_url');
         $timeout = (int) $this->config->get('service_timeout');
@@ -47,8 +49,8 @@ class ilExAutoScoreConnector
         $post['api_key'] = $this->config->get('service_api_key');
         $post['name'] = $assignment->getTitle();
         $post['priority'] = 'False';
-        $post['return_type'] = 'E';
-        $post['return_address'] = 'fred.neumann@ili.fau.de';
+        $post['return_type'] = 'U';
+        $post['return_address'] = $this->plugin->getResultUrl();
         $post['command'] = $scoreAss->getCommand();
         $post['timeout'] = $timeout;
 
@@ -73,8 +75,27 @@ class ilExAutoScoreConnector
             }
         }
 
-        return $post;
-        //return $this->callService($url, $post, $timeout);
+        // return $post;
+        $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
+        $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
+
+        $success =  $this->callService($url, $post, $timeout);
+
+        $scoreTask->setUuid(($this->getResultUuid()));
+        $scoreTask->setSubmitSuccess($success);
+        $scoreTask->setSubmitMessage($this->getResultMessage());
+        $scoreTask->setReturnTime(null);
+        $scoreTask->setReturnPoints(null);
+        $scoreTask->setReturncode(null);
+        $scoreTask->setTaskDuration(null);
+        $scoreTask->save();
+
+        if ($success) {
+            $scoreAss->setUuid($this->getResultUuid());
+            $scoreAss->save();
+        }
+
+        return $success;
     }
 
     /**
@@ -83,15 +104,16 @@ class ilExAutoScoreConnector
      * @return bool
      * @throws ilCurlConnectionException
      */
-    public function sendTask($assignment, $user)
+    public function sendExampleTask($assignment, $user)
     {
         $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($assignment->getId());
+        $scoreTask = ilExAutoScoreTask::getExampleTask($assignment->getId());
 
         $url = $this->config->get('service_task_url');
         $timeout = (int) $this->config->get('service_timeout');
 
         $post = [];
-        $post['assignment'] = "dfb5e5d0-03d5-44a5-8b4a-eb8ffdb5b0f7";
+        $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
 
         $example = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
@@ -102,8 +124,22 @@ class ilExAutoScoreConnector
             }
         }
 
-        return $post;
-        //return $this->callService($url, $post, $timeout);
+        // return $post;
+
+        $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
+        $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
+
+        $success =  $this->callService($url, $post, $timeout);
+        $scoreTask->setUuid(($this->getResultUuid()));
+        $scoreTask->setSubmitSuccess($success);
+        $scoreTask->setSubmitMessage($this->getResultMessage());
+        $scoreTask->setReturnTime(null);
+        $scoreTask->setReturnPoints(null);
+        $scoreTask->setReturncode(null);
+        $scoreTask->setTaskDuration(null);
+        $scoreTask->save();
+
+        return $success;
     }
 
     /**
@@ -152,6 +188,34 @@ class ilExAutoScoreConnector
             $this->result_uuid = null;
             $this->result_message = $e->getMessage();
             return false;
+        }
+    }
+
+    /**
+     * Receive a result from the scoring service
+     */
+    public function receiveResult()
+    {
+        global $DIC;
+
+        $content = $DIC->http()->request()->getBody()->getContents();
+        $result = json_decode($content, true);
+
+        if (isset($result['assignment_uuid'])) {
+            $this->result_uuid = (string) $result['assignment_uuid'];
+        }
+        if (isset($result['task_uuid'])) {
+            $this->result_uuid = (string) $result['task_uuid'];
+        }
+
+        $task =  ilExAutoScoreTask::getByUuid($this->result_uuid);
+        if (isset($task)) {
+            $returnTime = new ilDateTime(time(), IL_CAL_UNIX);
+            $task->setReturnTime($returnTime->get(IL_CAL_DATETIME));
+            $task->setReturncode((int) $result['task_returncode']);
+            $task->setReturnPoints((float) $result['points']);
+            $task->setTaskDuration((float) $result['task_time']);
+            $task->save();
         }
     }
 

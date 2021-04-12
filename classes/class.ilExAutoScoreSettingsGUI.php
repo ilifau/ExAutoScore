@@ -2,6 +2,7 @@
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
+require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
 require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
 require_once (__DIR__ . '/class.ilExAutoScoreConnector.php');
 
@@ -120,13 +121,14 @@ class ilExAutoScoreSettingsGUI
      */
     public function initSettingsForm()
     {
+        $assAuto = ilExAutoScoreAssignment::findOrGetInstance($this->assignment->getId());
+        $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
+        $assTask = ilExAutoScoreTask::getExampleTask($this->assignment->getId());
+
         $form = new ilPropertyFormGUI();
         $form->setFormAction($this->ctrl->getFormAction($this));
         $form->setTitle($this->plugin->txt('autoscore_settings'));
         $form->addCommandButton('saveSettings', $this->lng->txt('save_settings'));
-
-        $assAuto = ilExAutoScoreAssignment::findOrGetInstance($this->assignment->getId());
-        $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
 
         $contUploadFile = new ilFileInputGUI($this->plugin->txt('docker_upload'), 'exautoscore_docker_upload');
         $contUploadFile->setInfo($this->plugin->txt('docker_upload_info'));
@@ -155,6 +157,40 @@ class ilExAutoScoreSettingsGUI
         $assUuid->setValue($assAuto->getUuid());
         $form->addItem($assUuid);
 
+        $submitTime = new ilNonEditableValueGUI($this->plugin->txt('submit_time'), 'exautoscore_submit_time');
+        if (!empty($assTask->getSubmitTime())) {
+            $submitTime->setValue(ilDatePresentation::formatDate(new ilDateTime($assTask->getSubmitTime(), IL_CAL_DATETIME)));
+        }
+        $form->addItem($submitTime);
+
+        $submitSuccess = new ilNonEditableValueGUI($this->plugin->txt('submit_success'), 'exautoscore_submit_success');
+        if (!empty($assTask->getSubmitTime())) {
+            $submitSuccess->setValue($this->lng->txt($assTask->getSubmitSuccess() ? 'yes' : 'no'));
+        }
+        $form->addItem($submitSuccess);
+
+        $submitMessage = new ilNonEditableValueGUI($this->plugin->txt('submit_message'), 'exautoscore_submit_message');
+        $submitMessage->setValue($assTask->getSubmitMessage());
+        $form->addItem($submitMessage);
+
+        $returnTime = new ilNonEditableValueGUI($this->plugin->txt('return_time'), 'exautoscore_return_time');
+        if (!empty($assTask->getReturnTime())) {
+            $returnTime->setValue(ilDatePresentation::formatDate(new ilDateTime($assTask->getReturnTime(), IL_CAL_DATETIME)));
+        }
+        $form->addItem($returnTime);
+
+        $returnCode = new ilNonEditableValueGUI($this->plugin->txt('return_code'), 'exautoscore_return_code');
+        $returnCode->setValue($assTask->getReturnCode());
+        $form->addItem($returnCode);
+
+        $returnPoints = new ilNonEditableValueGUI($this->plugin->txt('return_points'), 'exautoscore_return_points');
+        $returnPoints ->setValue($assTask->getReturnPoints());
+        $form->addItem($returnPoints);
+
+        $taskDuration = new ilNonEditableValueGUI($this->plugin->txt('task_duration'), 'exautoscore_task_duration');
+        $taskDuration ->setValue($assTask->getTaskDuration());
+        $form->addItem($taskDuration);
+
         return $form;
     }
 
@@ -162,8 +198,12 @@ class ilExAutoScoreSettingsGUI
     public function sendAssignment()
     {
         $connector = new ilExAutoScoreConnector();
-        $result = $connector->sendAssignment($this->assignment);
-        ilUtil::sendInfo('<pre>' . print_r($result, true) . '</pre>', true);
+        if ($connector->sendAssignment($this->assignment)) {
+            ilUtil::sendSuccess($connector->getResultMessage(), true);
+        }
+        else {
+            ilUtil::sendFailure($connector->getResultMessage(), true);
+        }
         $this->ctrl->redirect($this, 'showSettings');
     }
 
@@ -172,8 +212,13 @@ class ilExAutoScoreSettingsGUI
     {
         global $DIC;
         $connector = new ilExAutoScoreConnector();
-        $result = $connector->sendTask($this->assignment, $DIC->user());
-        ilUtil::sendInfo('<pre>' . print_r($result, true) . '</pre>', true);
+        if ($connector->sendExampleTask($this->assignment, $DIC->user())) {
+            ilUtil::sendSuccess($connector->getResultMessage(), true);
+        }
+        else {
+            ilUtil::sendFailure($connector->getResultMessage(), true);
+        }
+
         $this->ctrl->redirect($this, 'showSettings');
     }
 

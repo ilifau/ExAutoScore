@@ -3,13 +3,10 @@
 class ilExAutoScoreAssignment extends ActiveRecord
 {
     /**
-     * @return string
-     * @description Return the Name of your Database Table
+     * @var string
      */
-    public static function returnDbTableName()
-    {
-        return 'exautoscore_assignment';
-    }
+    protected $connector_container_name = 'exautoscore_assignment';
+
 
     /**
      * @var int
@@ -37,7 +34,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      *
      * @con_has_field true
      * @con_fieldtype text
-     * @con_length    250
+     * @con_length    50
      * @con_is_notnull false
      */
     protected $uuid;
@@ -53,11 +50,10 @@ class ilExAutoScoreAssignment extends ActiveRecord
      */
     protected $command;
 
-
-
-
     /**
      * Wrapper to declare the return type
+     * @param  mixed $primary_key
+     * @param array $add_constructor_args
      * @return self
      */
     public static function findOrGetInstance($primary_key, array $add_constructor_args = array())
