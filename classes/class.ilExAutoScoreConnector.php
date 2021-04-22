@@ -81,13 +81,10 @@ class ilExAutoScoreConnector
 
         $success =  $this->callService($url, $post, $timeout);
 
+        $scoreTask->clearData();
         $scoreTask->setUuid(($this->getResultUuid()));
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
-        $scoreTask->setReturnTime(null);
-        $scoreTask->setReturnPoints(null);
-        $scoreTask->setReturncode(null);
-        $scoreTask->setTaskDuration(null);
         $scoreTask->save();
 
         if ($success) {
@@ -130,13 +127,11 @@ class ilExAutoScoreConnector
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
 
         $success =  $this->callService($url, $post, $timeout);
+
+        $scoreTask->clearData();
         $scoreTask->setUuid(($this->getResultUuid()));
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
-        $scoreTask->setReturnTime(null);
-        $scoreTask->setReturnPoints(null);
-        $scoreTask->setReturncode(null);
-        $scoreTask->setTaskDuration(null);
         $scoreTask->save();
 
         return $success;
@@ -215,6 +210,11 @@ class ilExAutoScoreConnector
             $task->setReturncode((int) $result['task_returncode']);
             $task->setReturnPoints((float) $result['points']);
             $task->setTaskDuration((float) $result['task_time']);
+            $task->setInstantStatus($result['instant_status']);
+            $task->setInstantMessage($result['instant_message']);
+            $task->setProtectedStatus($result['protected_status']);
+            $task->setProtectedFeedbackText($result['protected_feedback_text']);
+            $task->setProtectedFeedbackHtml($result['protected_feedback_html']);
             $task->save();
         }
     }

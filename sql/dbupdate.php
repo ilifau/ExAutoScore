@@ -228,6 +228,30 @@
             'type' => 'float',
 
         ),
+        'instant_message' => array(
+            'type' => 'text',
+            'length' => '4000',
+
+        ),
+        'instant_status' => array(
+            'type' => 'text',
+            'length' => '10',
+
+        ),
+        'protected_status' => array(
+            'type' => 'text',
+            'length' => '10',
+
+        ),
+        'protected_feedback_text' => array(
+            'type' => 'text',
+            'length' => '4000',
+
+        ),
+        'protected_feedback_html' => array(
+            'type' => 'clob',
+
+        ),
 
     );
     if (! $ilDB->tableExists('exautoscore_task')) {

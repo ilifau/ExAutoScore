@@ -67,6 +67,12 @@ return_time#:#Ergebnis-Zeit
 return_code#:#Ergebnis-Code
 return_points#:#Erreichte Punkte
 task_duration#:#Dauer (s)
+instant_message#:#Sofortige Rückmeldung
+instant_status#:#Sofortiger Status
+protected_status#:#Geschützter Status
+protected_feedback_text#:#Geschütztes Text-Feedback
+protected_feedback_html#:#Geschütztes HTML-Feedback
+
 
 
 

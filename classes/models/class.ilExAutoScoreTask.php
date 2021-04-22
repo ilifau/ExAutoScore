@@ -139,6 +139,58 @@ class ilExAutoScoreTask extends ActiveRecord
     protected $return_points;
 
 
+    /**
+     * @var string
+     *
+     * @con_has_field  true
+     * @con_fieldtype  text
+     * @con_length    4000
+     * @con_is_notnull false
+     */
+    protected $instant_message;
+
+
+    /**
+     * @var string
+     *
+     * @con_has_field  true
+     * @con_fieldtype  text
+     * @con_length    10
+     * @con_is_notnull false
+     */
+    protected $instant_status;
+
+
+    /**
+     * @var string
+     *
+     * @con_has_field  true
+     * @con_fieldtype  text
+     * @con_length    10
+     * @con_is_notnull false
+     */
+    protected $protected_status;
+
+    /**
+     * @var string
+     *
+     * @con_has_field  true
+     * @con_fieldtype  text
+     * @con_length    4000
+     * @con_is_notnull false
+     */
+    protected $protected_feedback_text;
+
+
+    /**
+     * @var string
+     *
+     * @con_has_field  true
+     * @con_fieldtype  clob
+     * @con_is_notnull false
+     */
+    protected $protected_feedback_html;
+
 
     /**
      * Wrapper to declare the return type
@@ -203,6 +255,25 @@ class ilExAutoScoreTask extends ActiveRecord
         return array_pop($records);
     }
 
+    /**
+     * Clear the return date when a new task execution is called
+     */
+    public function clearData()
+    {
+        $this->setUuid(null);
+        $this->setSubmitMessage(null);
+        $this->setSubmitTime(null);
+        $this->setSubmitSuccess(null);
+        $this->setReturnTime(null);
+        $this->setReturnPoints(null);
+        $this->setReturncode(null);
+        $this->setTaskDuration(null);
+        $this->setInstantMessage(null);
+        $this->setInstantStatus(null);
+        $this->setProtectedStatus(null);
+        $this->setProtectedFeedbackText(null);
+        $this->setProtectedFeedbackHtml(null);
+    }
 
     /**
      * @return int
@@ -395,5 +466,86 @@ class ilExAutoScoreTask extends ActiveRecord
     {
         $this->return_points = $return_points;
     }
+
+    /**
+     * @return string
+     */
+    public function getInstantMessage()
+    {
+        return $this->instant_message;
+    }
+
+    /**
+     * @param string $instant_message
+     */
+    public function setInstantMessage($instant_message)
+    {
+        $this->instant_message = $instant_message;
+    }
+
+    /**
+     * @return string
+     */
+    public function getInstantStatus()
+    {
+        return $this->instant_status;
+    }
+
+    /**
+     * @param string $instant_status
+     */
+    public function setInstantStatus($instant_status)
+    {
+        $this->instant_status = $instant_status;
+    }
+
+    /**
+     * @return string
+     */
+    public function getProtectedStatus()
+    {
+        return $this->protected_status;
+    }
+
+    /**
+     * @param string $protected_status
+     */
+    public function setProtectedStatus($protected_status)
+    {
+        $this->protected_status = $protected_status;
+    }
+
+    /**
+     * @return string
+     */
+    public function getProtectedFeedbackText()
+    {
+        return $this->protected_feedback_text;
+    }
+
+    /**
+     * @param string $protected_feedback_text
+     */
+    public function setProtectedFeedbackText($protected_feedback_text)
+    {
+        $this->protected_feedback_text = $protected_feedback_text;
+    }
+
+    /**
+     * @return string
+     */
+    public function getProtectedFeedbackHtml()
+    {
+        return $this->protected_feedback_html;
+    }
+
+    /**
+     * @param string $protected_feedback_html
+     */
+    public function setProtectedFeedbackHtml($protected_feedback_html)
+    {
+        $this->protected_feedback_html = $protected_feedback_html;
+    }
+
 
 }
