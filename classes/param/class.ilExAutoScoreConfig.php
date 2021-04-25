@@ -117,7 +117,7 @@ class ilExAutoScoreConfig
         global $DIC;
         $ilDB = $DIC->database();
 
-        $query = "SELECT * FROM xamo_config";
+        $query = "SELECT * FROM exautoscore_config";
         $res = $ilDB->query($query);
         while($row = $ilDB->fetchAssoc($res))
         {
@@ -135,7 +135,7 @@ class ilExAutoScoreConfig
 
         foreach ($this->params as $param)
         {
-            $ilDB->replace('xamo_config',
+            $ilDB->replace('exautoscore_config',
                 array('param_name' => array('text', $param->name)),
                 array('param_value' => array('text', (string) $param->value))
             );
