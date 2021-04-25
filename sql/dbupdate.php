@@ -268,3 +268,24 @@
         $ilDB->addIndex('exautoscore_task', ['team_id'], 'i4');
     }
 ?>
+<#6>
+<?php
+    if (!$ilDB->tableExists('exautoscore_config'))
+    {
+        $fields = array(
+            'param_name' => array(
+                'type' => 'text',
+                'length' => 255,
+                'notnull' => true,
+            ),
+            'param_value' => array(
+                'type' => 'text',
+                'length' => 255,
+                'notnull' => false,
+                'default' => null
+            )
+        );
+        $ilDB->createTable("exautoscore_config", $fields);
+        $ilDB->addPrimaryKey("exautoscore_config", array("param_name"));
+    }
+?>
