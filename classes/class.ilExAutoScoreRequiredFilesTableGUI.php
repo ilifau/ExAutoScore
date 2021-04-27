@@ -128,9 +128,9 @@ class ilExAutoScoreRequiredFilesTableGUI extends ilTable2GUI
         // checkbox
         $this->tpl->setVariable('ID', $id);
         $this->tpl->setVariable('FILENAME', $file->getFilename());
-        $this->tpl->setVariable('ENCODING', $file->getEncoding());
+        $this->tpl->setVariable('ENCODING', $file->getRequiredEncoding());
         $this->tpl->setVariable('MAX_SIZE', $file->getMaxSize() ? ceil($file->getMaxSize() / 1000) . ' KB' : '');
-        $this->tpl->setVariable('EXAMPLE_SIZE', $file->getExampleSize() ? ceil($file->getExampleSize() / 1000) . ' KB' : '');
+        $this->tpl->setVariable('EXAMPLE_SIZE', $file->getSize() ? ceil($file->getSize() / 1000) . ' KB' : '');
         $this->tpl->setVariable('DESCRIPTION', $file->getDescription());
 
         // show action column

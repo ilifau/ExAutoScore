@@ -5,7 +5,7 @@ require_once(__DIR__ . '/class.ilExAssTypeAutoScoreBaseGUI.php');
 
 /**
  * Auto Score User Assignment Type GUI
- * @ilCtrl_isCalledBy ilExAssTypeAutoScoreUserGUI: ilExAssignmentEditorGUI
+ * @ilCtrl_isCalledBy ilExAssTypeAutoScoreUserGUI: ilExAssignmentEditorGUI, ilExSubmissionGUI
  */
 class ilExAssTypeAutoScoreUserGUI extends ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeGUIInterface
 {

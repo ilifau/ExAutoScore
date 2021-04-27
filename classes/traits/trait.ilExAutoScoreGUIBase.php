@@ -3,6 +3,9 @@
 
 trait ilExAutoScoreGUIBase
 {
+    /** @var ilObjUser */
+    protected $user;
+
     /** @var  ilAccessHandler $access */
     protected $access;
 
@@ -25,6 +28,7 @@ trait ilExAutoScoreGUIBase
     protected function initGlobals()
     {
         global $DIC;
+        $this->user = $DIC->user();
         $this->access = $DIC->access();
         $this->ctrl = $DIC->ctrl();
         $this->lng = $DIC->language();
