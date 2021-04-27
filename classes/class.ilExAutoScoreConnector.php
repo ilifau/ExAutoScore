@@ -138,6 +138,52 @@ class ilExAutoScoreConnector
     }
 
     /**
+     * @param ilExSubmission $submission
+     * @param ilObjUser $user
+     * @return bool
+     * @throws ilCurlConnectionException
+     */
+    public function sendSubmission($submission, $user)
+    {
+        $assignment = $submission->getAssignment();
+        $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($assignment->getId());
+        $scoreTask = ilExAutoScoreTask::geSubmissionTask($submission);
+
+        $url = $this->config->get('service_task_url');
+        $timeout = (int) $this->config->get('service_timeout');
+
+        $post = [];
+        $post['assignment'] = $scoreAss->getUuid();
+        $post['user_identifier'] = $user->getLogin();
+
+        $existing = [];
+        foreach ($submission->getFiles() as $file) {
+            $existing[$file["filetitle"]] = $file;
+        }
+        $required = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
+        foreach ($required as $file) {
+            // todo: zip if more files are provided
+            if (isset($existing[$file->getFilename()])) {
+                $post['user_file'] = new CURLFile($existing[$file->getFilename()]['filename'], '', $file->getFilename());
+            }
+        }
+
+        $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
+
+        $success =  $this->callService($url, $post, $timeout);
+
+        $scoreTask->clearData();
+        $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
+        $scoreTask->setUuid(($this->getResultUuid()));
+        $scoreTask->setSubmitSuccess($success);
+        $scoreTask->setSubmitMessage($this->getResultMessage());
+        $scoreTask->save();
+
+        return $success;
+    }
+
+
+    /**
      * Call the external service
      * @param string $url
      * @param array  $post
@@ -216,6 +262,24 @@ class ilExAutoScoreConnector
             $task->setProtectedFeedbackText($result['protected_feedback_text']);
             $task->setProtectedFeedbackHtml($result['protected_feedback_html']);
             $task->save();
+
+            $user_ids = [];
+            if (!empty($task->getUserId())) {
+                $user_ids = [$task->getUserId()];
+            }
+            elseif (!empty($task->getTeamId())) {
+                $team = new ilExAssignmentTeam($task->getTeamId());
+                $user_ids = $team->getMembers();
+            }
+
+            foreach ($user_ids as $user_id) {
+                $status = new ilExAssignmentMemberStatus($task->getAssignmentId(), $user_id);
+                // todo: set status by comparing points with threshold
+                $status->setStatus('failed');
+                $status->setComment($task->getProtectedFeedbackText());
+                $status->setMark($task->getReturnPoints());
+                $status->update();
+            }
         }
     }
 

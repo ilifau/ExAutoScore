@@ -60,19 +60,29 @@ autoscore_settings#:#Korrektur-Einstellungen
 send_assignment#:#Korektur einrichten
 send_example_task#:#Musterlösung testen
 head_send_assignment_result#:#Ergebnis der Einrichtung / Test der Musterlösung
-submit_time#:#Aufruf-Zeit
-submit_success#:#Erfolgreich
-submit_message#:#Meldung
-return_time#:#Ergebnis-Zeit
-return_code#:#Ergebnis-Code
+submit_time#:#Eingesendet
+submit_success#:#Einsendung erfolgreich
+submit_message#:#Einsende-Rückmeldung
+return_time#:#Ergebnis erhalten
+return_code#:#Ergebnis-Code der Berechnung
 return_points#:#Erreichte Punkte
 task_duration#:#Dauer (s)
 instant_message#:#Sofortige Rückmeldung
 instant_status#:#Sofortiger Status
 protected_status#:#Geschützter Status
-protected_feedback_text#:#Geschütztes Text-Feedback
-protected_feedback_html#:#Geschütztes HTML-Feedback
-
+protected_feedback_text#:#Feedback
+protected_feedback_html#:#Ausführliches Feedback
+required_filename_info#:#Erforderlicher Dateiname: %s
+required_encoding_info#:#Erforderliche Codierung: %s
+required_max_size_info#:#Maximale Größe für diese Datei: %s KB
+existing_file_size_info#:#Vorhandene Datei: %s KB
+upload_error_file#:#Eine hochgeladene Datei entspricht nicht dem erwarteten Format!
+upload_error_filename#:#Diese Datei hat nicht den geforderten Namen.
+upload_error_max_size#:#Diese Datei überschreitet die maximale Größe.
+upload_error_encoding#:#Diese Datei hat nicht die geforderte Codierung.
+submission_success#:#Ihre Abgabe wurde eingereicht. Es kann ein paar Minuten Dauern, bis ihnen die Rückmeldung des Korrekturservice hier angezeigt wird.
+submission_error#:#Beim Einsenden Inrer Dateien an den Korrekturservice trat ein Fehler auf. Bitte versuchen Sie es später noch einmal.
+show_feedback#:#Feedback anzeigen
 
 
 

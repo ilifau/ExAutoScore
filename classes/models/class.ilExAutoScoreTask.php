@@ -217,6 +217,45 @@ class ilExAutoScoreTask extends ActiveRecord
     }
 
     /**
+     * Get the task by a submission
+     * @param ilExSubmission $a_submission
+     * @return self
+     */
+    public static function geSubmissionTask(ilExSubmission $a_submission)
+    {
+        $assignment = $a_submission->getAssignment();
+
+        if ($a_submission->getAssignment()->hasTeam()) {
+            $records = self::getCollection()
+                           ->where(['assignment_id' => $assignment->getId()])
+                           ->where(['team_id' => $a_submission->getTeam()->getId()])
+                           ->get();
+
+            if (empty($records)) {
+                $task = new self;
+                $task->setAssignmentId($assignment->getId());
+                $task->setTeamId($a_submission->getTeam()->getId());
+                return $task;
+            }
+        }
+        else {
+            $records = self::getCollection()
+                           ->where(['assignment_id' => $a_submission->getAssignment()->getId()])
+                           ->where(['user_id' => $a_submission->getUserId()])
+                           ->get();
+
+            if (empty($records)) {
+                $task = new self;
+                $task->setAssignmentId($assignment->getId());
+                $task->setUserId($a_submission->getUserId());
+                return $task;
+            }
+        }
+        return array_pop($records);
+    }
+
+
+    /**
      * Get the records of an assignment
      * @param int $assignment_id
      * @return static
