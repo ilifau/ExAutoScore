@@ -40,6 +40,10 @@
             'length' => '250',
 
         ),
+        'min_points' => array(
+            'type' => 'float',
+
+        ),
 
     );
     if (! $ilDB->tableExists('exautoscore_assignment')) {

@@ -297,7 +297,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * Clear the return date when a new task execution is called
      */
-    public function clearData()
+    public function clearSubmissionData()
     {
         $this->setUuid(null);
         $this->setSubmitMessage(null);
@@ -587,4 +587,43 @@ class ilExAutoScoreTask extends ActiveRecord
     }
 
 
+    /**
+     * Update the assignment status of the related exercise menbers (user or team)
+     * this must be done if the submission data changes
+     */
+    public function updateMemberStatus()
+    {
+        require_once (__DIR__ . '/class.ilExAutoScoreAssignment.php');
+        $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($this->getAssignmentId());
+
+        if (empty($this->getReturnTime())) {
+            $status = 'notgraded';
+            $mark = null;
+        }
+        elseif ($this->getReturnPoints() >= $scoreAss->getMinPoints()) {
+            $status = 'passed';
+            $mark = $this->getReturnPoints();
+        }
+        else {
+            $status = 'failed';
+            $mark = $this->getReturnPoints();
+        }
+
+        $user_ids = [];
+        if (!empty($this->getUserId())) {
+            $user_ids = [$this->getUserId()];
+        }
+        elseif (!empty($this->getTeamId())) {
+            $team = new ilExAssignmentTeam($this->getTeamId());
+            $user_ids = $team->getMembers();
+        }
+
+        foreach ($user_ids as $user_id) {
+            $memberStatus = new ilExAssignmentMemberStatus($this->getAssignmentId(), $user_id);
+            $memberStatus->setComment($this->getProtectedFeedbackText());
+            $memberStatus->setStatus($status);
+            $memberStatus->setMark($mark);
+            $memberStatus->update();
+        }
+    }
 }

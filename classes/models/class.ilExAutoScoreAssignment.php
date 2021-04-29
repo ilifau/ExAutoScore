@@ -50,6 +50,17 @@ class ilExAutoScoreAssignment extends ActiveRecord
      */
     protected $command;
 
+
+    /**
+     * @var float
+     *
+     * @con_has_field  true
+     * @con_fieldtype  float
+     * @con_is_notnull false
+     */
+    protected $min_points;
+
+
     /**
      * Wrapper to declare the return type
      * @param  mixed $primary_key
@@ -131,6 +142,22 @@ class ilExAutoScoreAssignment extends ActiveRecord
         $this->command = $command;
     }
 
+
+    /**
+     * @return float
+     */
+    public function getMinPoints() : float
+    {
+        return (float) $this->min_points;
+    }
+
+    /**
+     * @param float $min_points
+     */
+    public function setMinPoints(float $min_points)
+    {
+        $this->min_points = $min_points;
+    }
 
     /**
      * Save the record
