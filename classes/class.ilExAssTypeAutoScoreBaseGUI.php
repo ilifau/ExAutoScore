@@ -232,7 +232,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             }
         }
 
-        $task = ilExAutoScoreTask::geSubmissionTask($a_submission);
+        $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
         $requiredFiles = ilExAutoScoreRequiredFile::getForAssignment($a_submission->getAssignment()->getId());
 
         $titles = [];
@@ -291,7 +291,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
 
 
-        $task = ilExAutoScoreTask::geSubmissionTask($a_submission);
+        $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
 
 
         if (!empty($task->getReturnTime())) {
@@ -330,7 +330,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      */
     public function getOverviewAdditionalFeedback(ilInfoScreenGUI $a_info, ilExSubmission $a_submission)
     {
-        $task = ilExAutoScoreTask::geSubmissionTask($a_submission);
+        $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
 
         if (!empty($task->getProtectedStatus())) {
             $a_info->addProperty($this->plugin->txt('protected_status'), '<span class="ilTag">' . $task->getProtectedStatus() . '</span>');
@@ -573,7 +573,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 }
             }
 
-            $task = ilExAutoScoreTask::geSubmissionTask($this->submission);
+            $task = ilExAutoScoreTask::getSubmissionTask($this->submission);
             $task->clearSubmissionData();
             $task->save();
             $task->updateMemberStatus();

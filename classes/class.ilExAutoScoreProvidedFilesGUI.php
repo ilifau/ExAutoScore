@@ -1,5 +1,7 @@
 <?php
 require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
+require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
+require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreProvidedFile.php');
 
 /**
@@ -58,6 +60,10 @@ class ilExAutoScoreProvidedFilesGUI
      */
     public function listFiles()
     {
+        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        }
+
         require_once (__DIR__ . '/class.ilExAutoScoreProvidedFilesTableGUI.php');
         $table = new ilExAutoScoreProvidedFilesTableGUI($this, 'listFiles');
         $table->loadData($this->assignment->getId());
@@ -71,6 +77,10 @@ class ilExAutoScoreProvidedFilesGUI
      */
     protected function addFile()
     {
+        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        }
+
         $file = new ilExAutoScoreProvidedFile();
         $form = $this->initFileForm($file);
         $this->setFileToolbar();
@@ -103,6 +113,16 @@ class ilExAutoScoreProvidedFilesGUI
                 $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
             }
 
+            if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+                ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+                ilUtil::sendSuccess($this->plugin->txt('file_created_with_reset'), true);
+            }
+            else {
+                ilUtil::sendSuccess($this->plugin->txt('file_created'), true);
+            }
+
+            ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+
             ilUtil::sendSuccess($this->plugin->txt("file_created"), true);
             $this->ctrl->setParameter($this, 'id', $file->getId());
             $this->ctrl->redirect($this, "editFile");
@@ -118,6 +138,10 @@ class ilExAutoScoreProvidedFilesGUI
     {
         $this->ctrl->saveParameter($this, 'id');
         $this->setFileToolbar();
+
+        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        }
 
         /** @var ilExAutoScoreProvidedFile $file */
         $file = ilExAutoScoreProvidedFile::find((int) $_GET['id']);
@@ -154,7 +178,14 @@ class ilExAutoScoreProvidedFilesGUI
                 $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
             }
 
-            ilUtil::sendSuccess($this->plugin->txt("file_updated"), true);
+            if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+                ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+                ilUtil::sendSuccess($this->plugin->txt('file_updated_with_reset'), true);
+            }
+            else {
+                ilUtil::sendSuccess($this->plugin->txt('file_updated'), true);
+            }
+
             $this->ctrl->redirect($this, "editFile");
         }
 
@@ -242,6 +273,13 @@ class ilExAutoScoreProvidedFilesGUI
             $file->delete();
         }
 
+        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+            ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+            ilUtil::sendSuccess($this->plugin->txt('files_deleted_with_reset'), true);
+        }
+        else {
+            ilUtil::sendSuccess($this->plugin->txt('files_deleted'), true);
+        }
         ilUtil::sendSuccess($this->plugin->txt('files_deleted'), true);
         $this->ctrl->redirect($this, 'listFiles');
     }

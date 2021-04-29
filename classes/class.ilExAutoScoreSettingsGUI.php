@@ -40,7 +40,6 @@ class ilExAutoScoreSettingsGUI
     {
         $next_class = $this->ctrl->getNextClass($this);
         $cmd = $this->ctrl->getCmd('showSettings');
-        $this->setToolbar();
 
         switch ($next_class) {
 
@@ -50,6 +49,8 @@ class ilExAutoScoreSettingsGUI
                     case 'saveSettings':
                     case 'sendAssignment':
                     case 'sendExampleTask':
+                    case 'confirmSendAllTasks':
+                    case 'sendAllTasks':
                         $this->$cmd();
                         break;
                     default:
@@ -63,6 +64,12 @@ class ilExAutoScoreSettingsGUI
      */
     public function showSettings()
     {
+        $this->setToolbar();
+
+        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        }
+
         $form = $this->initSettingsForm();
         $this->tpl->setContent($form->getHTML());
     }
@@ -107,7 +114,14 @@ class ilExAutoScoreSettingsGUI
             $assAuto->setMinPoints((float) $params['exautoscore_min_points']);
             $assAuto->save();
 
-            ilUtil::sendSuccess($this->lng->txt('settings_saved'), true);
+            if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+                ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+                ilUtil::sendSuccess($this->plugin->txt('correction_settings_saved_with_reset'), true);
+            }
+            else {
+                ilUtil::sendSuccess($this->plugin->txt('correction_settings_saved'), true);
+            }
+
             $this->ctrl->redirect($this, 'showSettings');
         }
         else {
@@ -156,14 +170,16 @@ class ilExAutoScoreSettingsGUI
         $minPoints->setSize(10);
         $form->addItem($minPoints);
 
-        $headAssResult = new ilFormSectionHeaderGUI();
-        $headAssResult->setTitle($this->plugin->txt('head_send_assignment_result'));
-        $form->addItem($headAssResult);
+        if (!empty($assAuto->getUuid())) {
+            $headAssResult = new ilFormSectionHeaderGUI();
+            $headAssResult->setTitle($this->plugin->txt('head_send_assignment_result'));
+            $form->addItem($headAssResult);
 
-        $assUuid = new ilNonEditableValueGUI($this->plugin->txt('assignment_uuid'), 'exautoscore_assignment_uuid');
-        $assUuid->setInfo($this->plugin->txt('assignment_uuid_info'));
-        $assUuid->setValue($assAuto->getUuid());
-        $form->addItem($assUuid);
+            $assUuid = new ilNonEditableValueGUI($this->plugin->txt('assignment_uuid'), 'exautoscore_assignment_uuid');
+            $assUuid->setInfo($this->plugin->txt('assignment_uuid_info'));
+            $assUuid->setValue($assAuto->getUuid());
+            $form->addItem($assUuid);
+        }
 
         if (!empty($assTask->getSubmitTime())) {
             $submitTime = new ilNonEditableValueGUI($this->plugin->txt('submit_time'), 'exautoscore_submit_time');
@@ -282,6 +298,48 @@ class ilExAutoScoreSettingsGUI
     }
 
 
+    public function confirmSendAllTasks()
+    {
+        $gui = new ilConfirmationGUI();
+        $gui->setFormAction($this->ctrl->getFormAction($this));
+        $gui->setHeaderText($this->plugin->txt('confirm_send_all_tasks'));
+        $gui->setConfirm($this->plugin->txt('send'), 'sendAllTasks');
+        $gui->setCancel($this->lng->txt('cancel'), 'showSettings');
+        $this->tpl->setContent($gui->getHTML());
+    }
+
+
+    public function sendAllTasks()
+    {
+        global $DIC;
+
+        $connector = new ilExAutoScoreConnector();
+
+        $submissions = [];
+        if ($this->assignment->getAssignmentType()->isSubmissionAssignedToTeam()) {
+            $teams = ilExAssignmentTeam::getInstancesFromMap($this->assignment->getId());
+            /** @var ilExAssignmentTeam $team */
+            foreach ($teams as $team) {
+               $submissions[] = new ilExSubmission($this->assignment, 0, $team);
+            }
+        }
+        else {
+            foreach (ilExerciseMembers::_getMembers($this->assignment->getExerciseId()) as $user_id) {
+               $submissions[] = new ilExSubmission($this->assignment, $user_id);
+            }
+        }
+
+       foreach ($submissions as $submission) {
+           if ($submission->hasSubmitted()) {
+               $connector->sendSubmission($submission, $DIC->user());
+           }
+       }
+
+       ilUtil::sendSuccess($this->plugin->txt('all_tasks_sent'), true);
+       $this->ctrl->redirect($this, 'showSettings');
+    }
+
+
     public function setToolbar()
     {
         $button = ilLinkButton::getInstance();
@@ -292,6 +350,13 @@ class ilExAutoScoreSettingsGUI
         $button = ilLinkButton::getInstance();
         $button->setCaption($this->plugin->txt('send_example_task'), false);
         $button->setUrl($this->ctrl->getLinkTarget($this, 'sendExampleTask'));
+        $this->toolbar->addButtonInstance($button);
+
+        $this->toolbar->addSeparator();
+
+        $button = ilLinkButton::getInstance();
+        $button->setCaption($this->plugin->txt('send_all_tasks'), false);
+        $button->setUrl($this->ctrl->getLinkTarget($this, 'confirmSendAllTasks'));
         $this->toolbar->addButtonInstance($button);
     }
 

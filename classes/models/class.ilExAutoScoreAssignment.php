@@ -74,6 +74,19 @@ class ilExAutoScoreAssignment extends ActiveRecord
         return $record;
     }
 
+    /**
+     * Reset an already installed correction
+     * This also clears the submission results of exercise members
+     * @param $assignment_id
+     */
+    public static function resetCorrection($assignment_id) {
+        $ass = self::findOrGetInstance($assignment_id);
+        $ass->setUuid('');
+        $ass->save();
+
+        require_once (__DIR__ . '/class.ilExAutoScoreTask.php');
+        ilExAutoScoreTask::clearAllSubmissions($assignment_id);
+    }
 
     /**
      * @return int
