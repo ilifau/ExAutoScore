@@ -91,6 +91,6 @@ send_submission_again#:#Erneut an Korrekturservice senden
 show_extended_feedback#:#Erweitertes Feedback anzeigen
 min_points#:#Punkte zum Bestehen
 min_points_info#:#Wenn der Korrekturservice mindestens diese Anzahl an Punkten zurückliefert, wird der Status der Abgabe auf "Bestanden" gesetzt, andernfalls auf "Nicht bestanden".
-
+example_files#:#Musterlösungs-Dateien
 
 
