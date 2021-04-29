@@ -146,4 +146,19 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
 
         return $records;
     }
+
+    /**
+     * Get the support files of an assignment
+     * @param int $assignment_id
+     * @return self[]
+     */
+    public static function getAssignmentPublicFiles($assignment_id)
+    {
+        $records = self::getCollection()
+                       ->where(['assignment_id' => $assignment_id])
+                       ->where(['is_public' => true])
+                       ->get();
+
+        return $records;
+    }
 }

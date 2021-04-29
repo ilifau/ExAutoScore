@@ -36,13 +36,33 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      */
     public function executeCommand()
     {
-        // submission and exercise is provided when command is forwareded in ilExSubmissionGUI
+        global $DIC;
+
+        $access = false;
+
+        // submission and exercise is provided when command is forwarded in ilExSubmissionGUI
         if (isset($this->submission)) {
-            $this->assignment = $this->submission->getAssignment();
+            if ($this->submission->canView()) {
+                $this->assignment = $this->submission->getAssignment();
+                $access = true;
+            }
+        }
+        // only assignment is provided => editor
+        elseif (isset($this->assignment)) {
+            foreach(ilObject::_getAllReferences($this->assignment->getExerciseId()) as $ref_id) {
+                if ($DIC->access()->checkAccess("write", '', $ref_id)) {
+                    $access = true;
+                    break;
+                }
+            }
+        }
+
+        if (!$access) {
+            ilUtil::sendInfo($this->lng->txt("access_denied"), true);
+            $this->ctrl->returnToParent($this);
         }
 
         $this->ctrl->saveParameter($this, 'ass_id');
-
         $this->ctrl->setParameterByClass("ilObjExerciseGUI", "ass_id", $this->assignment->getId());
         $this->ctrl->setReturnByClass('ilobjexercisegui', 'showOverview');
 
@@ -73,6 +93,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             default:
                 switch ($cmd) {
                     case 'submissionScreen':
+                    case 'downloadProvidedFile':
                     case 'downloadSubmittedFile':
                     case 'uploadSubmission':
                     case 'sendSubmission':
@@ -161,8 +182,22 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      */
     public function getOverviewAdditionalInstructions(ilInfoScreenGUI $a_info, ilExAssignment $a_assignment)
     {
-        // todo: show public files
-        //$a_info->addProperty('getOverviewAdditionalInstructions', 'xx');
+        $this->ctrl->setParameterByClass("ilExSubmissionGUI", "ass_id", $a_assignment->getId());
+
+        $files = ilExAutoScoreProvidedFile::getAssignmentPublicFiles($a_assignment->getId());
+        $content = [];
+        foreach ($files as $file) {
+            $this->ctrl->setParameter($this, 'file_id', $file->getId());
+            $link = $this->ctrl->getLinkTargetByClass(["ilExSubmissionGUI", strtolower(get_called_class())], 'downloadProvidedFile');
+            $entry = '<a href="' . $link . '">' . $file->getFilename() . '</a>';
+            if (!empty($file->getDescription())) {
+                $entry .= '<br>'. $file->getDescription();
+            }
+            $content[] = $entry;
+        }
+        if (!empty($content)) {
+            $a_info->addProperty($this->plugin->txt('provided_files'), implode('<p>', $content));
+        }
     }
 
     /**
@@ -566,8 +601,9 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     {
         $delivered_id = (int) $_REQUEST["delivered"];
 
-        if (!$this->submission->canView()) {
-            ilUtil::sendInfo($this->lng->txt("access_denied"));
+        if (!isset($this->submission) || !$this->submission->canView()) {
+            ilUtil::sendInfo($this->lng->txt("access_denied"), true);
+            $this->returnToParent();
         }
 
         if (!is_array($delivered_id) && $delivered_id > 0) {
@@ -579,6 +615,27 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         } else {
             $this->returnToParent();
         }
+    }
+
+    /**
+     * Download a provided file
+     */
+    protected function downloadProvidedFile()
+    {
+        $file = ilExAutoScoreProvidedFile::findOrGetInstance($_REQUEST['file_id']);
+
+        // general access check is done executeCommand()
+        // here we check if an exercise member can view the instructions
+        if (isset($this->submission)) {
+            $state = ilExcAssMemberState::getInstanceByIds($this->assignment->getId(), $this->user->getId());
+
+            if (!$state->areInstructionsVisible() || !$file->isPublic()) {
+                ilUtil::sendInfo($this->lng->txt("access_denied"), true);
+                $this->returnToParent();
+            }
+        }
+
+        $file->downloadFile();
     }
 
     protected function handleSubmissionTabs(ilTabsGui $tabs)
