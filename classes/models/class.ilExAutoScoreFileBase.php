@@ -212,6 +212,19 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     }
 
     /**
+     * Download the stored file
+     */
+    public function downloadFile()
+    {
+        ilFileDelivery::deliverFileAttached(
+            $this->getAbsolutePath(),
+            $this->getFilename()
+        );
+        exit;
+    }
+
+
+    /**
      * Delete a file
      */
     public function delete()
