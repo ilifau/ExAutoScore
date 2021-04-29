@@ -232,7 +232,7 @@ class ilExAutoScoreSettingsGUI
         }
 
         if (!empty($assTask->getProtectedFeedbackHtml())) {
-            $protectedFeedbackHtml = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_text'), 'exautoscore_protected_feedback_html', true);
+            $protectedFeedbackHtml = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_html'), 'exautoscore_protected_feedback_html', true);
 
             $item_id = "exautoscore_feedback_html_" . $this->assignment->getId();
 
