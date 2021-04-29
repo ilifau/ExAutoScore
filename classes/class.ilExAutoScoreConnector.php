@@ -81,7 +81,7 @@ class ilExAutoScoreConnector
 
         $success =  $this->callService($url, $post, $timeout);
 
-        $scoreTask->clearData();
+        $scoreTask->clearSubmissionData();
         $scoreTask->setUuid(($this->getResultUuid()));
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
@@ -128,7 +128,7 @@ class ilExAutoScoreConnector
 
         $success =  $this->callService($url, $post, $timeout);
 
-        $scoreTask->clearData();
+        $scoreTask->clearSubmissionData();
         $scoreTask->setUuid(($this->getResultUuid()));
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
@@ -172,12 +172,13 @@ class ilExAutoScoreConnector
 
         $success =  $this->callService($url, $post, $timeout);
 
-        $scoreTask->clearData();
+        $scoreTask->clearSubmissionData();
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
         $scoreTask->setUuid(($this->getResultUuid()));
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
         $scoreTask->save();
+        $scoreTask->updateMemberStatus();
 
         return $success;
     }
@@ -262,24 +263,7 @@ class ilExAutoScoreConnector
             $task->setProtectedFeedbackText($result['protected_feedback_text']);
             $task->setProtectedFeedbackHtml($result['protected_feedback_html']);
             $task->save();
-
-            $user_ids = [];
-            if (!empty($task->getUserId())) {
-                $user_ids = [$task->getUserId()];
-            }
-            elseif (!empty($task->getTeamId())) {
-                $team = new ilExAssignmentTeam($task->getTeamId());
-                $user_ids = $team->getMembers();
-            }
-
-            foreach ($user_ids as $user_id) {
-                $status = new ilExAssignmentMemberStatus($task->getAssignmentId(), $user_id);
-                // todo: set status by comparing points with threshold
-                $status->setStatus('failed');
-                $status->setComment($task->getProtectedFeedbackText());
-                $status->setMark($task->getReturnPoints());
-                $status->update();
-            }
+            $task->updateMemberStatus();
         }
     }
 

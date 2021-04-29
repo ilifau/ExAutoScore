@@ -103,7 +103,8 @@ class ilExAutoScoreSettingsGUI
                 $assContOld->save();
             }
 
-            $assAuto->setCommand($params['exautoscore_docker_command']);
+            $assAuto->setCommand((string) $params['exautoscore_docker_command']);
+            $assAuto->setMinPoints((float) $params['exautoscore_min_points']);
             $assAuto->save();
 
             ilUtil::sendSuccess($this->lng->txt('settings_saved'), true);
@@ -147,6 +148,13 @@ class ilExAutoScoreSettingsGUI
         $contCommand->setInfo($this->plugin->txt('docker_command_info'));
         $contCommand->setValue($assAuto->getCommand());
         $form->addItem($contCommand);
+
+        $minPoints = new ilNumberInputGUI($this->plugin->txt('min_points'), 'exautoscore_min_points');
+        $minPoints->setInfo($this->plugin->txt('min_points_info'));
+        $minPoints->setValue($assAuto->getMinPoints());
+        $minPoints->setDecimals(2);
+        $minPoints->setSize(10);
+        $form->addItem($minPoints);
 
         $headAssResult = new ilFormSectionHeaderGUI();
         $headAssResult->setTitle($this->plugin->txt('head_send_assignment_result'));
@@ -206,14 +214,14 @@ class ilExAutoScoreSettingsGUI
         }
 
         if (!empty($assTask->getInstantStatus())) {
-            $instantStatus = new ilNonEditableValueGUI($this->plugin->txt('instant_status'), 'exautoscore_instant_status');
-            $instantStatus->setValue($assTask->getInstantStatus());
+            $instantStatus = new ilNonEditableValueGUI($this->plugin->txt('instant_status'), 'exautoscore_instant_status', true);
+            $instantStatus->setValue('<span class="ilTag">' . $assTask->getInstantStatus() . '</span>');
             $form->addItem($instantStatus);
         }
 
         if (!empty($assTask->getProtectedStatus())) {
-            $protectedStatus = new ilNonEditableValueGUI($this->plugin->txt('protected_status'), 'exautoscore_protected_status');
-            $protectedStatus->setValue($assTask->getProtectedStatus());
+            $protectedStatus = new ilNonEditableValueGUI($this->plugin->txt('protected_status'), 'exautoscore_protected_status', true);
+            $protectedStatus->setValue('<span class="ilTag">' . $assTask->getProtectedStatus() . '</span>');
             $form->addItem($protectedStatus);
         }
 
@@ -224,8 +232,21 @@ class ilExAutoScoreSettingsGUI
         }
 
         if (!empty($assTask->getProtectedFeedbackHtml())) {
-            $protectedFeedbackHtml = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_text'), 'exautoscore_protected_feedback_html');
-            $protectedFeedbackHtml->setValue($assTask->getProtectedFeedbackHtml());
+            $protectedFeedbackHtml = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_text'), 'exautoscore_protected_feedback_html', true);
+
+            $item_id = "exautoscore_feedback_html_" . $this->assignment->getId();
+
+            $modal = ilModalGUI::getInstance();
+            $modal->setId($item_id);
+            $modal->setType(ilModalGUI::TYPE_LARGE);
+            $modal->setBody(ilUtil::stripScriptHTML($assTask->getProtectedFeedbackHtml()));
+            $modal->setHeading($this->plugin->txt('protected_feedback_html'));
+
+            $button = ilJsLinkButton::getInstance();
+            $button->setCaption($this->plugin->txt('show_extended_feedback'), false);
+            $button->setOnClick("$('#$item_id').modal('show')");
+
+            $protectedFeedbackHtml->setValue($modal->getHTML() . $button->getToolbarHTML());
             $form->addItem($protectedFeedbackHtml);
         }
 
