@@ -204,6 +204,43 @@ class ilExAutoScoreTask extends ActiveRecord
     }
 
     /**
+     * Check of submissions were already sent to the server
+     * @param $assignment_id
+     * @return bool
+     * @throws Exception
+     */
+    public static function hasSubmissions($assignment_id)
+    {
+        $exists = self::getCollection()
+                       ->where(['assignment_id' => $assignment_id])
+                       ->where('submit_time IS NOT NULL')
+                        ->where('(user_id IS NOT NULL OR team_id IS NOT NULL)')
+                       ->hasSets();
+        return $exists;
+    }
+
+
+    /**
+     * Clear all submission data of an assignment
+     * @param $assignment_id
+     */
+    public static function clearAllSubmissions($assignment_id)
+    {
+        $records = self::getCollection()
+                       ->where(['assignment_id' => $assignment_id])
+                       ->where('submit_time IS NOT NULL')
+                       ->get();
+
+        /** @var self $task */
+        foreach($records as $task) {
+            $task->clearSubmissionData();
+            $task->save();
+            $task->updateMemberStatus();
+        }
+    }
+
+
+    /**
      * Get the records of an assignment
      * @param int $assignment_id
      * @return static[]
@@ -221,7 +258,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @param ilExSubmission $a_submission
      * @return self
      */
-    public static function geSubmissionTask(ilExSubmission $a_submission)
+    public static function getSubmissionTask(ilExSubmission $a_submission)
     {
         $assignment = $a_submission->getAssignment();
 
@@ -588,7 +625,7 @@ class ilExAutoScoreTask extends ActiveRecord
 
 
     /**
-     * Update the assignment status of the related exercise menbers (user or team)
+     * Update the assignment status of the related exercise members (user or team)
      * this must be done if the submission data changes
      */
     public function updateMemberStatus()

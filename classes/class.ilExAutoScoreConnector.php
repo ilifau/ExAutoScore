@@ -82,6 +82,7 @@ class ilExAutoScoreConnector
         $success =  $this->callService($url, $post, $timeout);
 
         $scoreTask->clearSubmissionData();
+        $scoreTask->setSubmitTime($submitTime);
         $scoreTask->setUuid(($this->getResultUuid()));
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
@@ -147,7 +148,7 @@ class ilExAutoScoreConnector
     {
         $assignment = $submission->getAssignment();
         $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($assignment->getId());
-        $scoreTask = ilExAutoScoreTask::geSubmissionTask($submission);
+        $scoreTask = ilExAutoScoreTask::getSubmissionTask($submission);
 
         $url = $this->config->get('service_task_url');
         $timeout = (int) $this->config->get('service_timeout');
