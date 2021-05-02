@@ -137,8 +137,7 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
         $form->setTitle($this->plugin->txt('basic_configuration'));
 		$form->setFormAction($this->ctrl->getFormAction($this));
 
-        foreach($this->config->getParams() as $param)
-        {
+        foreach($this->config->getParams() as $param) {
             $param->setValue($this->config->get($param->name));
             $form->addItem($param->getFormItem());
         }
@@ -155,9 +154,10 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
 		$form = $this->initBasicConfigurationForm();
 		if ($form->checkInput())
 		{
-		    foreach ($this->config->getParams() as $param)
-            {
-                $this->config->set($param->name, $form->getInput($param->getPostvar()));
+            $form->setValuesByPost();
+            foreach($this->config->getParams() as $param) {
+                $param->setByForm($form);
+                $this->config->set($param->name, $param->value);
             }
             $this->config->write();
 

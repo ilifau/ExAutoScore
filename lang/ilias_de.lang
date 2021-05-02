@@ -17,6 +17,8 @@ service_api_key#:#API-Key
 service_api_key_info#:#Der API-Key authentifiziert die Service-Aufrufe.
 service_timeout#:#Timeout
 service_timeout_info#:#Maximalzeit in Sekunden, in der auf eine Antwort des Services gewartet wird
+creator_roles#:#Erzeuger-Rollen
+creator_roles_info#:#Nur Mitglieder dieser Rollen können neue Programmieraufgaben erstellen oder ihre Korrektur-Einstellungen bearbeiten und damit die Erzeugung eines Containers auf dem Korrektur-Server anstoßen.
 update_languages#:#Sprachen aktualisieren
 generate_db_update#:#Datenbank-Update generieren
 basic_configuration#:#Basis-Konfiguration

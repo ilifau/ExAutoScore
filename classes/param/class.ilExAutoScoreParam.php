@@ -16,7 +16,7 @@ class ilExAutoScoreParam
     const TYPE_INT = 'int';
 	const TYPE_FLOAT = 'float';
 	const TYPE_REF_ID = 'ref_id';
-	const TYPE_ROLE = 'role';
+	const TYPE_ROLES = 'roles';
     const TYPE_SELECT = 'select';
 
 
@@ -103,8 +103,8 @@ class ilExAutoScoreParam
             case self::TYPE_REF_ID:
                 $this->value = (integer) $value;
                 break;
-            case self::TYPE_ROLE:
-                $this->value = (integer) $value;
+            case self::TYPE_ROLES:
+                $this->value = (string) $value;
                 break;
             case self::TYPE_SELECT:
                 $this->value = $value;
@@ -163,15 +163,20 @@ class ilExAutoScoreParam
                 $item->setValue($this->value);
                 break;
 
-            case self::TYPE_ROLE:
-                $options = [];
-                foreach ($DIC->rbac()->review()->getGlobalRoles() as $role_id)
-                {
-                    $options[$role_id] = ilObject::_lookupTitle($role_id);
+            case self::TYPE_ROLES:
+                $titles = array();
+                foreach (explode(',', $this->value) as $role_id) {
+                    $titles[] = ilObject::_lookupTitle((int) $role_id);
                 }
-                $item = new ilSelectInputGUI($title, $postvar);
-                $item->setOptions($options);
-                $item->setValue($this->value);
+                $item = new ilTextInputGUI($title, $postvar);
+                $item->setMulti(true);
+                $item->setDataSource($DIC->ctrl()->getLinkTargetByClass(
+                    ['ilAdministrationGUI','ilObjAuthSettingsGUI','ilRegistrationSettingsGUI'],
+                    "getLocalRoleAutoComplete", "", true));
+                $item->setMultiValues($titles);
+                if (count($titles)) {
+                    $item->setValue($titles[0]);
+                }
                 break;
 
             case self::TYPE_SELECT:
@@ -196,13 +201,14 @@ class ilExAutoScoreParam
      */
     public function setByForm($form)
     {
-        $input = $form->getInput($this->getPostvar());
-        if (!isset($input)) {
-            return;
-        }
+        global $DIC;
 
         /** @var ilFormPropertyGUI $item */
         $item = $form->getItemByPostVar($this->getPostvar());
+
+        if (!isset($item)) {
+            return;
+        }
 
         switch($this->type)
         {
@@ -232,9 +238,21 @@ class ilExAutoScoreParam
                 $this->value = (float) $item->getValue();
                 break;
 
-            case self::TYPE_ROLE:
-                /** @var ilSelectInputGUI $item */
-                $this->value = (int) $item->getValue();
+            case self::TYPE_ROLES:
+                $role_ids = [];
+                $roles = $item->getMultiValues();
+                if (is_array($roles)) {
+                    foreach (array_unique($roles) as $title) {
+                        if (trim($title)) {
+                            $role_id = $DIC->rbac()->review()->roleExists($title);
+                            if ($role_id) {
+                                $role_ids[] = $role_id;
+                            }
+                        }
+                    }
+                }
+                $this->value = implode(',', $role_ids);
+                break;
 
             case self::TYPE_SELECT:
                 /** @var ilSelectInputGUI $item */
