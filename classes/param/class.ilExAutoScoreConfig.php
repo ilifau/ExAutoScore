@@ -58,6 +58,14 @@ class ilExAutoScoreConfig
             ''
         );
 
+        $params[] = ilExAutoScoreParam::_create(
+            'creator_roles',
+            $this->plugin->txt('creator_roles'),
+            $this->plugin->txt('creator_roles_info'),
+            ilExAutoScoreParam::TYPE_ROLES,
+            []
+        );
+
 
         foreach ($params as $param)
         {

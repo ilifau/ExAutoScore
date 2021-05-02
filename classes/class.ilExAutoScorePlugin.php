@@ -122,6 +122,21 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     }
 
     /**
+     * Check if a user can define an assignment with the types of this plugin
+     */
+    public function canDefine() {
+        global $DIC;
+
+        $roles = explode(',', $this->getConfig()->get('creator_roles'));
+        foreach ($roles as $role_id) {
+            if ($DIC->rbac()->review()->isAssigned($DIC->user()->getId(), $role_id)) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    /**
      * Get the plugin durectory in the file storage
      * @return string
      */

@@ -49,16 +49,18 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
         // only assignment is provided => editor
         elseif (isset($this->assignment)) {
-            foreach(ilObject::_getAllReferences($this->assignment->getExerciseId()) as $ref_id) {
-                if ($DIC->access()->checkAccess("write", '', $ref_id)) {
-                    $access = true;
-                    break;
+            if ($this->plugin->canDefine()) {
+                foreach(ilObject::_getAllReferences($this->assignment->getExerciseId()) as $ref_id) {
+                    if ($DIC->access()->checkAccess("write", '', $ref_id)) {
+                        $access = true;
+                        break;
+                    }
                 }
             }
         }
 
         if (!$access) {
-            ilUtil::sendInfo($this->lng->txt("permission_denied"), true);
+            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
             $this->ctrl->returnToParent($this);
         }
 
@@ -154,26 +156,28 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     {
         $tabs->removeTab('ass_files');
 
-        $tabs->addTab('exautoscore_settings',
-            $this->plugin->txt('autoscore_settings'),
-            $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui',
-                                               strtolower(get_class($this)),
-                                               'ilexautoscoresettingsgui'
-            ]));
+        if ($this->plugin->canDefine()) {
+            $tabs->addTab('exautoscore_settings',
+                $this->plugin->txt('autoscore_settings'),
+                $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui',
+                                                   strtolower(get_class($this)),
+                                                   'ilexautoscoresettingsgui'
+                ]));
 
-        $tabs->addTab('exautoscore_provided_files',
-            $this->plugin->txt('provided_files'),
-            $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui',
-                                               strtolower(get_class($this)),
-                                               'ilexautoscoreprovidedfilesgui'
-            ]));
+            $tabs->addTab('exautoscore_provided_files',
+                $this->plugin->txt('provided_files'),
+                $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui',
+                                                   strtolower(get_class($this)),
+                                                   'ilexautoscoreprovidedfilesgui'
+                ]));
 
-        $tabs->addTab('exautoscore_required_files',
-            $this->plugin->txt('required_files'),
-            $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui',
-                                               strtolower(get_class($this)),
-                                               'ilexautoscorerequiredfilesgui'
-            ]));
+            $tabs->addTab('exautoscore_required_files',
+                $this->plugin->txt('required_files'),
+                $this->ctrl->getLinkTargetByClass(['ilexassignmenteditorgui',
+                                                   strtolower(get_class($this)),
+                                                   'ilexautoscorerequiredfilesgui'
+                ]));
+        }
     }
 
     /**
