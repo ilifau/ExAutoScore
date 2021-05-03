@@ -121,19 +121,35 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
         return ILIAS_HTTP_PATH . '/Customizing/global/plugins/Modules/Exercise/AssignmentHook/ExAutoScore/results.php';
     }
 
+
+    /**
+     * Check if the user has administrative access
+     * @return bool
+     */
+    public function hasAdminAccess()
+    {
+        global $DIC;
+        return $DIC->rbac()->system()->checkAccess("visible", SYSTEM_FOLDER_ID);
+    }
+
+
     /**
      * Check if a user can define an assignment with the types of this plugin
      */
     public function canDefine() {
         global $DIC;
 
+        if ($this->hasAdminAccess()) {
+            return true;
+        }
+
         $roles = explode(',', $this->getConfig()->get('creator_roles'));
         foreach ($roles as $role_id) {
             if ($DIC->rbac()->review()->isAssigned($DIC->user()->getId(), $role_id)) {
                 return true;
             }
-            return false;
         }
+        return false;
     }
 
     /**
