@@ -713,6 +713,41 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     }
 
 
+    /**
+     * @inheritdoc
+     */
+    public function modifySubmissionTableActions(ilExSubmission $a_submission, ilAdvancedSelectionListGUI $a_actions)
+    {
+        global $DIC;
+
+        $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
+        if (!empty($task->getProtectedFeedbackHtml())) {
+
+            $modal_id = 'exautoscore_task_' . $task->getId();
+
+            $modal = ilModalGUI::getInstance();
+            $modal->setId($modal_id);
+            $modal->setType(ilModalGUI::TYPE_LARGE);
+            $modal->setBody(ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml()));
+            $modal->setHeading($this->plugin->txt('protected_feedback_html'));
+
+            $this->tpl->addLightbox($modal->getHTML(), 'exautoscore_lightbox_' . $task->getId()) ;
+
+            $a_actions->addItem(
+                $this->plugin->txt("protected_feedback_html"),
+                "",
+                "#",
+                "",
+                "",
+                "",
+                "",
+                false,
+                "$('#$modal_id').modal('show')"
+            );
+        }
+    }
+
+
     protected function returnToParent() {
         $this->ctrl->returnToParent($this);
     }
