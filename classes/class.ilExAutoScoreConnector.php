@@ -163,8 +163,6 @@ class ilExAutoScoreConnector
     {
         global $DIC;
 
-        log_request();
-
         $content = $DIC->http()->request()->getBody()->getContents();
 
         $result = json_decode($content, true);
