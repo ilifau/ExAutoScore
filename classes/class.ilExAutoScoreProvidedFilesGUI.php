@@ -22,11 +22,12 @@ class ilExAutoScoreProvidedFilesGUI
     /**
      * Constructor
      */
-    public function __construct(ilExAutoScorePlugin $plugin, ilExAssignment $assignment)
+    public function __construct(ilExAutoScorePlugin $plugin, ilExAssignment $assignment, ilExAssTypeAutoScoreBaseGUI $parentGUI)
     {
         $this->initGlobals();
         $this->plugin = $plugin;
         $this->assignment = $assignment;
+        $this->parentGUI = $parentGUI;
     }
 
     /**
@@ -114,16 +115,13 @@ class ilExAutoScoreProvidedFilesGUI
             }
 
             if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-                ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
                 ilUtil::sendSuccess($this->plugin->txt('file_created_with_reset'), true);
             }
             else {
                 ilUtil::sendSuccess($this->plugin->txt('file_created'), true);
             }
-
             ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
 
-            ilUtil::sendSuccess($this->plugin->txt("file_created"), true);
             $this->ctrl->setParameter($this, 'id', $file->getId());
             $this->ctrl->redirect($this, "editFile");
         }
@@ -145,6 +143,10 @@ class ilExAutoScoreProvidedFilesGUI
 
         /** @var ilExAutoScoreProvidedFile $file */
         $file = ilExAutoScoreProvidedFile::find((int) $_GET['id']);
+        if ($file->getAssignmentId() != $this->assignment->getId()) {
+            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->ctrl->returnToParent($this);
+        }
 
         $form = $this->initFileForm($file);
         $this->tpl->setContent( $form->getHTML());
@@ -161,6 +163,10 @@ class ilExAutoScoreProvidedFilesGUI
 
         /** @var ilExAutoScoreProvidedFile $file */
         $file = ilExAutoScoreProvidedFile::find((int) $_GET['id']);
+        if ($file->getAssignmentId() != $this->assignment->getId()) {
+            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->ctrl->returnToParent($this);
+        }
 
         $form = $this->initFileForm($file);
         $form->setValuesByPost();
@@ -179,12 +185,12 @@ class ilExAutoScoreProvidedFilesGUI
             }
 
             if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-                ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
                 ilUtil::sendSuccess($this->plugin->txt('file_updated_with_reset'), true);
             }
             else {
                 ilUtil::sendSuccess($this->plugin->txt('file_updated'), true);
             }
+            ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
 
             $this->ctrl->redirect($this, "editFile");
         }
@@ -210,7 +216,11 @@ class ilExAutoScoreProvidedFilesGUI
             $fileUpload->setInfo($this->plugin->txt('purpose_support_info'));
         }
         else {
-            $fileUpload->setInfo('<strong>' . $this->plugin->txt('existing_file') . ': ' . $file->getFilename(). '</strong>');
+            $this->ctrl->setParameter($this->parentGUI, 'file_id', $file->getId());
+            $link = $this->ctrl->getLinkTarget($this->parentGUI, 'downloadProvidedFile');
+            $info = '<p><strong>' . $this->plugin->txt('existing_file') . ':</strong> '
+                .'<a href="' . $link . '">' . $file->getFilename() . '</a></p>';
+            $fileUpload->setInfo($info);
         };
         $form->addItem($fileUpload);
 
@@ -255,6 +265,11 @@ class ilExAutoScoreProvidedFilesGUI
         $files = ilExAutoScoreProvidedFile::where(['id' => $_POST['ids']])->get();
 
         foreach($files as $file) {
+            if ($file->getAssignmentId() != $this->assignment->getId()) {
+                ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+                $this->ctrl->returnToParent($this);
+            }
+
             $conf_gui->addItem('ids[]', $file->getId(), $file->getFilename());
         }
 
@@ -270,17 +285,24 @@ class ilExAutoScoreProvidedFilesGUI
         $files = ilExAutoScoreProvidedFile::where(['id' => $_POST['ids']])->get();
 
         foreach($files as $file) {
+            if ($file->getAssignmentId() != $this->assignment->getId()) {
+                ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+                $this->ctrl->returnToParent($this);
+            }
+        }
+
+        foreach($files as $file) {
             $file->delete();
         }
 
         if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-            ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
             ilUtil::sendSuccess($this->plugin->txt('files_deleted_with_reset'), true);
         }
         else {
             ilUtil::sendSuccess($this->plugin->txt('files_deleted'), true);
         }
-        ilUtil::sendSuccess($this->plugin->txt('files_deleted'), true);
+        ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+
         $this->ctrl->redirect($this, 'listFiles');
     }
 

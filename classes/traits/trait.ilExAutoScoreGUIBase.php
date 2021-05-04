@@ -24,6 +24,8 @@ trait ilExAutoScoreGUIBase
     /** @var ilTemplate $tpl */
     protected $tpl;
 
+    /** @var ilExAssTypeAutoScoreBaseGUI $parentGUI */
+    protected $parentGUI;
 
     protected function initGlobals()
     {
@@ -35,5 +37,13 @@ trait ilExAutoScoreGUIBase
         $this->tabs = $DIC->tabs();
         $this->toolbar = $DIC->toolbar();
         $this->tpl = $DIC['tpl'];
+    }
+
+    /**
+     * Get the parent GUI object
+     * @return ilExAssTypeAutoScoreBaseGUI
+     */
+    public function getParentGUI() {
+        return $this->parentGUI;
     }
 }

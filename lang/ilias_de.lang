@@ -23,7 +23,7 @@ update_languages#:#Sprachen aktualisieren
 generate_db_update#:#Datenbank-Update generieren
 basic_configuration#:#Basis-Konfiguration
 docker_upload#:#Dockerfile hochladen
-docker_upload_info#:#Kommandodatei für Docker, um ein Container-Image zur Korrektur dieser Übung zu erzeugen. Laden Sie weitere benötigte Dateien nach dem Anlegen dieser Übungseinheit auf dem Reiter "Bereitgestellte Dateien hoch".
+docker_upload_info#:#Kommandodatei für Docker, um ein Container-Image zur Korrektur dieser Übung zu erzeugen. Laden Sie weitere benötigte Dateien nach dem Anlegen dieser Übungseinheit auf dem Reiter "Bereitgestellte Dateien" hoch.
 existing_file#:#Vorhandene Datei
 docker_description_info#:#Die Beschreibung wird nur hier angezeigt. Hier können sie Angaben zur Version oder Besonderheiten machen, die zu beachten sind.
 docker_command#:#Korrektur-Kommando
@@ -104,3 +104,7 @@ send_all_tasks#:#Alle Abgaben korrigieren
 confirm_send_all_tasks#:#Möchten Sie alle Abgaben an den Korrekturservice senden?
 send#:#Senden
 all_tasks_sent#:#Alle Abgaben wurden an den Korrekturservice gesandt.
+tar_command#:#Pack-Kommando
+tar_command_info#:#Pfad und Parameter des Linux-Kommandos "tar", um Dateien in ein Archiv zu packen. Das Format muss .tgz sein.
+untar_command#:#Entpack-Kommando
+untar_command_info#:#Pfad und Parameter des Linux-Kommandos "tar", um ein Archiv zu entpacken. Das Format muss .tgz sein.

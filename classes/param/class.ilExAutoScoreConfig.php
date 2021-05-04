@@ -66,6 +66,22 @@ class ilExAutoScoreConfig
             []
         );
 
+        $params[] = ilExAutoScoreParam::_create(
+            'tar_command',
+            $this->plugin->txt('tar_command'),
+            $this->plugin->txt('tar_command_info'),
+            ilExAutoScoreParam::TYPE_TEXT,
+            '/bin/tar czf'
+        );
+
+        $params[] = ilExAutoScoreParam::_create(
+            'untar_command',
+            $this->plugin->txt('untar_command'),
+            $this->plugin->txt('untar_command_info'),
+            ilExAutoScoreParam::TYPE_TEXT,
+            '/bin/tar xzf'
+        );
+
 
         foreach ($params as $param)
         {

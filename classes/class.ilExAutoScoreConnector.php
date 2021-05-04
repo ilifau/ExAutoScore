@@ -59,23 +59,12 @@ class ilExAutoScoreConnector
             $post['dockerfile'] = new CURLFile($docker->getAbsolutePath(), '', $docker->getFilename());
         }
 
-        $example = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
-        if (!empty($example)) {
-            $file = array_pop($example);
-            if (!empty($file->getAbsolutePath())) {
-                $post['example'] = new CURLFile($file->getAbsolutePath(), '', $file->getFilename());
-            }
-        }
+        $provided = ilExAutoScoreProvidedFile::getAssignmentSupportFiles($assignment->getId());
+        $this->addAssignmentFiles($post, $provided, 'files', 'provided.tgz');
 
-        $support = ilExAutoScoreProvidedFile::getAssignmentSupportFiles($assignment->getId());
-        if (!empty($support)) {
-            $file = array_pop($support);
-            if (!empty($file->getAbsolutePath())) {
-                $post['files'] = new CURLFile($file->getAbsolutePath(), '', $file->getFilename());
-            }
-        }
+        $required = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
+        $this->addAssignmentFiles($post, $required, 'example', 'required.tgz');
 
-        // return $post;
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
 
@@ -114,15 +103,8 @@ class ilExAutoScoreConnector
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
 
-        $example = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
-        if (!empty($example)) {
-            $file = array_pop($example);
-            if (!empty($file->getAbsolutePath())) {
-                $post['user_file'] = new CURLFile($file->getAbsolutePath(), '', $file->getFilename());
-            }
-        }
-
-        // return $post;
+        $required = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
+        $this->addAssignmentFiles($post, $required, 'user_file', 'required.tgz');
 
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
@@ -157,17 +139,7 @@ class ilExAutoScoreConnector
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
 
-        $existing = [];
-        foreach ($submission->getFiles() as $file) {
-            $existing[$file["filetitle"]] = $file;
-        }
-        $required = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
-        foreach ($required as $file) {
-            // todo: zip if more files are provided
-            if (isset($existing[$file->getFilename()])) {
-                $post['user_file'] = new CURLFile($existing[$file->getFilename()]['filename'], '', $file->getFilename());
-            }
-        }
+        $this->addSubmissionFiles($post, $submission, 'user_file', 'required.tgz');
 
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
 
@@ -184,6 +156,58 @@ class ilExAutoScoreConnector
         return $success;
     }
 
+    /**
+     * Receive a result from the scoring service
+     */
+    public function receiveResult()
+    {
+        global $DIC;
+
+        log_request();
+
+        $content = $DIC->http()->request()->getBody()->getContents();
+
+        $result = json_decode($content, true);
+
+        if (isset($result['assignment_uuid'])) {
+            $this->result_uuid = (string) $result['assignment_uuid'];
+        }
+        if (isset($result['task_uuid'])) {
+            $this->result_uuid = (string) $result['task_uuid'];
+        }
+
+        $task =  ilExAutoScoreTask::getByUuid($this->result_uuid);
+        if (isset($task)) {
+            $returnTime = new ilDateTime(time(), IL_CAL_UNIX);
+            $task->setReturnTime($returnTime->get(IL_CAL_DATETIME));
+            $task->setReturncode((int) $result['task_returncode']);
+            $task->setReturnPoints((float) $result['points']);
+            $task->setTaskDuration((float) $result['task_time']);
+            $task->setInstantStatus($result['instant_status']);
+            $task->setInstantMessage($result['instant_message']);
+            $task->setProtectedStatus($result['protected_status']);
+            $task->setProtectedFeedbackText($result['protected_feedback_text']);
+            $task->setProtectedFeedbackHtml($result['protected_feedback_html']);
+            $task->save();
+            $task->updateMemberStatus();
+        }
+    }
+
+    /**
+     * Get the assignment uuid that is returned
+     * @return string
+     */
+    public function getResultUuid() {
+        return $this->result_uuid;
+    }
+
+    /**
+     * @return string
+     */
+    public function getResultMessage() {
+        return $this->result_message;
+    }
+
 
     /**
      * Call the external service
@@ -192,7 +216,7 @@ class ilExAutoScoreConnector
      * @param int    $timeout
      * @return string
      */
-    public function callService($url, $post, $timeout)
+    protected function callService($url, $post, $timeout)
     {
         try {
             $curlConnection = new ilCurlConnection($url);
@@ -235,51 +259,95 @@ class ilExAutoScoreConnector
     }
 
     /**
-     * Receive a result from the scoring service
+     * @param array $post
+     * @param ilExAutoScoreFileBase[] $files
+     * @param string $postvar
+     * @param string $tarname
+
      */
-    public function receiveResult()
+    protected function addAssignmentFiles(&$post, $files, $postvar, $tarname)
     {
-        global $DIC;
-
-        $content = $DIC->http()->request()->getBody()->getContents();
-        $result = json_decode($content, true);
-
-        if (isset($result['assignment_uuid'])) {
-            $this->result_uuid = (string) $result['assignment_uuid'];
+        if (count($files) == 1) {
+            $file = array_pop($files);
+            if (!empty($file->getAbsolutePath())) {
+                $post[$postvar] = new CURLFile($file->getAbsolutePath(), '', $file->getFilename());
+            }
         }
-        if (isset($result['task_uuid'])) {
-            $this->result_uuid = (string) $result['task_uuid'];
-        }
-
-        $task =  ilExAutoScoreTask::getByUuid($this->result_uuid);
-        if (isset($task)) {
-            $returnTime = new ilDateTime(time(), IL_CAL_UNIX);
-            $task->setReturnTime($returnTime->get(IL_CAL_DATETIME));
-            $task->setReturncode((int) $result['task_returncode']);
-            $task->setReturnPoints((float) $result['points']);
-            $task->setTaskDuration((float) $result['task_time']);
-            $task->setInstantStatus($result['instant_status']);
-            $task->setInstantMessage($result['instant_message']);
-            $task->setProtectedStatus($result['protected_status']);
-            $task->setProtectedFeedbackText($result['protected_feedback_text']);
-            $task->setProtectedFeedbackHtml($result['protected_feedback_html']);
-            $task->save();
-            $task->updateMemberStatus();
+        elseif (count($files) > 1) {
+            $postfiles = [];
+            foreach ($files as $file) {
+                $postfiles[$file->getFilename()] = $file->getAbsolutePath();
+            }
+            $tar = $this->packFiles($postfiles);
+            if (!empty($tar)) {
+                $post[$postvar] = new CURLFile($tar, '', $tarname);
+            }
         }
     }
 
-    /**
-     * Get the assignment uuid that is returned
-     * @return string
-     */
-    public function getResultUuid() {
-        return $this->result_uuid;
-    }
 
     /**
-     * @return string
+     * @param array $post
+     * @param ilExSubmission $submission
+     * @param string $postvar
+     * @param string $tarname
      */
-    public function getResultMessage() {
-        return $this->result_message;
+    protected function addSubmissionFiles(&$post, $submission, $postvar, $tarname)
+    {
+        $existing = [];
+        foreach ($submission->getFiles() as $file) {
+            // $file['filetitle'] is basename
+            // $file['filename'] is absolute path
+            $existing[$file["filetitle"]] = $file['filename'];
+        }
+        $required = ilExAutoScoreRequiredFile::getForAssignment($submission->getAssignment()->getId());
+        if (count($required) == 1) {
+            $file = array_pop($required);
+            if (isset($existing[$file->getFilename()])) {
+                $post[$postvar] = new CURLFile($existing[$file->getFilename()], '', $file->getFilename());
+            }
+        }
+        elseif (count($required) > 1) {
+            $postfiles = [];
+            foreach ($required as $file) {
+                if (isset($existing[$file->getFilename()])) {
+                   $postfiles[$file->getFilename()] = $existing[$file->getFilename()];
+                }
+            }
+            $tar = $this->packFiles($postfiles);
+            if (!empty($tar)) {
+                $post[$postvar] = new CURLFile($tar, '', $tarname);
+            }
+        }
+    }
+
+
+    /**
+     * Pack files for transmission
+     * @param array $files  name => absolute path
+     * @return string absolute path
+     */
+    protected function packFiles($files)
+    {
+        $tarcmd = $this->plugin->getConfig()->get('tar_command');
+        if (empty($tarcmd)) {
+            return '';
+        }
+
+        $temproot = ILIAS_DATA_DIR . '/' . CLIENT_ID . '/temp';
+        $tempdir = uniqid('exautoscore', true);
+        $temptar = uniqid('', true) . '.tgz';
+
+        mkdir($temproot . '/' . $tempdir);
+        foreach ($files as $name => $path) {
+            copy($path, $temproot . '/' . $tempdir . '/' . $name);
+        }
+
+        $curdir = getcwd();
+        chdir($temproot . '/' . $tempdir);
+        exec($tarcmd . ' ' . $temptar . ' *');
+        chdir($curdir);
+
+        return $temproot . '/' . $tempdir . '/' . $temptar;
     }
 }

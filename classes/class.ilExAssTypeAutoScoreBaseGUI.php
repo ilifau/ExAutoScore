@@ -74,20 +74,20 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         switch ($next_class) {
             case 'ilexautoscoresettingsgui':
                 require_once(__DIR__ . '/class.ilExAutoScoreSettingsGUI.php');
-                $gui = new ilExAutoScoreSettingsGUI($this->plugin, $this->assignment);
+                $gui = new ilExAutoScoreSettingsGUI($this->plugin, $this->assignment, $this);
                 $this->tabs->activateTab('exautoscore_settings');
                 $this->ctrl->forwardCommand($gui);
                 break;
 
             case 'ilexautoscoreprovidedfilesgui':
                 require_once(__DIR__ . '/class.ilExAutoScoreProvidedFilesGUI.php');
-                $gui = new ilExAutoScoreProvidedFilesGUI($this->plugin, $this->assignment);
+                $gui = new ilExAutoScoreProvidedFilesGUI($this->plugin, $this->assignment, $this);
                 $this->tabs->activateTab('exautoscore_provided_files');
                 $this->ctrl->forwardCommand($gui);
                 break;
             case 'ilexautoscorerequiredfilesgui':
                 require_once(__DIR__ . '/class.ilExAutoScoreRequiredFilesGUI.php');
-                $gui = new ilExAutoScoreRequiredFilesGUI($this->plugin, $this->assignment);
+                $gui = new ilExAutoScoreRequiredFilesGUI($this->plugin, $this->assignment, $this);
                 $this->tabs->activateTab('exautoscore_required_files');
                 $this->ctrl->forwardCommand($gui);
                 break;
@@ -643,6 +643,10 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     protected function downloadProvidedFile()
     {
         $file = ilExAutoScoreProvidedFile::findOrGetInstance($_REQUEST['file_id']);
+        if ($file->getAssignmentId() != $this->assignment->getId()) {
+            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->returnToParent();
+        }
 
         // general access check is done executeCommand()
         // here we check if an exercise member can view the instructions
@@ -664,6 +668,10 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     protected function downloadExampleFile()
     {
         $file = ilExAutoScoreRequiredFile::findOrGetInstance($_REQUEST['file_id']);
+        if ($file->getAssignmentId() != $this->assignment->getId()) {
+            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->returnToParent();
+        }
 
         // general access check is done executeCommand()
         // here we check if an exercise member can view the example
