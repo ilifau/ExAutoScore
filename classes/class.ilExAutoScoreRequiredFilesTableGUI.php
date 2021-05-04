@@ -123,11 +123,14 @@ class ilExAutoScoreRequiredFilesTableGUI extends ilTable2GUI
 
 		/** @var ilExAutoScoreRequiredFile $file */
 		$file = $data['file'];
-        $this->ctrl->setParameter($this->parent_obj, 'id', $id);
+
+        $this->ctrl->setParameter($this->parent_obj->getParentGUI(), 'file_id', $file->getId());
+        $url = $this->ctrl->getLinkTarget($this->parent_obj->getParentGUI(), 'downloadExampleFile');
+        $link = '<a href="' . $url . '">' . $file->getFilename() . '</a></p>';
 
         // checkbox
         $this->tpl->setVariable('ID', $id);
-        $this->tpl->setVariable('FILENAME', $file->getFilename());
+        $this->tpl->setVariable('FILENAME', $link);
         $this->tpl->setVariable('ENCODING', $file->getRequiredEncoding());
         $this->tpl->setVariable('MAX_SIZE', $file->getMaxSize() ? ceil($file->getMaxSize() / 1000) . ' KB' : '');
         $this->tpl->setVariable('EXAMPLE_SIZE', $file->getSize() ? ceil($file->getSize() / 1000) . ' KB' : '');
@@ -141,6 +144,7 @@ class ilExAutoScoreRequiredFilesTableGUI extends ilTable2GUI
         $list->setListTitle($this->lng->txt('actions'));
 
         // add actions
+        $this->ctrl->setParameter($this->parent_obj, 'id', $id);
         $list->addItem($this->plugin->txt('edit_file'), '', $this->ctrl->getLinkTarget($this->parent_obj,'editFile'));
 
         $this->tpl->setVariable('ACTIONS', $list->getHtml());

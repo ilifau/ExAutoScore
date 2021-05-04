@@ -287,4 +287,13 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
             return null;
         }
     }
+
+    /**
+     * Get the relative path of the file in the storage
+     * @return string
+     */
+    public function getRelativePath()
+    {
+        return  $this->getStorageDirectory() . '/' . $this->getStorageFilename();
+    }
 }

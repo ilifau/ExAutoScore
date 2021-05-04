@@ -214,7 +214,7 @@ class ilExAutoScoreTask extends ActiveRecord
         $exists = self::getCollection()
                        ->where(['assignment_id' => $assignment_id])
                        ->where('submit_time IS NOT NULL')
-                        ->where('(user_id IS NOT NULL OR team_id IS NOT NULL)')
+                       ->where('(user_id IS NOT NULL OR team_id IS NOT NULL)')
                        ->hasSets();
         return $exists;
     }

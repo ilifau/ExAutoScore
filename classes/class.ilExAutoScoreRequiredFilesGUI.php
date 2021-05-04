@@ -20,11 +20,12 @@ class ilExAutoScoreRequiredFilesGUI
     /**
      * Constructor
      */
-    public function __construct(ilExAutoScorePlugin $plugin, ilExAssignment $assignment)
+    public function __construct(ilExAutoScorePlugin $plugin, ilExAssignment $assignment, ilExAssTypeAutoScoreBaseGUI $parentGUI)
     {
         $this->initGlobals();
         $this->plugin = $plugin;
         $this->assignment = $assignment;
+        $this->parentGUI = $parentGUI;
     }
 
     /**
@@ -58,6 +59,10 @@ class ilExAutoScoreRequiredFilesGUI
      */
     public function listFiles()
     {
+        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        }
+
         require_once (__DIR__ . '/class.ilExAutoScoreRequiredFilesTableGUI.php');
         $table = new ilExAutoScoreRequiredFilesTableGUI($this, 'listFiles');
         $table->loadData($this->assignment->getId());
@@ -71,6 +76,10 @@ class ilExAutoScoreRequiredFilesGUI
      */
     protected function addFile()
     {
+        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        }
+
         $file = new ilExAutoScoreRequiredFile();
         $form = $this->initFileForm($file);
         $this->setFileToolbar();
@@ -103,7 +112,14 @@ class ilExAutoScoreRequiredFilesGUI
                 $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
             }
 
-            ilUtil::sendSuccess($this->plugin->txt("file_created"), true);
+            if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+                ilUtil::sendSuccess($this->plugin->txt('file_created_with_reset'), true);
+            }
+            else {
+                ilUtil::sendSuccess($this->plugin->txt('file_created'), true);
+            }
+            ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+
             $this->ctrl->setParameter($this, 'id', $file->getId());
             $this->ctrl->redirect($this, "editFile");
         }
@@ -119,8 +135,16 @@ class ilExAutoScoreRequiredFilesGUI
         $this->ctrl->saveParameter($this, 'id');
         $this->setFileToolbar();
 
+        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        }
+
         /** @var ilExAutoScoreRequiredFile $file */
         $file = ilExAutoScoreRequiredFile::find((int) $_GET['id']);
+        if ($file->getAssignmentId() != $this->assignment->getId()) {
+            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->ctrl->returnToParent($this);
+        }
 
         $form = $this->initFileForm($file);
         $this->tpl->setContent( $form->getHTML());
@@ -137,6 +161,10 @@ class ilExAutoScoreRequiredFilesGUI
 
         /** @var ilExAutoScoreRequiredFile $file */
         $file = ilExAutoScoreRequiredFile::find((int) $_GET['id']);
+        if ($file->getAssignmentId() != $this->assignment->getId()) {
+            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->ctrl->returnToParent($this);
+        }
 
         $form = $this->initFileForm($file);
         $form->setValuesByPost();
@@ -154,7 +182,14 @@ class ilExAutoScoreRequiredFilesGUI
                 $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
             }
 
-            ilUtil::sendSuccess($this->plugin->txt("file_updated"), true);
+            if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+                ilUtil::sendSuccess($this->plugin->txt('file_updated_with_reset'), true);
+            }
+            else {
+                ilUtil::sendSuccess($this->plugin->txt('file_updated'), true);
+            }
+            ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+
             $this->ctrl->redirect($this, "editFile");
         }
 
@@ -179,7 +214,11 @@ class ilExAutoScoreRequiredFilesGUI
             $fileUpload->setInfo($this->plugin->txt('purpose_example_info'));
         }
         else {
-            $fileUpload->setInfo('<strong>' . $this->plugin->txt('existing_file') . ': ' . $file->getFilename(). '</strong>');
+            $this->ctrl->setParameter($this->parentGUI, 'file_id', $file->getId());
+            $link = $this->ctrl->getLinkTarget($this->parentGUI, 'downloadExampleFile');
+            $info = '<p><strong>' . $this->plugin->txt('existing_file') . ':</strong> '
+                .'<a href="' . $link . '">' . $file->getFilename() . '</a></p>';
+            $fileUpload->setInfo($info);
         };
         $form->addItem($fileUpload);
 
@@ -233,6 +272,10 @@ class ilExAutoScoreRequiredFilesGUI
 
         foreach($files as $file) {
             $conf_gui->addItem('ids[]', $file->getId(), $file->getFilename());
+            if ($file->getAssignmentId() != $this->assignment->getId()) {
+                ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+                $this->ctrl->returnToParent($this);
+            }
         }
 
         $this->tpl->setContent($conf_gui->getHTML());
@@ -247,10 +290,24 @@ class ilExAutoScoreRequiredFilesGUI
         $files = ilExAutoScoreRequiredFile::where(['id' => $_POST['ids']])->get();
 
         foreach($files as $file) {
+            if ($file->getAssignmentId() != $this->assignment->getId()) {
+                ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+                $this->ctrl->returnToParent($this);
+            }
+        }
+
+        foreach($files as $file) {
             $file->delete();
         }
 
-        ilUtil::sendSuccess($this->plugin->txt('files_deleted'), true);
+        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
+            ilUtil::sendSuccess($this->plugin->txt('file_updated_with_reset'), true);
+        }
+        else {
+            ilUtil::sendSuccess($this->plugin->txt('file_updated'), true);
+        }
+        ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+
         $this->ctrl->redirect($this, 'listFiles');
     }
 
