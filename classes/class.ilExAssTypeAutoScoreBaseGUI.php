@@ -586,16 +586,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         //
         // 5. Send the submission to the scoring server (this will reset the status)
         //
-        require_once (__DIR__ . '/class.ilExAutoScoreConnector.php');
-        $connector = new ilExAutoScoreConnector();
-        if ($connector->sendSubmission($this->submission, $this->user)) {
-            ilUtil::sendSuccess($this->plugin->txt("submission_success"), true);
-        }
-        else {
-            ilUtil::sendFailure($this->plugin->txt("submission_error"), true);
-        }
-
-        $this->returnToParent();
+        $this->sendSubmission();
     }
 
     /**
