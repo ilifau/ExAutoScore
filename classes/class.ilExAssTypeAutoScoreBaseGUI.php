@@ -323,6 +323,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         elseif (!empty($task->getSubmitTime())) {
             $time = new ilDateTime($task->getSubmitTime(), IL_CAL_DATETIME);
             $a_info->addProperty($this->plugin->txt("submit_time"), ilDatePresentation::formatDate($time));
+            $a_info->addProperty($this->plugin->txt("submit_message"), $task->getSubmitMessage());
         }
 
     }
