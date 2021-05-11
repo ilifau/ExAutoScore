@@ -570,6 +570,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
         //
         // 4. a new file is provided => delete already existing files with the same name as a newly uploaded
+        // TODO: delete also existing files that don't match the required files (see issues table)
         //
         if (!empty($new)) {
             foreach($new as $requiredFile) {
