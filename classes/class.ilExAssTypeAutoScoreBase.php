@@ -1,12 +1,10 @@
 <?php
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
-require_once ('Modules/Exercise/AssignmentTypes/classes/interface.ilExAssignmentTypeExtendedInterface.php');
-
 /**
  * Auto Score Base Assignment Type
  */
-abstract class ilExAssTypeAutoScoreBase implements ilExAssignmentTypeExtendedInterface
+abstract class ilExAssTypeAutoScoreBase implements ilExAssignmentTypeInterface
 {
     /** @var ilExAutoScorePlugin */
     protected $plugin;
@@ -33,6 +31,14 @@ abstract class ilExAssTypeAutoScoreBase implements ilExAssignmentTypeExtendedInt
      * @inheritdoc
      */
     abstract public function usesTeams();
+
+    /**
+     * @inheritdoc
+     */
+    public function hasFiles()
+    {
+        return true;
+    }
 
     /**
      * @inheritdoc
