@@ -347,7 +347,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $modal = ilModalGUI::getInstance();
             $modal->setId($item_id);
             $modal->setType(ilModalGUI::TYPE_LARGE);
-            $modal->setBody(ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml()));
+            $modal->setBody(ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
             $modal->setHeading($this->plugin->txt('protected_feedback_html'));
 
             $button = ilJsLinkButton::getInstance();
@@ -729,7 +729,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $modal = ilModalGUI::getInstance();
             $modal->setId($modal_id);
             $modal->setType(ilModalGUI::TYPE_LARGE);
-            $modal->setBody(ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml()));
+            $modal->setBody(ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
             $modal->setHeading($this->plugin->txt('protected_feedback_html'));
 
             $this->tpl->addLightbox($modal->getHTML(), 'exautoscore_lightbox_' . $task->getId()) ;
