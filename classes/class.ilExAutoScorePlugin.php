@@ -136,7 +136,8 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     /**
      * Check if a user can define an assignment with the types of this plugin
      */
-    public function canDefine() {
+    public function canDefine()
+    {
         global $DIC;
 
         if ($this->hasAdminAccess()) {
@@ -150,6 +151,38 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
             }
         }
         return false;
+    }
+
+    /**
+     * Get allowed HTML tags that max be directly presented  on a page
+     * - no elements outside body
+     * - no frames
+     * - no forms
+     * - no audio, video, object
+     * - no script
+     * @see \ilUtil::stripScriptHTML
+     */
+    public function getAllowedTags()
+    {
+        return
+            '<a><abbr><acronym><address><applet><area>'.
+            '<big><blockquote><br>'.
+            '<caption><center><cite><code><col><colgroup>'.
+            '<dd><del><dfn><dir><div><dl><dt>'.
+            '<em>'.
+            '<font>'.
+            '<h1><h2><h3><h4><h5><h6><hr>'.
+            '<i><img><ins>'.
+            '<kbd>'.
+            '<li><link>'.
+            '<map><menu>'.
+            '<ol>'.
+            '<p>'.
+            '<q>'.
+            '<s><samp><small><span><strike><strong><style><sub><sup>'.
+            '<table><tbody><td><tfoot><th><thead><title><tr><tt>'.
+            '<u><ul>'.
+            '<var>';
     }
 
     /**
