@@ -637,12 +637,16 @@ class ilExAutoScoreTask extends ActiveRecord
             $status = 'notgraded';
             $mark = null;
         }
-        elseif ($this->getReturnPoints() >= $scoreAss->getMinPoints()) {
-            $status = 'passed';
-            $mark = $this->getReturnPoints();
-        }
         else {
-            $status = 'failed';
+            if (empty($scoreAss->getMinPoints())) {
+                $status = 'notgraded';
+            }
+            elseif ($this->getReturnPoints() >= $scoreAss->getMinPoints()) {
+                $status = 'passed';
+            }
+            else {
+                $status = 'failed';
+            }
             $mark = $this->getReturnPoints();
         }
 

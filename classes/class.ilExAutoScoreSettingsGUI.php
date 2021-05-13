@@ -113,6 +113,7 @@ class ilExAutoScoreSettingsGUI
 
             $assAuto->setCommand((string) $params['exautoscore_docker_command']);
             $assAuto->setMinPoints((float) $params['exautoscore_min_points']);
+            $assAuto->setFailureMails((string) $params['exautoscore_failure_mails']);
             $assAuto->save();
 
             if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
@@ -169,10 +170,16 @@ class ilExAutoScoreSettingsGUI
 
         $minPoints = new ilNumberInputGUI($this->plugin->txt('min_points'), 'exautoscore_min_points');
         $minPoints->setInfo($this->plugin->txt('min_points_info'));
-        $minPoints->setValue($assAuto->getMinPoints());
+        $minPoints->setValue(empty($assAuto->getMinPoints()) ? null : $assAuto->getMinPoints());
         $minPoints->setDecimals(2);
         $minPoints->setSize(10);
         $form->addItem($minPoints);
+
+        $failureMails = new ilTextInputGUI($this->plugin->txt('failure_mails'), 'exautoscore_failure_mails');
+        $failureMails->setInfo($this->plugin->txt('failure_mails_info'));
+        $failureMails->setValue($assAuto->getFailureMails());
+        $form->addItem($failureMails);
+
 
         if (!empty($assAuto->getUuid())) {
             $headAssResult = new ilFormSectionHeaderGUI();

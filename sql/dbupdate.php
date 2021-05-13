@@ -293,3 +293,14 @@
         $ilDB->addPrimaryKey("exautoscore_config", array("param_name"));
     }
 ?>
+<#7>
+<?php
+if (!$ilDB->tableColumnExists('exautoscore_assignment', 'failure_mails'))
+{
+    $attributes = array(
+            'type' => 'text',
+            'length' => 255
+    );
+    $ilDB->addTableColumn("exautoscore_assignment", 'failure_mails', $attributes);
+}
+?>
