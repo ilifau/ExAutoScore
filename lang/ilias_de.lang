@@ -108,3 +108,7 @@ tar_command#:#Pack-Kommando
 tar_command_info#:#Pfad und Parameter des Linux-Kommandos "tar", um Dateien in ein Archiv zu packen. Das Format muss .tgz sein.
 untar_command#:#Entpack-Kommando
 untar_command_info#:#Pfad und Parameter des Linux-Kommandos "tar", um ein Archiv zu entpacken. Das Format muss .tgz sein.
+failure_mails#:#Fehler-Empfänger
+failure_mails_info#:#Benutzernamen oder E-Mail-Adressen (kommagetrennt), an die im Fall einer fehlgeschlagenen Korrektur eine Nachricht gesendet werden soll.
+failure_subject_send#:#Fehler beim Senden einer Abgabe in "%s"
+failure_subject_result#:#Fehler beim Auswerten einer Abgabe in "%s"

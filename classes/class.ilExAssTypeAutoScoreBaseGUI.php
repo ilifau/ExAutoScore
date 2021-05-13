@@ -527,12 +527,14 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         // 2. Save the newly uploaded files
         //
         $existing = [];
+        $required = [];
+        $new = [];
+        $failed = null;
         foreach ($this->submission->getFiles() as $file) {
             $existing[$file["filetitle"]][] = $file['returned_id'];
         }
-        $new = [];
-        $failed = null;
         foreach ($requiredFiles as $requiredFile) {
+            $required[$requiredFile->getFilename()] = true;
             $param = (array) $params['exautoscore_file_upload_' . $requiredFile->getId()];
             if (!empty($param['tmp_name'])) {
                 if ($this->submission->uploadFile($param)) {
@@ -569,13 +571,19 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
 
         //
-        // 4. a new file is provided => delete already existing files with the same name as a newly uploaded
-        // TODO: delete also existing files that don't match the required files (see issues table)
+        // 4. a new file is provided => delete already existing files that are no longer needed
         //
         if (!empty($new)) {
+            // files with same name as a newly uploaded file
             foreach($new as $requiredFile) {
                 if (is_array($existing[$requiredFile->getFilename()])) {
                     $this->submission->deleteSelectedFiles($existing[$requiredFile->getFilename()]);
+                }
+            }
+            // files that are no longer required
+            foreach ($existing as $filename => $returned_ids) {
+                if (!isset($required[$filename])) {
+                    $this->submission->deleteSelectedFiles($existing[$filename]);
                 }
             }
 

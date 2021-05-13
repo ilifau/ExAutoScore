@@ -62,6 +62,18 @@ class ilExAutoScoreAssignment extends ActiveRecord
 
 
     /**
+     * @var string
+     *
+     * @con_has_field true
+     * @con_fieldtype text
+     * @con_length    250
+     * @con_is_notnull false
+     */
+    protected $failure_mails;
+
+
+
+    /**
      * Wrapper to declare the return type
      * @param  mixed $primary_key
      * @param array $add_constructor_args
@@ -171,6 +183,24 @@ class ilExAutoScoreAssignment extends ActiveRecord
     {
         $this->min_points = $min_points;
     }
+
+
+    /**
+     * @return string
+     */
+    public function getFailureMails() : string
+    {
+        return (string) $this->failure_mails;
+    }
+
+    /**
+     * @param string $failure_mails
+     */
+    public function setFailureMails(string $failure_mails)
+    {
+        $this->failure_mails = $failure_mails;
+    }
+
 
     /**
      * Save the record

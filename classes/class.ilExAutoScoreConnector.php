@@ -14,6 +14,11 @@ require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
  */
 class ilExAutoScoreConnector
 {
+    const NOTIFY_SEND_FAILURE = 'send_failure';
+    const NOTIFY_RESULT_FAILURE = 'result_failure';
+
+
+
     /** @var ilExAutoScorePlugin */
     protected $plugin;
 
@@ -153,6 +158,9 @@ class ilExAutoScoreConnector
         $scoreTask->save();
         $scoreTask->updateMemberStatus();
 
+        if (!$success) {
+            $this->notifyFailure($assignment, $scoreTask, self::NOTIFY_SEND_FAILURE);
+        }
         return $success;
     }
 
@@ -188,6 +196,11 @@ class ilExAutoScoreConnector
             $task->setProtectedFeedbackHtml($result['protected_feedback_html']);
             $task->save();
             $task->updateMemberStatus();
+        }
+
+        if (!$result['success']) {
+            $assignment = new ilExAssignment($task->getAssignmentId());
+            $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
         }
     }
 
@@ -347,5 +360,85 @@ class ilExAutoScoreConnector
         chdir($curdir);
 
         return $temproot . '/' . $tempdir . '/' . $temptar;
+    }
+
+    /**
+     * Send a failure notification
+     * @param ilExAssignment    $assignment
+     * @param ilExAutoScoreTask $scoreTask
+     * @param string            $type
+     */
+    protected function notifyFailure($assignment, $scoreTask, $type)
+    {
+        global $DIC;
+        $lng = $DIC->language();
+        $lng->loadLanguageModule('exc');
+
+        $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($scoreTask->getAssignmentId());
+        if (empty($scoreAss->getFailureMails())) {
+            return;
+        }
+
+        switch ($type) {
+            case self::NOTIFY_SEND_FAILURE:
+                $subject = sprintf($this->plugin->txt('failure_subject_send'), $assignment->getTitle());
+                break;
+            case self::NOTIFY_RESULT_FAILURE:
+                $subject = sprintf($this->plugin->txt('failure_subject_result'), $assignment->getTitle());
+                break;
+        }
+
+        $info = [];
+
+        $info[$lng->txt('exc')] = ilObject::_lookupTitle($assignment->getExerciseId());
+        $info[$lng->txt('exc_assignment')] = $assignment->getTitle();
+
+        if (!empty($scoreTask->getUserId())) {
+            $info[$lng->txt('user')] = ilObjUser::_lookupFullname($scoreTask->getUserId());
+        }
+        if (!empty($scoreTask->getTeamId())) {
+            $team = new ilExAssignmentTeam($scoreTask->getTeamId());
+            $names = [];
+            foreach ($team->getMembers() as $user_id) {
+                $names[] = ilObjUser::_lookupFullname($user_id);
+            }
+            $info[$lng->txt('exc_team')] = '(' . $team->getId() . ') ' . implode(', ', $names) . "\n";
+        }
+
+        if (!empty($scoreTask->getSubmitTime())) {
+            $info[$this->plugin->txt('submit_time')] = ilDatePresentation::formatDate(new ilDateTime($scoreTask->getSubmitTime(), IL_CAL_DATETIME));
+        }
+        if (!empty($scoreTask->getSubmitMessage())) {
+            $info[$this->plugin->txt('submit_message')] = $scoreTask->getSubmitMessage();
+        }
+        if (!empty($scoreTask->getReturnTime())) {
+            $info[$this->plugin->txt('return_time')] = ilDatePresentation::formatDate(new ilDateTime($scoreTask->getReturnTime(), IL_CAL_DATETIME));
+        }
+        if (!empty($scoreTask->getReturnCode())) {
+            $info[$this->plugin->txt('return_code')] = $scoreTask->getReturnCode();
+        }
+        if (!empty($scoreTask->getTaskDuration())) {
+            $info[$this->plugin->txt('task_duration')] = $scoreTask->getTaskDuration();
+        }
+        if (!empty($scoreTask->getInstantMessage())) {
+            $info[$this->plugin->txt('instant_message')] = $scoreTask->getInstantMessage();
+        }
+        if (!empty($scoreTask->getInstantStatus())) {
+            $info[$this->plugin->txt('instant_status')] = $scoreTask->getInstantStatus();
+        }
+
+        $body = '';
+
+        foreach ($info as $label => $content) {
+            $body .= "$label: $content\n";
+        }
+
+        try {
+            $mail = new ilMail(ANONYMOUS_USER_ID);
+            $mail->sendMail($scoreAss->getFailureMails(), '', '', $subject, $body, [], ['system']);
+        }
+        catch (Exception $e) {
+            return;
+        }
     }
 }
