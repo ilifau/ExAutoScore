@@ -265,7 +265,7 @@ class ilExAutoScoreSettingsGUI
                 $modal = ilModalGUI::getInstance();
                 $modal->setId($item_id);
                 $modal->setType(ilModalGUI::TYPE_LARGE);
-                $modal->setBody(ilUtil::stripScriptHTML($assTask->getProtectedFeedbackHtml()));
+                $modal->setBody(ilUtil::stripScriptHTML($assTask->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
                 $modal->setHeading($this->plugin->txt('protected_feedback_html'));
 
                 $button = ilJsLinkButton::getInstance();
