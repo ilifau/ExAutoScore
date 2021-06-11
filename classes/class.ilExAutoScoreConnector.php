@@ -198,7 +198,7 @@ class ilExAutoScoreConnector
             $task->updateMemberStatus();
         }
 
-        if (!$result['success']) {
+        if (empty($result['success']) || strtolower($result['success']) == 'false') {
             $assignment = new ilExAssignment($task->getAssignmentId());
             $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
         }
