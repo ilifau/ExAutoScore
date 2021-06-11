@@ -61,8 +61,8 @@ class ilExAutoScoreProvidedFilesGUI
      */
     public function listFiles()
     {
-        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
         }
 
         require_once (__DIR__ . '/class.ilExAutoScoreProvidedFilesTableGUI.php');
@@ -78,8 +78,8 @@ class ilExAutoScoreProvidedFilesGUI
      */
     protected function addFile()
     {
-        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
         }
 
         $file = new ilExAutoScoreProvidedFile();
@@ -114,12 +114,14 @@ class ilExAutoScoreProvidedFilesGUI
                 $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
             }
 
-            if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-                ilUtil::sendSuccess($this->plugin->txt('file_created_with_reset'), true);
+            $message = $this->plugin->txt('file_created');
+            if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+                $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
             }
             else {
-                ilUtil::sendSuccess($this->plugin->txt('file_created'), true);
+                $message .= ' ' . $this->plugin->txt('please_send_assignment');
             }
+            ilUtil::sendSuccess($message, true);
             ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
 
             $this->ctrl->setParameter($this, 'id', $file->getId());
@@ -137,8 +139,8 @@ class ilExAutoScoreProvidedFilesGUI
         $this->ctrl->saveParameter($this, 'id');
         $this->setFileToolbar();
 
-        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
         }
 
         /** @var ilExAutoScoreProvidedFile $file */
@@ -180,17 +182,23 @@ class ilExAutoScoreProvidedFilesGUI
             $file->setPublic((bool) $params['exautoscore_file_public']);
             $file->update();
 
+            $reset = false;
             if (!empty($params['exautoscore_file_upload']['tmp_name'])) {
                 $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
+                ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+                $reset = true;
             }
 
-            if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-                ilUtil::sendSuccess($this->plugin->txt('file_updated_with_reset'), true);
+            $message = $this->plugin->txt('file_updated');
+            if ($reset) {
+                if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+                    $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
+                }
+                else {
+                    $message .= ' ' . $this->plugin->txt('please_send_assignment');
+                }
             }
-            else {
-                ilUtil::sendSuccess($this->plugin->txt('file_updated'), true);
-            }
-            ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+            ilUtil::sendSuccess($message, true);
 
             $this->ctrl->redirect($this, "editFile");
         }
@@ -295,12 +303,14 @@ class ilExAutoScoreProvidedFilesGUI
             $file->delete();
         }
 
-        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-            ilUtil::sendSuccess($this->plugin->txt('files_deleted_with_reset'), true);
+        $message = $this->plugin->txt('files_deleted');
+        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+            $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
         }
         else {
-            ilUtil::sendSuccess($this->plugin->txt('files_deleted'), true);
+            $message .= ' ' . $this->plugin->txt('please_send_assignment');
         }
+        ilUtil::sendSuccess($message, true);
         ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
 
         $this->ctrl->redirect($this, 'listFiles');
