@@ -204,6 +204,21 @@ class ilExAutoScoreTask extends ActiveRecord
     }
 
     /**
+     * Check if user or team tasks exist
+     * @param $assignment_id
+     * @return bool
+     * @throws Exception
+     */
+    public static function hasTasks($assignment_id)
+    {
+        $exists = self::getCollection()
+                      ->where(['assignment_id' => $assignment_id])
+                      ->where('(user_id IS NOT NULL OR team_id IS NOT NULL)')
+                      ->hasSets();
+        return $exists;
+    }
+
+    /**
      * Check of submissions were already sent to the server
      * @param $assignment_id
      * @return bool
@@ -239,6 +254,23 @@ class ilExAutoScoreTask extends ActiveRecord
         }
     }
 
+
+    /**
+     * Update status of all submission data of an assignment
+     * @param $assignment_id
+     */
+    public static function updateAllSubmissions($assignment_id)
+    {
+        $records = self::getCollection()
+                       ->where(['assignment_id' => $assignment_id])
+                       ->where('submit_time IS NOT NULL')
+                       ->get();
+
+        /** @var self $task */
+        foreach($records as $task) {
+            $task->updateMemberStatus();
+        }
+    }
 
     /**
      * Get the records of an assignment

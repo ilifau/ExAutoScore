@@ -67,8 +67,8 @@ class ilExAutoScoreSettingsGUI
     {
         $this->setToolbar();
 
-        if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_submissions'));
+        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
         }
 
         $form = $this->initSettingsForm();
@@ -92,6 +92,9 @@ class ilExAutoScoreSettingsGUI
             $request = $DIC->http()->request();
             $params = $request->getParsedBody();
 
+            $resetNeeded = false;
+            $updateNeeded = false;
+
             if (!empty($params['exautoscore_docker_upload']['tmp_name'])) {
                 $assCont = new ilExAutoScoreProvidedFile();
                 $assCont->setAssignmentId($this->assignment->getId());
@@ -104,6 +107,7 @@ class ilExAutoScoreSettingsGUI
                     $assCont->delete();
                 } else {
                     $assContOld->delete();
+                    $resetNeeded = true;
                 }
             }
             else {
@@ -111,18 +115,34 @@ class ilExAutoScoreSettingsGUI
                 $assContOld->save();
             }
 
+            if ($assAuto->getCommand() != (string) $params['exautoscore_docker_command']) {
+                $resetNeeded = true;
+            }
+
+            if ($assAuto->getMinPoints() != (float) $params['exautoscore_min_points']) {
+                $updateNeeded = true;
+            }
+
             $assAuto->setCommand((string) $params['exautoscore_docker_command']);
             $assAuto->setMinPoints((float) $params['exautoscore_min_points']);
             $assAuto->setFailureMails((string) $params['exautoscore_failure_mails']);
             $assAuto->save();
 
-            if (ilExAutoScoreTask::hasSubmissions($this->assignment->getId())) {
-                ilUtil::sendSuccess($this->plugin->txt('correction_settings_saved_with_reset'), true);
+            $message = $this->plugin->txt('correction_settings_saved');
+            if ($resetNeeded) {
+                ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+                if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+                    $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
+                }
+                else {
+                    $message .= ' ' . $this->plugin->txt('please_send_assignment');
+                }
             }
-            else {
-                ilUtil::sendSuccess($this->plugin->txt('correction_settings_saved'), true);
+            elseif ($updateNeeded) {
+                ilExAutoScoreTask::updateAllSubmissions($this->assignment->getId());
+                $message = $this->plugin->txt('correction_settings_saved_with_update');
             }
-            ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+            ilUtil::sendSuccess($message, true);
 
             $this->ctrl->redirect($this, 'showSettings');
         }

@@ -48,9 +48,9 @@ edit_file#:#Datei bearbeiten
 update_file#:#Datei aktualisieren
 delete_files#:#Dateien löschen
 add_file#:#Datei hinzufügen
-file_created#:#Die Datei wurde angelegt
-file_updated#:#Die Datei wurde aktualisiert
-files_deleted#:#Die Datei(en) wurden gelöscht
+file_created#:#Die Datei wurde angelegt.
+file_updated#:#Die Datei wurde aktualisiert.
+files_deleted#:#Die Datei(en) wurden gelöscht.
 back_to_list#:#Zurück zur Liste
 confirm_delete_files#:#Möchten Sie die ausgewählten Dateien löschen?
 required_files#:#Geforderte Dateien
@@ -94,12 +94,12 @@ show_extended_feedback#:#Erweitertes Feedback anzeigen
 min_points#:#Punkte zum Bestehen
 min_points_info#:#Wenn der Korrekturservice mindestens diese Anzahl an Punkten zurückliefert, wird der Status der Abgabe auf "Bestanden" gesetzt, andernfalls auf "Nicht bestanden".
 example_files#:#Musterlösungs-Dateien
-info_existing_submissions#:#Es wurden bereits Abgaben an den Korrekturservice gesendet. Wenn Sie hier etwas ändern, werden die Ergebnisse aller Abgaben zurückgesetzt.
-correction_settings_saved#:#Die Korrektur-Einstellungen wurden gespeichert. Bitte richten Sie die Korrektur neu ein und senden Sie alle vorhandenen Abgaben neu ein.
-correction_settings_saved_with_reset#:#Die Korrektur-Einstellungen wurden gespeichert und die Ergebnisse aller Abgaben zurückgesetzt. Bitte richten Sie die Korrektur neu ein.
-file_created_with_reset#:#Die Datei wurde angelegt nd die Ergebnisse aller Abgaben zurückgesetzt. Bitte richten Sie die Korrektur neu ein.
-file_updated_with_reset#:#Die Datei wurde aktualisiert und die Ergebnisse aller Abgaben zurückgesetzt. Bitte richten Sie die Korrektur neu ein.
-files_deleted_with_reset#:#Die Datei(en) wurden gelöscht nd die Ergebnisse aller Abgaben zurückgesetzt. Bitte richten Sie die Korrektur neu ein.
+info_existing_tasks#:#Hinweis: Es sind bereits Abgaben vorhanden.
+correction_settings_saved#:#Die Korrektur-Einstellungen wurden gespeichert.
+correction_settings_saved_with_update#:#Die Korrektur-Einstellungen wurden gespeichert und die Ergebnisse aktualisiert.
+please_send_assignment#:#Bitte richten Sie die Korrektur ein!
+please_send_assignment_and_tasks#:#Bitte richten Sie die Korrektur ein und korrigieren Sie alle Abgaben!
+please_send_tasks#:#Bitte korrigieren Sie alle Abgaben!
 send_all_tasks#:#Alle Abgaben korrigieren
 confirm_send_all_tasks#:#Möchten Sie alle Abgaben an den Korrekturservice senden?
 send#:#Senden
