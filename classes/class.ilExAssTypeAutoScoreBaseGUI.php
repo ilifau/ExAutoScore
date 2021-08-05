@@ -266,7 +266,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $button = ilLinkButton::getInstance();
             $button->setPrimary(true);
             $button->setCaption($this->lng->txt(empty($titles) ? 'exc_hand_in' : 'exc_edit_submission'), false);
-            $button->setUrl($this->ctrl->getLinkTargetByClass(["ilExSubmissionGUI", strtolower(get_called_class())], "submissionScreen"));
+            $button->setUrl($this->getSubmissionScreenLinkTarget());
             $content = $button->render();
 
             $sendLink = $this->ctrl->getLinkTargetByClass(["ilExSubmissionGUI", strtolower(get_called_class())], "sendSubmission");
@@ -391,6 +391,25 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $a_info->addProperty($this->plugin->txt('example_files'), implode('<p>', $content));
         }
     }
+
+    /**
+     * Indicate that the standard submission screen should not be shown
+     * @return bool
+     */
+    public function hasOwnSubmissionScreen() : bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the link target to view the submission screen
+     * @return string
+     */
+    public function getSubmissionScreenLinkTarget() : string
+    {
+        return $this->ctrl->getLinkTargetByClass(["ilExSubmissionGUI", strtolower(get_called_class())], "submissionScreen");
+    }
+
 
     /**
      * Show the screen to submit files
