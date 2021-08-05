@@ -31,6 +31,6 @@ class ilExAssTypeAutoScoreTeam extends ilExAssTypeAutoScoreBase implements ilExA
      * @inheritdoc
      */
     public function isSubmissionAssignedToTeam() {
-        return true;
+        return false;
     }
 }

@@ -292,34 +292,62 @@ class ilExAutoScoreTask extends ActiveRecord
      */
     public static function getSubmissionTask(ilExSubmission $a_submission)
     {
-        $assignment = $a_submission->getAssignment();
+        if ($a_submission->getTeam() instanceof ilExAssignmentTeam) {
 
-        if ($a_submission->getAssignment()->hasTeam()) {
-            $records = self::getCollection()
-                           ->where(['assignment_id' => $assignment->getId()])
-                           ->where(['team_id' => $a_submission->getTeam()->getId()])
-                           ->get();
-
-            if (empty($records)) {
-                $task = new self;
-                $task->setAssignmentId($assignment->getId());
-                $task->setTeamId($a_submission->getTeam()->getId());
-                return $task;
-            }
+            // file submissions are assigned to the members
+            // but the correction task is assigned to the team
+            // because all team members get the same result of the correction
+            return self::getTeamTask($a_submission->getAssignment()->getId(), $a_submission->getTeam()->getId());
         }
         else {
-            $records = self::getCollection()
-                           ->where(['assignment_id' => $a_submission->getAssignment()->getId()])
-                           ->where(['user_id' => $a_submission->getUserId()])
-                           ->get();
-
-            if (empty($records)) {
-                $task = new self;
-                $task->setAssignmentId($assignment->getId());
-                $task->setUserId($a_submission->getUserId());
-                return $task;
-            }
+            return self::getUserTask($a_submission->getAssignment()->getId(), $a_submission->getUserId());
         }
+    }
+
+    /**
+     * Get the task of a single user
+     * @param int $a_assignment_id
+     * @param int $a_user_id
+     * @return self
+     */
+    public static function getUserTask($a_assignment_id, $a_user_id)
+    {
+        $records = self::getCollection()
+                       ->where(['assignment_id' => $a_assignment_id])
+                       ->where(['user_id' => $a_user_id])
+                       ->get();
+
+        if (empty($records)) {
+            $task = new self;
+            $task->setAssignmentId($a_assignment_id);
+            $task->setUserId($a_user_id);
+            return $task;
+        }
+
+        return array_pop($records);
+    }
+
+
+    /**
+     * Get the task of a team
+     * @param int $a_assignment_id
+     * @param int $a_team_id
+     * @return self
+     */
+    public static function getTeamTask($a_assignment_id, $a_team_id)
+    {
+        $records = self::getCollection()
+                       ->where(['assignment_id' => $a_assignment_id])
+                       ->where(['team_id' => $a_team_id])
+                       ->get();
+
+        if (empty($records)) {
+            $task = new self;
+            $task->setAssignmentId($a_assignment_id);
+            $task->setTeamId($a_team_id);
+            return $task;
+        }
+
         return array_pop($records);
     }
 
@@ -693,9 +721,25 @@ class ilExAutoScoreTask extends ActiveRecord
 
         foreach ($user_ids as $user_id) {
             $memberStatus = new ilExAssignmentMemberStatus($this->getAssignmentId(), $user_id);
+            $memberStatus->setReturned($this->getSubmitSuccess());
             $memberStatus->setComment($this->getProtectedFeedbackText());
             $memberStatus->setStatus($status);
             $memberStatus->setMark($mark);
+            $memberStatus->update();
+        }
+    }
+
+    /**
+     * Reset the status of users (e.g. ex team members)
+     * @param int[] $a_user_id
+     */
+    public function resetMemberStatus ($a_user_ids) {
+        foreach ($a_user_ids as $user_id) {
+            $memberStatus = new ilExAssignmentMemberStatus($this->getAssignmentId(), $user_id);
+            $memberStatus->setReturned(false);
+            $memberStatus->setComment(null);
+            $memberStatus->setStatus('notgraded');
+            $memberStatus->setMark(null);
             $memberStatus->update();
         }
     }
