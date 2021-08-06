@@ -172,6 +172,7 @@ class ilExAutoScoreConnector
         global $DIC;
 
         $content = $DIC->http()->request()->getBody()->getContents();
+        $files = \GuzzleHttp\Psr7\ServerRequest::normalizeFiles($DIC->http()->request()->getUploadedFiles());
 
         $result = json_decode($content, true);
 
@@ -196,6 +197,8 @@ class ilExAutoScoreConnector
             $task->setProtectedFeedbackHtml($result['protected_feedback_html']);
             $task->save();
             $task->updateMemberStatus();
+
+            $this->saveFeedbackFiles($task, $files);
         }
 
         if (empty($result['success']) || strtolower($result['success']) == 'false') {
@@ -203,6 +206,49 @@ class ilExAutoScoreConnector
             $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
         }
     }
+
+    /**
+     * Save the feedback files
+     * @param ilExAutoScoreTask $task
+     * @param \GuzzleHttp\Psr7\UploadedFile[] $files
+     */
+    protected function saveFeedbackFiles($task, $files)
+    {
+        $assignment = new ilExAssignment($task->getAssignmentId());
+
+        if (!empty($task->getUserId())) {
+            $user_id = $task->getUserId();
+            $team = null;
+        }
+        elseif (!empty($task->getTeamId())) {
+            $team = new ilExAssignmentTeam($task->getTeamId());
+            $members = $team->getMembers();
+            $user_id = array_pop($members);
+        }
+        else {
+            return;
+        }
+
+        $submission = new ilExSubmission($assignment, $user_id, $team);
+        $feedback_id = $submission->getFeedbackId();
+
+        $fstorage = new ilFSStorageExercise($assignment->getExerciseId(), $assignment->getId());
+        $fstorage->create();
+        $fb_path = $fstorage->getFeedbackPath($feedback_id);
+
+        // delete old feedback files and create the directory new
+        $fstorage->deleteDirectory($fb_path);
+        $fb_path = $fstorage->getFeedbackPath($feedback_id);
+
+        if(!empty($task->getProtectedFeedbackHtml())) {
+            file_put_contents($fb_path . "/feedback.html", $task->getProtectedFeedbackHtml());
+        }
+
+        foreach ($files as $file) {
+            $file->moveTo($fb_path . "/". ilUtil::getASCIIFilename($file->getClientFilename()));
+        }
+    }
+
 
     /**
      * Get the assignment uuid that is returned
