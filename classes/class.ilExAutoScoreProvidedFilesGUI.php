@@ -330,7 +330,7 @@ class ilExAutoScoreProvidedFilesGUI
             }
             $file->delete();
         }
-        $this->handleChanges($this->plugin->txt('file_deleted'), $resetAssignment, $resetTasks);
+        $this->handleChanges($this->plugin->txt('files_deleted'), $resetAssignment, $resetTasks);
 
         $this->ctrl->redirect($this, 'listFiles');
     }
@@ -380,9 +380,12 @@ class ilExAutoScoreProvidedFilesGUI
                 ilUtil::sendSuccess($message . ' ' . $this->plugin->txt('please_send_assignment'), true);
             }
         }
-        elseif ($resetTasks && $hasTasks) {
+        elseif ($resetTasks) {
+            // clear at least the example
             ilExAutoScoreTask::clearAllSubmissions($this->assignment->getId());
-            ilUtil::sendSuccess($message . ' '. $this->plugin->txt('please_send_tasks'), true);
+            if ($hasTasks) {
+                ilUtil::sendSuccess($message . ' '. $this->plugin->txt('please_send_tasks'), true);
+            }
         }
         else {
             ilUtil::sendSuccess($message, true);
