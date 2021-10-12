@@ -191,6 +191,7 @@ class ilExAutoScoreSettingsGUI
         $minPoints = new ilNumberInputGUI($this->plugin->txt('min_points'), 'exautoscore_min_points');
         $minPoints->setInfo($this->plugin->txt('min_points_info'));
         $minPoints->setValue(empty($assAuto->getMinPoints()) ? null : $assAuto->getMinPoints());
+        $minPoints->allowDecimals(true);
         $minPoints->setDecimals(2);
         $minPoints->setSize(10);
         $form->addItem($minPoints);
@@ -305,10 +306,12 @@ class ilExAutoScoreSettingsGUI
     {
         $connector = new ilExAutoScoreConnector();
         if ($connector->sendAssignment($this->assignment)) {
-            ilUtil::sendSuccess($connector->getResultMessage(), true);
+            ilUtil::sendSuccess(sprintf($this->plugin->txt('assignment_send_success'), $connector->getResultMessage())
+                . sprintf('<p class="small"><a href="%s">%s</a></p>', $this->ctrl->getLinkTarget($this, 'showSettings'), $this->plugin->txt('refresh_screen_link'))
+                , true);
         }
         else {
-            ilUtil::sendFailure($connector->getResultMessage(), true);
+            ilUtil::sendFailure(sprintf($this->plugin->txt('assignment_send_failure'), $connector->getResultMessage()), true);
         }
         $this->ctrl->redirect($this, 'showSettings');
     }

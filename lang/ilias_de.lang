@@ -116,8 +116,10 @@ failure_mails#:#Fehler-Empfänger
 failure_mails_info#:#Benutzernamen oder E-Mail-Adressen (kommagetrennt), an die im Fall einer fehlgeschlagenen Korrektur eine Nachricht gesendet werden soll.
 failure_subject_send#:#Fehler beim Senden einer Abgabe in "%s"
 failure_subject_result#:#Fehler beim Auswerten einer Abgabe in "%s"
-example_task_send_success#:#Die Musterlösung wurde zur Korrektur eingesandt. Meldung des Korreturservice:<pre>%s</pre>
-example_task_send_failure#:#Beim Einsenden der Musterlösung trat ein Fehler auf. Meldung des Korreturservice:<pre>%s</pre>
+assignment_send_success#:#Die Aufgabe wurde zur Einrichtung an den Korrekturservice. Meldung des Korrekturservice:<pre>%s</pre>
+assignment_send_failure#:#Bem einrichten der Aufgabe trat ein Fehler auf. Meldung des Korrekturservice:<pre>%s</pre>
+example_task_send_success#:#Die Musterlösung wurde zur Korrektur eingesandt. Meldung des Korrekturservice:<pre>%s</pre>
+example_task_send_failure#:#Beim Einsenden der Musterlösung trat ein Fehler auf. Meldung des Korrekturservice:<pre>%s</pre>
 example_task_reset#:#Das Korrekturergebnis der Musterlösung wurde zurückgesetzt.
 example_task_missing#:#Bitte testen Sie die Musterlösung, wenn alle erforderlichen Dateien hochgeladen sind.
 refresh_screen_link#:#» Anzeige aktualisieren
