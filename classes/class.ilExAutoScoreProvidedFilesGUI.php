@@ -106,7 +106,7 @@ class ilExAutoScoreProvidedFilesGUI
             $params = $request->getParsedBody();
 
             $file->setDescription((string) $params['exautoscore_file_description']);
-            $file->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_SUPPORT);
+            $file->setPurpose((string) $params['exautoscore_file_purpose']);
             $file->setPublic((bool) $params['exautoscore_file_public']);
             $file->save();
 
@@ -114,15 +114,15 @@ class ilExAutoScoreProvidedFilesGUI
                 $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
             }
 
-            $message = $this->plugin->txt('file_created');
-            if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-                $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
+            $resetAssignment = false;
+            $resetTasks = false;
+            if ($file->getPurpose() == ilExAutoScoreProvidedFile::PURPOSE_SUPPORT) {
+                $resetAssignment = true;
             }
-            else {
-                $message .= ' ' . $this->plugin->txt('please_send_assignment');
+            elseif ($file->getPurpose() == ilExAutoScoreProvidedFile::PURPOSE_SUBMIT) {
+                $resetTasks = true;
             }
-            ilUtil::sendSuccess($message, true);
-            ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+            $this->handleChanges($this->plugin->txt('file_created'), $resetAssignment, $resetTasks);
 
             $this->ctrl->setParameter($this, 'id', $file->getId());
             $this->ctrl->redirect($this, "editFile");
@@ -177,28 +177,33 @@ class ilExAutoScoreProvidedFilesGUI
             $request = $DIC->http()->request();
             $params = $request->getParsedBody();
 
+            $oldPurpose = $file->getPurpose();
+            $newPurpose = (string) $params['exautoscore_file_purpose'];
+            $fileChanged = false;
+            $resetAssignment = false;
+            $resetTasks = false;
+
             $file->setDescription((string) $params['exautoscore_file_description']);
-            $file->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_SUPPORT);
+            $file->setPurpose((string) $params['exautoscore_file_purpose']);
             $file->setPublic((bool) $params['exautoscore_file_public']);
             $file->update();
 
-            $reset = false;
             if (!empty($params['exautoscore_file_upload']['tmp_name'])) {
                 $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
-                ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
-                $reset = true;
+                $fileChanged = true;
             }
 
-            $message = $this->plugin->txt('file_updated');
-            if ($reset) {
-                if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-                    $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
+            if ($fileChanged || $oldPurpose != $newPurpose) {
+                if ($oldPurpose == ilExAutoScoreProvidedFile::PURPOSE_SUPPORT
+                    || $newPurpose == ilExAutoScoreProvidedFile::PURPOSE_SUPPORT) {
+                    $resetAssignment = true;
                 }
-                else {
-                    $message .= ' ' . $this->plugin->txt('please_send_assignment');
+                elseif ($oldPurpose == ilExAutoScoreProvidedFile::PURPOSE_SUBMIT
+                    || $newPurpose == ilExAutoScoreProvidedFile::PURPOSE_SUBMIT) {
+                    $resetTasks = true;
                 }
             }
-            ilUtil::sendSuccess($message, true);
+            $this->handleChanges($this->plugin->txt('file_updated'), $resetAssignment, $resetTasks);
 
             $this->ctrl->redirect($this, "editFile");
         }
@@ -231,6 +236,20 @@ class ilExAutoScoreProvidedFilesGUI
             $fileUpload->setInfo($info);
         };
         $form->addItem($fileUpload);
+
+        $purpose = new ilRadioGroupInputGUI($this->plugin->txt('purpose'), 'exautoscore_file_purpose');
+        $purpose->setRequired(true);
+        $purpose->addOption(new ilRadioOption($this->plugin->txt('purpose_support'),
+            ilExAutoScoreProvidedFile::PURPOSE_SUPPORT,
+            $this->plugin->txt('purpose_support_info')));
+        $purpose->addOption(new ilRadioOption($this->plugin->txt('purpose_submit'),
+            ilExAutoScoreProvidedFile::PURPOSE_SUBMIT,
+            $this->plugin->txt('purpose_submit_info')));
+        $purpose->addOption(new ilRadioOption($this->plugin->txt('purpose_ignore'),
+            ilExAutoScoreProvidedFile::PURPOSE_IGNORE,
+            $this->plugin->txt('purpose_ignore_info')));
+        $purpose->setValue($file->getPurpose());
+        $form->addItem($purpose);
 
         $fileIsPublic = new ilCheckboxInputGUI($this->plugin->txt('is_public'), 'exautoscore_file_public');
         $fileIsPublic->setChecked($file->isPublic());
@@ -299,19 +318,19 @@ class ilExAutoScoreProvidedFilesGUI
             }
         }
 
+        $resetAssignment = false;
+        $resetTasks = false;
+
         foreach($files as $file) {
+            if ($file->getPurpose() == ilExAutoScoreProvidedFile::PURPOSE_SUPPORT) {
+                $resetAssignment = true;
+            }
+            elseif ($file->getPurpose() == ilExAutoScoreProvidedFile::PURPOSE_SUBMIT) {
+                $resetTasks = true;
+            }
             $file->delete();
         }
-
-        $message = $this->plugin->txt('files_deleted');
-        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
-        }
-        else {
-            $message .= ' ' . $this->plugin->txt('please_send_assignment');
-        }
-        ilUtil::sendSuccess($message, true);
-        ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+        $this->handleChanges($this->plugin->txt('file_deleted'), $resetAssignment, $resetTasks);
 
         $this->ctrl->redirect($this, 'listFiles');
     }
@@ -339,6 +358,34 @@ class ilExAutoScoreProvidedFilesGUI
         $this->toolbar->addButtonInstance($button);
     }
 
+    /**
+     * Handle the changes
+     * Do the neccessary resets and send an appropriate message
+     *
+     * @param string $message
+     * @param bool $resetAssignment
+     * @param bool $resetTasks
+     */
+    public function handleChanges($message, $resetAssignment = false, $resetTasks = false)
+    {
+        $hasTasks = ilExAutoScoreTask::hasSubmissions($this->assignment->getId());
 
-
+        if ($resetAssignment) {
+            // this will also reset the tasks
+            ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+            if ($hasTasks) {
+                ilUtil::sendSuccess($message . ' ' . $this->plugin->txt('please_send_assignment_and_tasks'), true);
+            }
+            else {
+                ilUtil::sendSuccess($message . ' ' . $this->plugin->txt('please_send_assignment'), true);
+            }
+        }
+        elseif ($resetTasks && $hasTasks) {
+            ilExAutoScoreTask::clearAllSubmissions($this->assignment->getId());
+            ilUtil::sendSuccess($message . ' '. $this->plugin->txt('please_send_tasks'), true);
+        }
+        else {
+            ilUtil::sendSuccess($message, true);
+        }
+    }
 }

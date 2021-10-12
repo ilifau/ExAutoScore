@@ -24,9 +24,19 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
     CONST PURPOSE_DOCKER = 'docker';
 
     /**
-     * Support file for running the test
+     * Support file for creating the docker image
      */
     CONST PURPOSE_SUPPORT = 'support';
+
+    /**
+     * File is added to the submission, just like a required file
+     */
+    CONST PURPOSE_SUBMIT = 'submit';
+
+    /**
+     * File is ignored for the corrector service
+     */
+    CONST PURPOSE_IGNORE = 'ignore';
 
 
     /**
@@ -75,6 +85,27 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
     public function setPurpose(string $purpose)
     {
         $this->purpose = $purpose;
+    }
+
+    /**
+     * Get the textual description of the purpose
+     * @return string
+     */
+    public function getPurposeText() : string
+    {
+        $plugin = ilExAutoScorePlugin::getInstance();
+
+        switch ($this->purpose) {
+            case self::PURPOSE_DOCKER:
+                return $plugin->txt('purpose_docker');
+            case self::PURPOSE_SUPPORT:
+                return $plugin->txt('purpose_support');
+            case self::PURPOSE_SUBMIT:
+                return $plugin->txt('purpose_submit');
+            case self::PURPOSE_IGNORE:
+            default:
+                return $plugin->txt('purpose_ignore');
+        }
     }
 
     /**

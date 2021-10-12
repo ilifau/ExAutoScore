@@ -41,6 +41,7 @@ class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
         $this->addColumn('', '', '1%', true);
         $this->addColumn($this->plugin->txt('filename'), 'filename');
         $this->addColumn($this->plugin->txt('file_size'), 'size');
+        $this->addColumn($this->plugin->txt('purpose'), 'purpose');
         $this->addColumn($this->plugin->txt('is_public'), 'is_public');
         $this->addColumn($this->lng->txt('description'), 'description');
         $this->addColumn($this->lng->txt('actions'));
@@ -74,7 +75,8 @@ class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
 
         /** @var ilExAutoScoreProvidedFile $file */
         $filesList = ilExAutoScoreProvidedFile::getCollection();
-        $filesList->where(['assignment_id' => $assignment_id, 'purpose' => ilExAutoScoreProvidedFile::PURPOSE_SUPPORT]);
+        $filesList->where(['assignment_id' => $assignment_id])
+        ->where(['purpose' => ilExAutoScoreProvidedFile::PURPOSE_DOCKER], '!=');
 
         // paging
         $this->determineOffsetAndOrder();
@@ -130,9 +132,9 @@ class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
         $this->tpl->setVariable('ID', $id);
         $this->tpl->setVariable('FILENAME', $link);
         $this->tpl->setVariable('FILE_SIZE', $file->getSize());
-        $this->tpl->setVariable('IS_PUBLIC', $this->lng->txt($file->isPublic() ?  'yes': 'no'));
+        $this->tpl->setVariable('PURPOSE', $file->getPurposeText());
+        $this->tpl->setVariable('IS_PUBLIC', $this->lng->txt($file->isPublic() ?  'yes' : 'no'));
         $this->tpl->setVariable('DESCRIPTION', $file->getDescription());
-
 
         // show action column
         $list = new ilAdvancedSelectionListGUI();
