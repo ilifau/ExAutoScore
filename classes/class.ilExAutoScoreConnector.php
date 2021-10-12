@@ -67,7 +67,9 @@ class ilExAutoScoreConnector
         $provided = ilExAutoScoreProvidedFile::getAssignmentSupportFiles($assignment->getId());
         $this->addAssignmentFiles($post, $provided, 'files', 'provided.tgz');
 
-        $required = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
+        $required = array_merge(
+            ilExAutoScoreProvidedFile::getAssignmentSubmitFiles($assignment->getId()),
+            ilExAutoScoreRequiredFile::getForAssignment($assignment->getId()));
         $this->addAssignmentFiles($post, $required, 'example', 'required.tgz');
 
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
@@ -108,7 +110,9 @@ class ilExAutoScoreConnector
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
 
-        $required = ilExAutoScoreRequiredFile::getForAssignment($assignment->getId());
+        $required = array_merge(
+            ilExAutoScoreProvidedFile::getAssignmentSubmitFiles($assignment->getId()),
+            ilExAutoScoreRequiredFile::getForAssignment($assignment->getId()));
         $this->addAssignmentFiles($post, $required, 'user_file', 'required.tgz');
 
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
@@ -316,11 +320,12 @@ class ilExAutoScoreConnector
     }
 
     /**
+     * Add the files of an assignment to the post request
+     *
      * @param array $post
      * @param ilExAutoScoreFileBase[] $files
      * @param string $postvar
      * @param string $tarname
-
      */
     protected function addAssignmentFiles(&$post, $files, $postvar, $tarname)
     {
@@ -344,6 +349,7 @@ class ilExAutoScoreConnector
 
 
     /**
+     * Add the files of a submission to the post request
      * @param array $post
      * @param ilExSubmission $submission
      * @param string $postvar
@@ -351,31 +357,38 @@ class ilExAutoScoreConnector
      */
     protected function addSubmissionFiles(&$post, $submission, $postvar, $tarname)
     {
-        $existing = [];
+        // add the submit files provided by the assignment
+        $postfiles = [];
+        foreach(ilExAutoScoreProvidedFile::getAssignmentSubmitFiles($submission->getAssignment()->getId()) as $file) {
+            $postfiles[$file->getFilename()] = $file->getAbsolutePath();
+        }
+
+        // add the required files which are submitted by the user
+        $submitted = [];
         foreach ($submission->getFiles() as $file) {
             // $file['filetitle'] is basename
             // $file['filename'] is absolute path
-            $existing[$file["filetitle"]] = $file['filename'];
+            $submitted[$file["filetitle"]] = $file['filename'];
         }
-        $required = ilExAutoScoreRequiredFile::getForAssignment($submission->getAssignment()->getId());
-        if (count($required) == 1) {
-            $file = array_pop($required);
-            if (isset($existing[$file->getFilename()])) {
-                $post[$postvar] = new CURLFile($existing[$file->getFilename()], '', $file->getFilename());
+        foreach (ilExAutoScoreRequiredFile::getForAssignment($submission->getAssignment()->getId()) as $file) {
+            if (isset($submitted[$file->getFilename()])) {
+                $postfiles[$file->getFilename()] = $submitted[$file->getFilename()];
             }
         }
-        elseif (count($required) > 1) {
-            $postfiles = [];
-            foreach ($required as $file) {
-                if (isset($existing[$file->getFilename()])) {
-                   $postfiles[$file->getFilename()] = $existing[$file->getFilename()];
-                }
+
+        // put the single file or a tar of all files to the post
+        if (count($postfiles) == 1) {
+            foreach ($postfiles as $name => $path) {
+                $post[$postvar] = new CURLFile($path, '', $name);
+                break;
             }
+        }
+        elseif (count($postfiles) > 1) {
             $tar = $this->packFiles($postfiles);
             if (!empty($tar)) {
                 $post[$postvar] = new CURLFile($tar, '', $tarname);
             }
-        }
+         }
     }
 
 

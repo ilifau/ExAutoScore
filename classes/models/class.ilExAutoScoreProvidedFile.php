@@ -164,7 +164,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
     }
 
     /**
-     * Get the support files of an assignment
+     * Get the support files of an assignment (sent when docker image is created)
      * @param int $assignment_id
      * @return self[]
      */
@@ -173,6 +173,21 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
         $records = self::getCollection()
                        ->where(['assignment_id' => $assignment_id])
                        ->where(['purpose' => self::PURPOSE_SUPPORT])
+                       ->get();
+
+        return $records;
+    }
+
+    /**
+     * Get the submit files of an assignment (sent together with the submission of a user)
+     * @param int $assignment_id
+     * @return self[]
+     */
+    public static function getAssignmentSubmitFiles($assignment_id)
+    {
+        $records = self::getCollection()
+                       ->where(['assignment_id' => $assignment_id])
+                       ->where(['purpose' => self::PURPOSE_SUBMIT])
                        ->get();
 
         return $records;
