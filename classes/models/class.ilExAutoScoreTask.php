@@ -219,7 +219,7 @@ class ilExAutoScoreTask extends ActiveRecord
     }
 
     /**
-     * Check of submissions were already sent to the server
+     * Check if submissions were already sent to the server
      * @param $assignment_id
      * @return bool
      * @throws Exception
@@ -373,6 +373,19 @@ class ilExAutoScoreTask extends ActiveRecord
 
         return array_pop($records);
     }
+
+    /**
+     * Clear all submission data of an assignment
+     * @param $assignment_id
+     */
+    public static function clearExampleTask($assignment_id)
+    {
+        $task = self::getExampleTask($assignment_id);
+        $task->clearSubmissionData();
+        $task->save();
+    }
+
+
 
     /**
      * Get the records of an assignment

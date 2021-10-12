@@ -167,8 +167,8 @@ class ilExAutoScoreSettingsGUI
         $form->setTitle($this->plugin->txt('autoscore_settings'));
         $form->addCommandButton('saveSettings', $this->lng->txt('save_settings'));
 
-        $contUploadFile = new ilFileInputGUI($this->plugin->txt('docker_upload'), 'exautoscore_docker_upload');
-        $info = $this->plugin->txt('docker_upload_info');
+        $contUploadFile = new ilFileInputGUI($this->plugin->txt('purpose_docker'), 'exautoscore_docker_upload');
+        $info = $this->plugin->txt('purpose_docker_info');
         if (!empty($assCont->getId())) {
             $this->ctrl->setParameter($this->parentGUI, 'file_id', $assCont->getId());
             $link = $this->ctrl->getLinkTarget($this->parentGUI, 'downloadProvidedFile');
@@ -319,10 +319,12 @@ class ilExAutoScoreSettingsGUI
         global $DIC;
         $connector = new ilExAutoScoreConnector();
         if ($connector->sendExampleTask($this->assignment, $DIC->user())) {
-            ilUtil::sendSuccess($connector->getResultMessage(), true);
+            ilUtil::sendSuccess(sprintf($this->plugin->txt('example_task_send_success'), $connector->getResultMessage())
+                . sprintf('<p class="small"><a href="%s">%s</a></p>', $this->ctrl->getLinkTarget($this, 'showSettings'), $this->plugin->txt('refresh_screen_link'))
+                , true);
         }
         else {
-            ilUtil::sendFailure($connector->getResultMessage(), true);
+            ilUtil::sendFailure(sprintf($this->plugin->txt('example_task_send_failure'), $connector->getResultMessage()), true);
         }
 
         $this->ctrl->redirect($this, 'showSettings');

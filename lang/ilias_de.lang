@@ -23,7 +23,7 @@ update_languages#:#Sprachen aktualisieren
 generate_db_update#:#Datenbank-Update generieren
 basic_configuration#:#Basis-Konfiguration
 docker_upload#:#Dockerfile hochladen
-docker_upload_info#:#Kommandodatei für Docker, um ein Container-Image zur Korrektur dieser Übung zu erzeugen. Laden Sie weitere benötigte Dateien nach dem Anlegen dieser Übungseinheit auf dem Reiter "Bereitgestellte Dateien" hoch.
+docker_upload_info#:#Kommandodatei für Docker, um ein Container-Image zur Korrektur dieser Übung zu erzeugen. Laden Sie weitere benötigte Dateien auf dem Reiter "Bereitgestellte Dateien" hoch.
 existing_file#:#Vorhandene Datei
 docker_description_info#:#Die Beschreibung wird nur hier angezeigt. Hier können sie Angaben zur Version oder Besonderheiten machen, die zu beachten sind.
 docker_command#:#Korrektur-Kommando
@@ -33,9 +33,13 @@ assignment_uuid_info#:#Die UUID wird vom Container-Service dieser Übungseinheit
 provided_files#:#Bereitgestellte Dateien
 purpose#:#Verwendung
 purpose_docker#:#Dockerfile
-purpose_docker_info#:#Es darf nur ein Dockerfile pro Übunngseinheit geben
-purpose_support#:#Unterstützungsdatei
-purpose_support_info#:#Datei, die beim Erzeugen des Container-Images hochgeladen wird. Sie kann das auszuführende Kommando oder eine Hilfsdatei sein. Mehrere Dateien dieser Art werden an den Container-Serviece mit gzip komprimiert übergeben (Endung .tgz).
+purpose_docker_info#:#Kommandodatei für Docker, um ein Container-Image zur Korrektur dieser Übung zu erzeugen. Es darf nur ein Dockerfile pro Übungseinheit geben. Laden Sie weitere benötigte Dateien nach dem Anlegen dieser Übungseinheit auf dem Reiter "Bereitgestellte Dateien" hoch.
+purpose_support#:#Einrichtung
+purpose_support_info#:#Hilfsdatei, die zum Erzeugen des Container-Images verwendet wird. Mehrere Dateien dieser Art werden beim Einrichten der Korrektur mit gzip komprimiert übergeben (Endung .tgz). Wird diese Datei verändert, wird das Container-Image ungültig und die Korrektur muss neu eingerichtet werden. Dabei werden all bereits eingesendeten Abgaben zurückgesetzt.
+purpose_submit#:#Korrektur
+purpose_submit_info#:#Hilfsdatei, die zur Korrektur einer Aufgabe verwendet wird. Dateien dieser Art werden mit der studentischen Abgabe bei jeder Korrektur mit gzip komprimiert übergeben (Endung .tgz). Wird diese Datei verändert, bleibt das Container-Image gültig, aber die bereits eingesendeten Abgaben werden zurückgesetzt.
+purpose_ignore#:#Ignoriert
+purpose_ignore_info#:#Dateien dieser Art werden nicht an den Korrekturservice gesandt. Sie können z.B. Vorlagen für die Studierenden sein.
 purpose_example#:#Musterlösung
 purpose_example_info#:#Datei einer Musterlösung. Die Studierenden müssen eine Datei mit deren Namen hochladen. Mit dieser Datei wird das Funktionieren der Korrektur getestet. Mehrere Dateien dieser Art werden an den Container-Service mit gzip komprimiert übergeben (Endung .tgz).
 file_description_info#:#Wenn die Datei öffentlich ist, wird auch die Beschreibung den Studierenden angezeigt.
@@ -112,3 +116,8 @@ failure_mails#:#Fehler-Empfänger
 failure_mails_info#:#Benutzernamen oder E-Mail-Adressen (kommagetrennt), an die im Fall einer fehlgeschlagenen Korrektur eine Nachricht gesendet werden soll.
 failure_subject_send#:#Fehler beim Senden einer Abgabe in "%s"
 failure_subject_result#:#Fehler beim Auswerten einer Abgabe in "%s"
+example_task_send_success#:#Die Musterlösung wurde zur Korrektur eingesandt. Meldung des Korreturservice:<pre>%s</pre>
+example_task_send_failure#:#Beim Einsenden der Musterlösung trat ein Fehler auf. Meldung des Korreturservice:<pre>%s</pre>
+example_task_reset#:#Das Korrekturergebnis der Musterlösung wurde zurückgesetzt.
+example_task_missing#:#Bitte testen Sie die Musterlösung, wenn alle erforderlichen Dateien hochgeladen sind.
+refresh_screen_link#:#» Anzeige aktualisieren

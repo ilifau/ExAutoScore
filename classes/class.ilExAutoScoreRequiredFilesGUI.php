@@ -59,10 +59,6 @@ class ilExAutoScoreRequiredFilesGUI
      */
     public function listFiles()
     {
-        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
-        }
-
         require_once (__DIR__ . '/class.ilExAutoScoreRequiredFilesTableGUI.php');
         $table = new ilExAutoScoreRequiredFilesTableGUI($this, 'listFiles');
         $table->loadData($this->assignment->getId());
@@ -76,10 +72,6 @@ class ilExAutoScoreRequiredFilesGUI
      */
     protected function addFile()
     {
-        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
-        }
-
         $file = new ilExAutoScoreRequiredFile();
         $form = $this->initFileForm($file);
         $this->setFileToolbar();
@@ -112,12 +104,12 @@ class ilExAutoScoreRequiredFilesGUI
                 $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
             }
 
-            $message = $this->plugin->txt('file_created');
-            if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-                $message .= ' ' . $this->plugin->txt('please_send_tasks');
-            }
+            ilExAutoScoreTask::clearExampleTask($this->assignment->getId());
+
+            $message = $this->plugin->txt('file_created')
+                . ' '. $this->plugin->txt('example_task_reset')
+                . ' '. $this->plugin->txt('example_task_missing');
             ilUtil::sendSuccess($message, true);
-            ilExAutoScoreTask::clearAllSubmissions($this->assignment->getId());
 
             $this->ctrl->setParameter($this, 'id', $file->getId());
             $this->ctrl->redirect($this, "editFile");
@@ -133,10 +125,6 @@ class ilExAutoScoreRequiredFilesGUI
     {
         $this->ctrl->saveParameter($this, 'id');
         $this->setFileToolbar();
-
-        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
-        }
 
         /** @var ilExAutoScoreRequiredFile $file */
         $file = ilExAutoScoreRequiredFile::find((int) $_GET['id']);
@@ -181,13 +169,12 @@ class ilExAutoScoreRequiredFilesGUI
                 $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
             }
 
-            $message = $this->plugin->txt('file_updated');
-            if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-                $message .= ' ' . $this->plugin->txt('please_send_tasks');
-            }
-            ilUtil::sendSuccess($message, true);
-            ilExAutoScoreTask::clearAllSubmissions($this->assignment->getId());
+            ilExAutoScoreTask::clearExampleTask($this->assignment->getId());
 
+            $message = $this->plugin->txt('file_updated')
+                . ' '. $this->plugin->txt('example_task_reset')
+                . ' '. $this->plugin->txt('example_task_missing');
+            ilUtil::sendSuccess($message, true);
 
             $this->ctrl->redirect($this, "editFile");
         }
@@ -298,13 +285,12 @@ class ilExAutoScoreRequiredFilesGUI
         foreach($files as $file) {
             $file->delete();
         }
+        ilExAutoScoreTask::clearExampleTask($this->assignment->getId());
 
-        $message = $this->plugin->txt('files_deleted');
-        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            $message .= ' ' . $this->plugin->txt('please_send_tasks');
-        }
+        $message = $this->plugin->txt('files_deleted')
+        . ' '. $this->plugin->txt('example_task_reset')
+        . ' '. $this->plugin->txt('example_task_missing');
         ilUtil::sendSuccess($message, true);
-        ilExAutoScoreTask::clearAllSubmissions($this->assignment->getId());
 
         $this->ctrl->redirect($this, 'listFiles');
     }
@@ -319,6 +305,13 @@ class ilExAutoScoreRequiredFilesGUI
         $button->setCaption($this->plugin->txt('add_file'), false);
         $button->setUrl($this->ctrl->getLinkTarget($this, 'addFile'));
         $this->toolbar->addButtonInstance($button);
+
+        $button = ilLinkButton::getInstance();
+        $button->setCaption($this->plugin->txt('send_example_task'), false);
+        $button->setUrl($this->ctrl->getLinkTargetByClass('ilExAutoScoreSettingsGUI', 'sendExampleTask'));
+        $this->toolbar->addButtonInstance($button);
+
+        $this->toolbar->addSeparator();
     }
 
     /**
@@ -331,7 +324,4 @@ class ilExAutoScoreRequiredFilesGUI
         $button->setUrl($this->ctrl->getLinkTarget($this, 'listFiles'));
         $this->toolbar->addButtonInstance($button);
     }
-
-
-
 }
