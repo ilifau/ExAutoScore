@@ -101,6 +101,8 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                     case 'uploadSubmission':
                     case 'sendSubmission':
                     case 'returnToParent':
+                    case 'confirmDeleteSubmission':
+                    case 'deleteSubmission':
                         $this->$cmd();
                         break;
 
@@ -416,12 +418,19 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      */
     protected function submissionScreen()
     {
+        global $DIC;
+
         $this->handleSubmissionTabs($this->tabs);
 
         if (!$this->submission->canSubmit()) {
             ilUtil::sendInfo($this->lng->txt("exercise_time_over"));
         }
         else {
+            $button = ilLinkButton::getInstance();
+            $button->setCaption($this->plugin->txt('delete_submission'), false);
+            $button->setUrl($this->ctrl->getLinkTarget($this, 'confirmDeleteSubmission'));
+            $DIC->toolbar()->addButtonInstance($button);
+
             if ($this->submission->canAddFile()) {
                 // #15883 - extended deadline warning
                 $deadline = $this->assignment->getPersonalDeadline($this->user->getId());
@@ -438,6 +447,47 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             }
         }
     }
+
+    /**
+     * Confirm that the submission should be deleted
+     */
+    protected function confirmDeleteSubmission()
+    {
+        $this->handleSubmissionTabs($this->tabs);
+
+        if (!$this->submission->canSubmit()) {
+            ilUtil::sendInfo($this->lng->txt("exercise_time_over"));
+        }
+
+        $gui = new ilConfirmationGUI();
+        $gui->setFormAction($this->ctrl->getFormAction($this));
+        $gui->setHeaderText($this->plugin->txt('confirm_delete_submission'));
+        $gui->setConfirm($this->plugin->txt('delete_submission'),'deleteSubmission');
+        $gui->setCancel($this->lng->txt('cancel'), 'submissionScreen');
+        $this->tpl->setContent($gui->getHTML());
+    }
+
+    /**
+     * Delete a submission
+     */
+    protected function deleteSubmission()
+    {
+        if (!$this->submission->canSubmit()) {
+            ilUtil::sendInfo($this->lng->txt("exercise_time_over"));
+        }
+        else {
+            $this->submission->deleteAllFiles();
+            $task = ilExAutoScoreTask::getSubmissionTask($this->submission);
+            $task->clearSubmissionData();
+            $task->deleteFeedbackFiles();
+            $task->save();
+            $task->updateMemberStatus();
+        }
+
+        ilUtil::sendSuccess($this->plugin->txt('submission_deleted'), true);
+        $this->returnToParent();
+    }
+
 
     /**
      * Init the submission form
