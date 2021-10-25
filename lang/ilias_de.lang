@@ -123,3 +123,7 @@ example_task_send_failure#:#Beim Einsenden der Musterlösung trat ein Fehler auf
 example_task_reset#:#Das Korrekturergebnis der Musterlösung wurde zurückgesetzt.
 example_task_missing#:#Bitte testen Sie die Musterlösung, wenn alle erforderlichen Dateien hochgeladen sind.
 refresh_screen_link#:#» Anzeige aktualisieren
+team_member_remove_sure#:#Wollen Sie wirklich die folgenden Mitglieder Ihres Teams entfernen? Die entfernten Mitglieder erhalten Kopien aller hochgeladenen Dateien des Teams.
+delete_submission#:#Einreichnung löschen
+confirm_delete_submission#:#Möchten Sie die Einreichung und alle hochgeladenen Dateien löschen? Damit wird auch Ihr Status zurückgesetzt.
+submission_deleted#:#Die Einreichung wurde gelöscht und Ihr Status zurückgesetzt.

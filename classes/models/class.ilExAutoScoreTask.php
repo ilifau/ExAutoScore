@@ -701,7 +701,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * Update the assignment status of the related exercise members (user or team)
      * this must be done if the submission data changes
      */
-    public function updateMemberStatus()
+    public function updateMemberStatus($a_user_ids = [])
     {
         require_once (__DIR__ . '/class.ilExAutoScoreAssignment.php');
         $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($this->getAssignmentId());
@@ -723,8 +723,10 @@ class ilExAutoScoreTask extends ActiveRecord
             $mark = $this->getReturnPoints();
         }
 
-        $user_ids = [];
-        if (!empty($this->getUserId())) {
+        if (!empty($a_user_ids)) {
+            $user_ids = $a_user_ids;
+        }
+        elseif (!empty($this->getUserId())) {
             $user_ids = [$this->getUserId()];
         }
         elseif (!empty($this->getTeamId())) {
@@ -755,5 +757,35 @@ class ilExAutoScoreTask extends ActiveRecord
             $memberStatus->setMark(null);
             $memberStatus->update();
         }
+    }
+
+    /**
+     * Delete the feedback files that belong to this task
+     */
+    public function deleteFeedbackFiles()
+    {
+        $assignment = new ilExAssignment($this->getAssignmentId());
+
+        if (!empty($this->getUserId())) {
+            $user_id = $this->getUserId();
+            $team = null;
+        }
+        elseif (!empty($this->getTeamId())) {
+            $team = new ilExAssignmentTeam($this->getTeamId());
+            $members = $team->getMembers();
+            $user_id = array_pop($members);
+        }
+        else {
+            return;
+        }
+
+        $submission = new ilExSubmission($assignment, $user_id, $team);
+        $feedback_id = $submission->getFeedbackId();
+
+        $fstorage = new ilFSStorageExercise($assignment->getExerciseId(), $assignment->getId());
+        $fstorage->create();
+        $fb_path = $fstorage->getFeedbackPath($feedback_id);
+
+        $fstorage->deleteDirectory($fb_path);
     }
 }
