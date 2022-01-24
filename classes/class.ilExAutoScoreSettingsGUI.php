@@ -253,27 +253,28 @@ class ilExAutoScoreSettingsGUI
                 $form->addItem($taskDuration);
             }
 
-            if (!empty($assTask->getInstantMessage())) {
-                $instantMessage = new ilNonEditableValueGUI($this->plugin->txt('instant_message'), 'exautoscore_instant_message');
-                $instantMessage->setValue($assTask->getInstantMessage());
-                $form->addItem($instantMessage);
-            }
-
             if (!empty($assTask->getInstantStatus())) {
                 $instantStatus = new ilNonEditableValueGUI($this->plugin->txt('instant_status'), 'exautoscore_instant_status', true);
-                $instantStatus->setValue('<span class="ilTag">' . $assTask->getInstantStatus() . '</span>');
+                $instantStatus->setValue('<span class="ilTag">' . ilUtil::prepareFormOutput($assTask->getInstantStatus()) . '</span>');
                 $form->addItem($instantStatus);
             }
 
+            if (!empty($assTask->getInstantMessage())) {
+                $instantMessage = new ilNonEditableValueGUI($this->plugin->txt('instant_message'), 'exautoscore_instant_message', true);
+                $instantMessage->setValue('<pre>' . ilUtil::prepareFormOutput($assTask->getInstantMessage()) . '</pre>');
+                $form->addItem($instantMessage);
+            }
+
+
             if (!empty($assTask->getProtectedStatus())) {
                 $protectedStatus = new ilNonEditableValueGUI($this->plugin->txt('protected_status'), 'exautoscore_protected_status', true);
-                $protectedStatus->setValue('<span class="ilTag">' . $assTask->getProtectedStatus() . '</span>');
+                $protectedStatus->setValue('<span class="ilTag">' . ilUtil::prepareFormOutput($assTask->getProtectedStatus()) . '</span>');
                 $form->addItem($protectedStatus);
             }
 
             if (!empty($assTask->getProtectedFeedbackText())) {
-                $protectedFeedbackText = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_text'), 'exautoscore_protected_feedback_text');
-                $protectedFeedbackText->setValue($assTask->getProtectedFeedbackText());
+                $protectedFeedbackText = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_text'), 'exautoscore_protected_feedback_text', true);
+                $protectedFeedbackText->setValue(nl2br(ilUtil::secureString($assTask->getProtectedFeedbackText())));
                 $form->addItem($protectedFeedbackText);
             }
 

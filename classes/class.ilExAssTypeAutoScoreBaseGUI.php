@@ -312,7 +312,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
             $contents = [];
             if (!empty($task->getInstantStatus())) {
-                $contents[] = '<span class="ilTag">' . $task->getInstantStatus() . '</span>';
+                $contents[] = '<span class="ilTag">' . ilUtil::prepareFormOutput($task->getInstantStatus()) . '</span>';
             }
             if (!empty($task->getInstantMessage())) {
                 $contents[] = '<pre>' . ilUtil::prepareFormOutput($task->getInstantMessage()) . '</pre>';
@@ -340,7 +340,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
 
         if (!empty($task->getProtectedStatus())) {
-            $a_info->addProperty($this->plugin->txt('protected_status'), '<span class="ilTag">' . $task->getProtectedStatus() . '</span>');
+            $a_info->addProperty($this->plugin->txt('protected_status'), '<span class="ilTag">' . ilUtil::prepareFormOutput($task->getProtectedStatus()) . '</span>');
         }
 
         if (!empty($task->getProtectedFeedbackHtml())) {
