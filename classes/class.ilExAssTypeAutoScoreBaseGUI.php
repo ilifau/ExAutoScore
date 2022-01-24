@@ -315,7 +315,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 $contents[] = '<span class="ilTag">' . $task->getInstantStatus() . '</span>';
             }
             if (!empty($task->getInstantMessage())) {
-                $contents[] = '<pre>' . htmlspecialchars($task->getInstantMessage()) . '</pre>';
+                $contents[] = '<pre>' . ilUtil::prepareFormOutput($task->getInstantMessage()) . '</pre>';
             }
             if (!empty($contents)) {
                 $a_info->addProperty($this->plugin->txt("instant_message"), implode('<br />', $contents) );
