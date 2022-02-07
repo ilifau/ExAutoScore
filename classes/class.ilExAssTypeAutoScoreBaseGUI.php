@@ -794,7 +794,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     /**
      * @inheritdoc
      */
-    public function modifySubmissionTableActions(ilExSubmission $a_submission, ilAdvancedSelectionListGUI $a_actions)
+    public function modifySubmissionTableActions(ilExSubmission $a_submission, $a_actions)
     {
         global $DIC;
 

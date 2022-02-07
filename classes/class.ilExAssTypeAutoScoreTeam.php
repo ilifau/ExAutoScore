@@ -51,5 +51,20 @@ class ilExAssTypeAutoScoreTeam extends ilExAssTypeAutoScoreBase implements ilExA
         require_once(__DIR__ . '/class.ilExAutoScoreTeamHandler.php');
         return new ilExAssTypeAutoTeamHandler($assignment, $is_management, $this->plugin);
     }
+
+    /**
+     * @inheritdoc
+     */
+    public function supportsWebDirAccess(): bool {
+        return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getStringIdentifier(): string{
+        return '';
+    }
+
 }
 
