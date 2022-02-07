@@ -33,4 +33,20 @@ class ilExAssTypeAutoScoreUser extends ilExAssTypeAutoScoreBase implements ilExA
     public function isSubmissionAssignedToTeam() {
         return false;
     }
+
+    /**
+     * @inheritdoc
+     */
+    public function supportsWebDirAccess(): bool {
+        return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getStringIdentifier(): string{
+        return '';
+    }
+	
+
 }
