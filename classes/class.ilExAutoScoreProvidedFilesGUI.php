@@ -109,10 +109,7 @@ class ilExAutoScoreProvidedFilesGUI
             $file->setPurpose((string) $params['exautoscore_file_purpose']);
             $file->setPublic((bool) $params['exautoscore_file_public']);
             $file->save();
-
-            if (!empty($params['exautoscore_file_upload']['tmp_name'])) {
-                $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
-            }
+            $file->storeUploadedFile();
 
             $resetAssignment = false;
             $resetTasks = false;
@@ -188,8 +185,7 @@ class ilExAutoScoreProvidedFilesGUI
             $file->setPublic((bool) $params['exautoscore_file_public']);
             $file->update();
 
-            if (!empty($params['exautoscore_file_upload']['tmp_name'])) {
-                $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
+            if ($file->storeUploadedFile()) {
                 $fileChanged = true;
             }
 

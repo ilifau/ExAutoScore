@@ -87,7 +87,7 @@ class ilExAutoScoreSettingsGUI
         $form->setValuesByPost();
         if ($form->checkInput()) {
             $assAuto = ilExAutoScoreAssignment::findOrGetInstance($this->assignment->getId());
-            $assContOld = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
+            $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
 
             $request = $DIC->http()->request();
             $params = $request->getParsedBody();
@@ -95,24 +95,13 @@ class ilExAutoScoreSettingsGUI
             $resetNeeded = false;
             $updateNeeded = false;
 
-            if (!empty($params['exautoscore_docker_upload']['tmp_name'])) {
-                $assCont = new ilExAutoScoreProvidedFile();
-                $assCont->setAssignmentId($this->assignment->getId());
-                $assCont->setDescription((string) $params['exautoscore_docker_description']);
-                $assCont->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_DOCKER);
-                $assCont->setPublic(false);
-                $assCont->save();
+            $assCont->setDescription((string) $params['exautoscore_docker_description']);
+            $assCont->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_DOCKER);
+            $assCont->setPublic(false);
+            $assCont->save();
 
-                if (!$assCont->storeUploadedFile($params['exautoscore_docker_upload']['tmp_name'])) {
-                    $assCont->delete();
-                } else {
-                    $assContOld->delete();
-                    $resetNeeded = true;
-                }
-            }
-            else {
-                $assContOld->setDescription($params['exautoscore_docker_description']);
-                $assContOld->save();
+            if ($assCont->storeUploadedFile()) {
+                $resetNeeded = true;
             }
 
             if ($assAuto->getCommand() != (string) $params['exautoscore_docker_command']) {
@@ -169,11 +158,15 @@ class ilExAutoScoreSettingsGUI
 
         $contUploadFile = new ilFileInputGUI($this->plugin->txt('purpose_docker'), 'exautoscore_docker_upload');
         $info = $this->plugin->txt('purpose_docker_info');
-        if (!empty($assCont->getId())) {
+        if (!empty($assCont->getHash())) {
             $this->ctrl->setParameter($this->parentGUI, 'file_id', $assCont->getId());
             $link = $this->ctrl->getLinkTarget($this->parentGUI, 'downloadProvidedFile');
             $info .= '<p><strong>' . $this->plugin->txt('existing_file') . ':</strong> '
                     .'<a href="' . $link . '">' . $assCont->getFilename() . '</a></p>';
+        }
+        else {
+            // force an upload if no file is provided yet
+            $contUploadFile->setRequired(true);
         }
         $contUploadFile->setInfo($info);
         $form->addItem($contUploadFile);

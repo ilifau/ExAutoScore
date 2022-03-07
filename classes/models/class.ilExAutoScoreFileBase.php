@@ -183,10 +183,12 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
 
     /**
      * Store an uploaded file
-     * @param string $tmpPath   temporary path of the uploaded file
-     * @return bool
+     * Only one file should be uploaded because there is no clean way to identify the related form property
+     * The record kees unchanged, if storing fails (e.g. no file is uploaded),
+     *
+     * @return bool             true, if file ist stored, false if not
      */
-    public function storeUploadedFile($tmpPath)
+    public function storeUploadedFile()
     {
         global $DIC;
 
@@ -196,9 +198,8 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
         }
 
         foreach ($upload->getResults() as $result) {
-            if ( $result->getPath() == $tmpPath && $result->getStatus() == ProcessingStatus::OK) {
-
-                $this->setHash(md5_file($tmpPath));
+            if ($result->getStatus() == ProcessingStatus::OK && is_file($result->getPath())) {
+                $this->setHash(md5_file($result->getPath()));
                 $this->setSize($result->getSize());
                 $this->setFilename($result->getName());
                 $this->save();
@@ -206,6 +207,9 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
                 $upload->moveOneFileTo($result, $this->getStorageDirectory(), Location::STORAGE, $this->getStorageFilename(), true);
                 return true;
             }
+
+            // only process the first uploaded file
+            break;
         }
 
         return false;
