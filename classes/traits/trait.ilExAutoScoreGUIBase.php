@@ -21,7 +21,7 @@ trait ilExAutoScoreGUIBase
     /** @var  ilToolbarGUI $toolbar */
     protected $toolbar;
 
-    /** @var ilTemplate $tpl */
+    /** @var ilGlobalTemplate $tpl */
     protected $tpl;
 
     /** @var ilExAssTypeAutoScoreBaseGUI $parentGUI */

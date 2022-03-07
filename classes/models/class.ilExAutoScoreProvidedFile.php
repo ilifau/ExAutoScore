@@ -157,6 +157,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
         if (empty($records)) {
             $record = new self;
             $record->setPurpose(self::PURPOSE_DOCKER);
+            $record->setAssignmentId($assignment_id);
             return $record;
         }
 

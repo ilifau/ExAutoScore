@@ -99,10 +99,7 @@ class ilExAutoScoreRequiredFilesGUI
             $file->setRequiredEncoding((string) $params['exautoscore_file_encoding']);
             $file->setDescription((string) $params['exautoscore_file_description']);
             $file->save();
-
-            if (!empty($params['exautoscore_file_upload']['tmp_name'])) {
-                $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
-            }
+            $file->storeUploadedFile();
 
             ilExAutoScoreTask::clearExampleTask($this->assignment->getId());
 
@@ -164,10 +161,7 @@ class ilExAutoScoreRequiredFilesGUI
             $file->setRequiredEncoding((string) $params['exautoscore_file_encoding']);
             $file->setDescription((string) $params['exautoscore_file_description']);
             $file->update();
-
-            if (!empty($params['exautoscore_file_upload']['tmp_name'])) {
-                $file->storeUploadedFile($params['exautoscore_file_upload']['tmp_name']);
-            }
+            $file->storeUploadedFile();
 
             ilExAutoScoreTask::clearExampleTask($this->assignment->getId());
 
