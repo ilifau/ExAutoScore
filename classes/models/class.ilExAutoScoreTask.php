@@ -733,6 +733,9 @@ class ilExAutoScoreTask extends ActiveRecord
             $team = new ilExAssignmentTeam($this->getTeamId());
             $user_ids = $team->getMembers();
         }
+        else {
+            $user_ids = [];
+        }
 
         foreach ($user_ids as $user_id) {
             $memberStatus = new ilExAssignmentMemberStatus($this->getAssignmentId(), $user_id);
