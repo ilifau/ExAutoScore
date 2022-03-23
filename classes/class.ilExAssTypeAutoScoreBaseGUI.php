@@ -555,8 +555,19 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             return;
         }
 
-        $request = $DIC->http()->request();
-        $params = $request->getParsedBody();
+        // this is the official way to access uploaded files in ilias 7
+        $upload = $DIC->upload();
+        if (!$upload->hasBeenProcessed()) {
+            $upload->process();
+        }
+
+        // we get the relationship to the required files by the uploaded file name
+        // because the post variable is not provided by the result object
+        // $DIC->http()->request()->getUploadedFiles() would provide it but does no upload processing
+        $results = [];
+        foreach($upload->getResults() as $result) {
+            $results[$result->getName()] = $result;
+        }
 
         //
         // 1. check if all uploaded files are valid
@@ -565,21 +576,26 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         foreach ($requiredFiles as $required) {
             /** @var ilFormPropertyGUI $item */
             $item = $form->getItemByPostVar('exautoscore_file_upload_' . $required->getId());
-            $param = (array) $params['exautoscore_file_upload_' . $required->getId()];
 
-            if (empty($param['tmp_name'])) {
+            if (!isset($results[$required->getFilename()])) {
+                if ($item->getRequired()) {
+                    $item->setAlert($this->plugin->txt('upload_error_filename'));
+                    $errors = true;
+                }
                 continue;
             }
-            elseif ($param['name'] != $required->getFilename()) {
-                $item->setAlert($this->plugin->txt('upload_error_filename'));
+            $result = $results[$required->getFilename()];
+
+            if (!$result->isOK()) {
+                $item->setAlert($this->plugin->txt('upload_error_file'));
                 $errors = true;
             }
-            elseif (!empty($required->getMaxSize()) && filesize($param['tmp_name']) > $required->getMaxSize()) {
+            elseif (!empty($required->getMaxSize()) && $result->getSize() > $required->getMaxSize()) {
                 $item->setAlert($this->plugin->txt('upload_error_max_size'));
                 $errors = true;
             }
             elseif (!empty($required->getRequiredEncoding())) {
-                $data = file_get_contents($param['tmp_name']);
+                $data = file_get_contents($result->getPath());
                 if (!mb_check_encoding($data, $required->getRequiredEncoding())) {
                     $item->setAlert($this->plugin->txt('upload_error_encoding'));
                     $errors = true;
@@ -604,9 +620,16 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
         foreach ($requiredFiles as $requiredFile) {
             $required[$requiredFile->getFilename()] = true;
-            $param = (array) $params['exautoscore_file_upload_' . $requiredFile->getId()];
-            if (!empty($param['tmp_name'])) {
-                if ($this->submission->uploadFile($param)) {
+
+            if (isset($results[$requiredFile->getFilename()])) {
+                $result = $results[$requiredFile->getFilename()];
+
+                // simulate $_FILES entry for the uploadFile() function
+                if ($this->submission->uploadFile([
+                    'name' => $result->getName(),
+                    'size' => $result->getSize(),
+                    'tmp_name' =>$result->getPath()
+                ])) {
                     $new[] = $requiredFile;
                 }
                 else {
