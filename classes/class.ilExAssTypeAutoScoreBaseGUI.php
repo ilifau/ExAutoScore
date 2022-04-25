@@ -815,36 +815,29 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
 
     /**
-     * @inheritdoc
+     * Modify the actions available in a submission table under submissions and grades
+     * @param ilExSubmission             $a_submission
+     * @param <\ILIAS\UI\Component\Button\Shy|\ILIAS\UI\Component\Divider\Horizontal|\ILIAS\UI\Component\Link\Standard>[] $a_items
      */
-    public function modifySubmissionTableActions(ilExSubmission $a_submission, $a_actions)
+    public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_actions)
     {
         global $DIC;
 
         $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
         if (!empty($task->getProtectedFeedbackHtml())) {
 
-            $modal_id = 'exautoscore_task_' . $task->getId();
+            $factory = $DIC->ui()->factory();
+            $renderer = $DIC->ui()->renderer();
 
-            $modal = ilModalGUI::getInstance();
-            $modal->setId($modal_id);
-            $modal->setType(ilModalGUI::TYPE_LARGE);
-            $modal->setBody(ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
-            $modal->setHeading($this->plugin->txt('protected_feedback_html'));
+            $page = $factory->modal()->lightboxTextPage(
+                ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()),
+                $this->plugin->txt('protected_feedback_html'));
+            $modal = $factory->modal()->lightbox([$page]);
 
-            $this->tpl->addLightbox($modal->getHTML(), 'exautoscore_lightbox_' . $task->getId()) ;
+            $this->tpl->addLightbox($renderer->render($modal), 'exautoscore_lightbox_' . $task->getId());
 
-            $a_actions->addItem(
-                $this->plugin->txt("protected_feedback_html"),
-                "",
-                "#",
-                "",
-                "",
-                "",
-                "",
-                false,
-                "$('#$modal_id').modal('show')"
-            );
+            $a_actions[] = $factory->button()->shy($this->plugin->txt("protected_feedback_html"), '')
+                ->withOnClick($modal->getShowSignal());
         }
     }
 
