@@ -494,7 +494,7 @@ class ilExAutoScoreConnector
 
         try {
             $mail = new ilMail(ANONYMOUS_USER_ID);
-            $mail->sendMail($scoreAss->getFailureMails(), '', '', $subject, $body, [], ['system']);
+            $mail->sendMail($scoreAss->getFailureMails(), '', '', $subject, $body, [], false);
         }
         catch (Exception $e) {
             return;
