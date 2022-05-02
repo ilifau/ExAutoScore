@@ -253,7 +253,13 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $a_info->addProperty($this->lng->txt("exc_files_returned"), implode(', ', $links));
         }
 
-        if ($a_submission->canSubmit()) {
+        // fau: exStatement - suppress submission button
+        if($a_submission->getAssignment()->isAuthorshipStatementRequired()
+            && !$a_submission->getAssignment()->getMemberStatus()->hasAuthorshipStatement()) {
+            $a_info->addProperty('', '<b>' .$this->lng->txt('exc_msg_authorship_statement_required') . '</b>');
+        }
+        // fau.
+        elseif ($a_submission->canSubmit()) {
 
             $missing = [];
             foreach ($requiredFiles as $requiredFile) {
@@ -425,6 +431,12 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         if (!$this->submission->canSubmit()) {
             ilUtil::sendInfo($this->lng->txt("exercise_time_over"));
         }
+        // fau: exStatement - suppress submission screen
+        elseif ($this->submission->getAssignment()->isAuthorshipStatementRequired()
+            && !$this->submission->getAssignment()->getMemberStatus()->hasAuthorshipStatement()) {
+            ilUtil::sendFailure($this->lng->txt('exc_msg_authorship_statement_required'));
+        }
+        // fau.
         else {
             $button = ilLinkButton::getInstance();
             $button->setCaption($this->plugin->txt('delete_submission'), false);
@@ -543,6 +555,15 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         global $DIC;
 
         $this->handleSubmissionTabs($this->tabs);
+
+        // fau: exStatement - suppress submission screen
+        if ($this->submission->getAssignment()->isAuthorshipStatementRequired()
+            && !$this->submission->getAssignment()->getMemberStatus()->hasAuthorshipStatement()) {
+           ilUtil::sendFailure($this->lng->txt('exc_msg_authorship_statement_required'));
+           return;
+        }
+        // fau.
+
 
         $requiredFiles = ilExAutoScoreRequiredFile::getForAssignment($this->assignment->getId());
 
