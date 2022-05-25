@@ -77,6 +77,6 @@ abstract class ilExAssTypeAutoScoreBase implements ilExAssignmentTypeInterface
      * @inheritdoc
      */
     public function isManualGradingSupported($a_ass): bool {
-        return ilObjExerciseAccess::checkExtendedGradingAccess($a_ass->getExerciseId(), false);
+        return true;
     }
 }
