@@ -222,7 +222,6 @@ class ilExAutoScoreProvidedFilesGUI
         $fileUpload = new ilFileInputGUI($this->plugin->txt('file_upload'), 'exautoscore_file_upload');
         if (empty($file->getId())) {
             $fileUpload->setRequired(true);
-            $fileUpload->setInfo($this->plugin->txt('purpose_support_info'));
         }
         else {
             $this->ctrl->setParameter($this->parentGUI, 'file_id', $file->getId());
