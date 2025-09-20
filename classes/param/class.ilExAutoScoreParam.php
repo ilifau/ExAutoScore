@@ -149,7 +149,7 @@ class ilExAutoScoreParam
                 $item = new ilNumberInputGUI($title, $postvar);
                 $item->allowDecimals(false);
                 $item->setSize(10);
-                $item->setValue($this->value);
+                $item->setValue($this->value !== null ? (string)$this->value : null);
                 break;
 
             case self::TYPE_BOOLEAN:

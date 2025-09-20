@@ -38,7 +38,7 @@ trait ilExAutoScoreGUIBase
         $this->lng = $DIC->language();
         $this->tabs = $DIC->tabs();
         $this->toolbar = $DIC->toolbar();
-        $this->tpl = $DIC['tpl'];
+        $this->tpl = $DIC->ui()->mainTemplate();
     }
 
     /**

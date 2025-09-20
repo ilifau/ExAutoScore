@@ -7,6 +7,8 @@ declare(strict_types=1);
  * ExAutoScore configuration user interface class
  *
  * @ilCtrl_Calls: ilExAutoScoreConfigGUI: ilPropertyFormGUI
+ * @ilCtrl_isCalledBy ilExAutoScoreConfigGUI: ilObjComponentSettingsGUI
+ *
  *
  * @author Fred Neumann <fred.neumann@fau.de>
  */
