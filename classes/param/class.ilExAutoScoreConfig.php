@@ -32,7 +32,9 @@ class ilExAutoScoreConfig
 	public function __construct($a_plugin_object = "")
 	{
 		$this->plugin = $a_plugin_object;
-		$this->plugin->includeClass('param/class.ilExAutoScoreParam.php');
+        if (!class_exists('ilExAutoScoreParam')) {
+            require_once(__DIR__ . '/class.ilExAutoScoreParam.php');
+        }
 
 		/** @var ilExAutoScoreParam[] $params */
 		$params = array();

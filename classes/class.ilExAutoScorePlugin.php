@@ -21,7 +21,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * and must correspond to plugins subdirectory name.
      * @return    string    Plugin Name
      */
-    function getPluginName() {
+    function getPluginName(): string {
         return "ExAutoScore";
     }
 
@@ -29,6 +29,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * Uninstall custom data of this plugin
      */
     protected function uninstallCustom(): void
+    {
         global $DIC;
         $db = $DIC->database();
 
@@ -65,7 +66,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     /**
      * Get the ids of the available assignment types
      */
-    public function getAssignmentTypeIds(): int {
+    public function getAssignmentTypeIds(): array {
         return [101, 102];
     }
 
@@ -84,6 +85,9 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
             case 102:
                 require_once(__DIR__ . '/class.ilExAssTypeAutoScoreTeam.php');
                 return new ilExAssTypeAutoScoreTeam($this);
+            
+            default:
+                return null;
         }
     }
 
@@ -101,14 +105,15 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
             case 102:
                 require_once(__DIR__ . '/class.ilExAssTypeAutoScoreTeamGUI.php');
                 return new ilExAssTypeAutoScoreTeamGUI($this);
+            default:
+                return null;
         }
     }
 
     /**
      * Get the class names of the assignment type GUIs
-     * @return string[] (indexed by type id)
      */
-    public function getAssignmentTypeGuiClassNames(): string {
+    public function getAssignmentTypeGuiClassNames(): array {
         return [
             101 => 'ilExAssTypeAutoScoreUserGUI',
             102 => 'ilExAssTypeAutoScoreTeamGUI'
