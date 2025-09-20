@@ -1,31 +1,33 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 trait ilExAutoScoreGUIBase
 {
     /** @var ilObjUser */
-    protected $user;
+    protected mixed $user;
 
     /** @var  ilAccessHandler $access */
-    protected $access;
+    protected mixed $access;
 
     /** @var ilCtrl $ctrl */
-    protected $ctrl;
+    protected mixed $ctrl;
 
     /** @var  ilLanguage $lng */
-    protected $lng;
+    protected mixed $lng;
 
     /** @var ilTabsGUI */
-    protected $tabs;
+    protected mixed $tabs;
 
     /** @var  ilToolbarGUI $toolbar */
-    protected $toolbar;
+    protected mixed $toolbar;
 
     /** @var ilGlobalTemplate $tpl */
-    protected $tpl;
+    protected mixed $tpl;
 
     /** @var ilExAssTypeAutoScoreBaseGUI $parentGUI */
-    protected $parentGUI;
+    protected mixed $parentGUI;
 
     protected function initGlobals()
     {
@@ -43,7 +45,7 @@ trait ilExAutoScoreGUIBase
      * Get the parent GUI object
      * @return ilExAssTypeAutoScoreBaseGUI
      */
-    public function getParentGUI() {
+    public function getParentGUI(): mixed {
         return $this->parentGUI;
     }
 }

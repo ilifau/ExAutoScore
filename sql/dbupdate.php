@@ -1,5 +1,6 @@
 <#1>
 <?php
+
     /**
      * Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg
      * GPLv3, see docs/LICENSE
@@ -17,6 +18,7 @@
 ?>
 <#2>
 <?php
+
     $fields = array(
         'id' => array(
             'notnull' => '1',
@@ -60,6 +62,7 @@
 ?>
 <#3>
 <?php
+
     $fields = array(
         'id' => array(
             'notnull' => '1',
@@ -117,6 +120,7 @@
 ?>
 <#4>
 <?php
+
     $fields = array(
         'id' => array(
             'notnull' => '1',
@@ -173,6 +177,7 @@
 ?>
 <#5>
 <?php
+
     $fields = array(
         'id' => array(
             'notnull' => '1',
@@ -274,6 +279,7 @@
 ?>
 <#6>
 <?php
+
     if (!$ilDB->tableExists('exautoscore_config'))
     {
         $fields = array(
@@ -295,6 +301,7 @@
 ?>
 <#7>
 <?php
+
 if (!$ilDB->tableColumnExists('exautoscore_assignment', 'failure_mails'))
 {
     $attributes = array(

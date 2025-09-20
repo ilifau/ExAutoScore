@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 
 class ilExAutoScoreAssignment extends ActiveRecord
 {
@@ -17,7 +19,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_is_notnull true
      * @con_length     4
      */
-    protected $id;
+    protected mixed $id;
 
     /**
      * @var int
@@ -37,7 +39,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_length    50
      * @con_is_notnull false
      */
-    protected $uuid;
+    protected mixed $uuid;
 
 
     /**
@@ -48,7 +50,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_length    250
      * @con_is_notnull false
      */
-    protected $command;
+    protected mixed $command;
 
 
     /**
@@ -58,7 +60,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_fieldtype  float
      * @con_is_notnull false
      */
-    protected $min_points;
+    protected mixed $min_points;
 
 
     /**
@@ -69,7 +71,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_length    250
      * @con_is_notnull false
      */
-    protected $failure_mails;
+    protected mixed $failure_mails;
 
 
 
@@ -79,7 +81,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @param array $add_constructor_args
      * @return self
      */
-    public static function findOrGetInstance($primary_key, array $add_constructor_args = array())
+    public static function findOrGetInstance($primary_key, array $add_constructor_args = array(): self)
     {
         /** @var self $record */
         $record =  parent::findOrGetInstance($primary_key, $add_constructor_args);
@@ -103,7 +105,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
     /**
      * @return int
      */
-    public function getId()
+    public function getId(): int
     {
         return $this->id;
     }
@@ -111,7 +113,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
     /**
      * @param int $id
      */
-    public function setId(int $id)
+    public function setId(int $id): void
     {
         $this->id = $id;
 
@@ -122,7 +124,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
     /**
      * @return int
      */
-    public function getExerciseId()
+    public function getExerciseId(): int
     {
         return $this->exercise_id;
     }
@@ -130,7 +132,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
     /**
      * @param int $exercise_id
      */
-    public function setExerciseId(int $exercise_id)
+    public function setExerciseId(int $exercise_id): void
     {
         $this->exercise_id = $exercise_id;
     }
@@ -146,7 +148,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
     /**
      * @param string $uuid
      */
-    public function setUuid(string $uuid)
+    public function setUuid(string $uuid): void
     {
         $this->uuid = $uuid;
     }
@@ -162,7 +164,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
     /**
      * @param string $command
      */
-    public function setCommand(string $command)
+    public function setCommand(string $command): void
     {
         $this->command = $command;
     }
@@ -179,7 +181,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
     /**
      * @param float $min_points
      */
-    public function setMinPoints(float $min_points)
+    public function setMinPoints(float $min_points): void
     {
         $this->min_points = $min_points;
     }
@@ -196,7 +198,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
     /**
      * @param string $failure_mails
      */
-    public function setFailureMails(string $failure_mails)
+    public function setFailureMails(string $failure_mails): void
     {
         $this->failure_mails = $failure_mails;
     }
@@ -206,7 +208,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * Save the record
      * ensure the matching exercise id being saved
      */
-    public function store() {
+    public function store(): void {
         if (empty($this->getExerciseId())) {
             $ass = new ilExAssignment($this->getId());
             $this->setExerciseId($ass->getExerciseId());

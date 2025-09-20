@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 /**
@@ -7,7 +9,7 @@
 abstract class ilExAssTypeAutoScoreBase implements ilExAssignmentTypeInterface
 {
     /** @var ilExAutoScorePlugin */
-    protected $plugin;
+    protected mixed $plugin;
 
     /**
      * Constructor
@@ -22,7 +24,7 @@ abstract class ilExAssTypeAutoScoreBase implements ilExAssignmentTypeInterface
     /**
      * @inheritdoc
      */
-    public function isActive()
+    public function isActive(): bool
     {
         return true;
     }
@@ -30,12 +32,12 @@ abstract class ilExAssTypeAutoScoreBase implements ilExAssignmentTypeInterface
     /**
      * @inheritdoc
      */
-    abstract public function usesTeams();
+    abstract public function usesTeams(): bool;
 
     /**
      * @inheritdoc
      */
-    public function hasFiles()
+    public function hasFiles(): bool
     {
         return true;
     }
@@ -43,7 +45,7 @@ abstract class ilExAssTypeAutoScoreBase implements ilExAssignmentTypeInterface
     /**
      * @inheritdoc
      */
-    public function usesFileUpload()
+    public function usesFileUpload(): bool
     {
         return true;
     }
@@ -51,25 +53,25 @@ abstract class ilExAssTypeAutoScoreBase implements ilExAssignmentTypeInterface
     /**
      * @inheritdoc
      */
-    abstract public function getTitle();
+    abstract public function getTitle(): string;
 
     /**
      * @inheritdoc
      */
-    public function getSubmissionType()
+        public function getSubmissionType(): string
     {
-        return ilExSubmission::TYPE_FILE;
+        return "File";  // ILIAS 9 expects a string identifier
     }
 
     /**
      * @inheritdoc
      */
-    abstract public function isSubmissionAssignedToTeam();
+    abstract public function isSubmissionAssignedToTeam(): bool;
 
     /**
      * @inheritdoc
      */
-    public function cloneSpecificProperties(ilExAssignment $source, ilExAssignment $target)
+    public function cloneSpecificProperties(ilExAssignment $source, ilExAssignment $target): void
     {
     }
 

@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 require_once "./Modules/Exercise/AssignmentTypes/classes/interface.ilExAssignmentTypeTeamHandlerInterface.php";
@@ -12,13 +14,13 @@ require_once (__DIR__ . '/class.ilExAutoScoreConnector.php');
 class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterface
 {
     /** @var ilExAssignment */
-    protected $assignment;
+    protected mixed $assignment;
 
     /** @var ilExAutoScorePlugin */
-    protected $plugin;
+    protected mixed $plugin;
 
     /** @var ilFSStorageExercise */
-    protected $storage;
+    protected mixed $storage;
 
     /** @var bool */
     protected $is_management = false;

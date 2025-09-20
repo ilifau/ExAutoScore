@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
 
@@ -12,10 +14,10 @@ class ilExAutoScoreRequiredFilesGUI
     use ilExAutoScoreGUIBase;
 
     /** @var ilExAutoScorePlugin $plugin */
-    public $plugin;
+    public mixed $plugin;
 
     /** @var ilExAssignment */
-    protected $assignment;
+    protected mixed $assignment;
 
     /**
      * Constructor
@@ -31,7 +33,7 @@ class ilExAutoScoreRequiredFilesGUI
     /**
      * Execute command
      */
-    public function executeCommand()
+    public function executeCommand(): void
     {
         $next_class = $this->ctrl->getNextClass($this);
         $cmd = $this->ctrl->getCmd('listFiles');
@@ -182,7 +184,7 @@ class ilExAutoScoreRequiredFilesGUI
      * @param ilExAutoScoreRequiredFile $file
      * @return ilPropertyFormGUI
      */
-    protected function initFileForm($file)
+    protected function initFileForm($file): ilPropertyFormGUI
     {
         $form = new ilPropertyFormGUI();
         $form->setTitle($this->plugin->txt(empty($file->getId()) ? 'add_file' : 'edit_file'));
@@ -293,7 +295,7 @@ class ilExAutoScoreRequiredFilesGUI
     /**
      * Set the toolbar for the record list
      */
-    protected function setListToolbar() {
+    protected function setListToolbar(): void {
 
         $button = ilLinkButton::getInstance();
         $button->setCaption($this->plugin->txt('add_file'), false);
@@ -311,7 +313,7 @@ class ilExAutoScoreRequiredFilesGUI
     /**
      * Set the toolbar for a record view
      */
-    protected function setFileToolbar()
+    protected function setFileToolbar(): void
     {
         $button = ilLinkButton::getInstance();
         $button->setCaption('« ' . $this->plugin->txt('back_to_list'), false);

@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 class ilExAutoScoreTask extends ActiveRecord
@@ -20,7 +22,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length     4
      * @con_sequence   true
      */
-    protected $id;
+    protected mixed $id;
 
     /**
      * @var int
@@ -30,7 +32,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull true
      * @con_length     4
      */
-    protected $assignment_id;
+    protected mixed $assignment_id;
 
 
     /**
@@ -41,7 +43,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    50
      * @con_is_notnull false
      */
-    protected $uuid;
+    protected mixed $uuid;
 
 
     /**
@@ -52,7 +54,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull false
      * @con_length     4
      */
-    protected $user_id;
+    protected mixed $user_id;
 
     /**
      * @var int
@@ -62,7 +64,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull false
      * @con_length     4
      */
-    protected $team_id;
+    protected mixed $team_id;
 
 
     /**
@@ -72,7 +74,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_fieldtype  timestamp
      * @con_is_notnull false
      */
-    protected $submit_time;
+    protected mixed $submit_time;
 
 
     /**
@@ -83,7 +85,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull false
      * @con_length     4
      */
-    protected $submit_success;
+    protected mixed $submit_success;
 
 
     /**
@@ -94,7 +96,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    250
      * @con_is_notnull false
      */
-    protected $submit_message;
+    protected mixed $submit_message;
 
 
     /**
@@ -105,7 +107,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull false
      * @con_length     4
      */
-    protected $task_returncode;
+    protected mixed $task_returncode;
 
 
     /**
@@ -116,7 +118,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull false
      * @con_length     4
      */
-    protected $task_duration;
+    protected mixed $task_duration;
 
 
     /**
@@ -126,7 +128,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_fieldtype  timestamp
      * @con_is_notnull false
      */
-    protected $return_time;
+    protected mixed $return_time;
 
 
     /**
@@ -136,7 +138,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_fieldtype  float
      * @con_is_notnull false
      */
-    protected $return_points;
+    protected mixed $return_points;
 
 
     /**
@@ -147,7 +149,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    4000
      * @con_is_notnull false
      */
-    protected $instant_message;
+    protected mixed $instant_message;
 
 
     /**
@@ -158,7 +160,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    10
      * @con_is_notnull false
      */
-    protected $instant_status;
+    protected mixed $instant_status;
 
 
     /**
@@ -169,7 +171,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    10
      * @con_is_notnull false
      */
-    protected $protected_status;
+    protected mixed $protected_status;
 
     /**
      * @var string
@@ -179,7 +181,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    4000
      * @con_is_notnull false
      */
-    protected $protected_feedback_text;
+    protected mixed $protected_feedback_text;
 
 
     /**
@@ -189,14 +191,14 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_fieldtype  clob
      * @con_is_notnull false
      */
-    protected $protected_feedback_html;
+    protected mixed $protected_feedback_html;
 
 
     /**
      * Wrapper to declare the return type
      * @return static
      */
-    public static function findOrGetInstance($primary_key, array $add_constructor_args = array())
+    public static function findOrGetInstance($primary_key, array $add_constructor_args = array(): self)
     {
         /** @var static $record */
         $record =  parent::findOrGetInstance($primary_key, $add_constructor_args);
@@ -209,7 +211,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @return bool
      * @throws Exception
      */
-    public static function hasTasks($assignment_id)
+    public static function hasTasks($assignment_id): bool
     {
         $exists = self::getCollection()
                       ->where(['assignment_id' => $assignment_id])
@@ -224,7 +226,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @return bool
      * @throws Exception
      */
-    public static function hasSubmissions($assignment_id)
+    public static function hasSubmissions($assignment_id): bool
     {
         $exists = self::getCollection()
                        ->where(['assignment_id' => $assignment_id])
@@ -277,7 +279,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @param int $assignment_id
      * @return static[]
      */
-    public static function getForAssignment($assignment_id)
+    public static function getForAssignment($assignment_id): array
     {
         $records = self::getCollection()
                        ->where(['assignment_id' => $assignment_id])
@@ -290,7 +292,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @param ilExSubmission $a_submission
      * @return self
      */
-    public static function getSubmissionTask(ilExSubmission $a_submission)
+    public static function getSubmissionTask(ilExSubmission $a_submission): self
     {
         if ($a_submission->getTeam() instanceof ilExAssignmentTeam) {
 
@@ -310,7 +312,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @param int $a_user_id
      * @return self
      */
-    public static function getUserTask($a_assignment_id, $a_user_id)
+    public static function getUserTask($a_assignment_id, $a_user_id): self
     {
         $records = self::getCollection()
                        ->where(['assignment_id' => $a_assignment_id])
@@ -334,7 +336,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @param int $a_team_id
      * @return self
      */
-    public static function getTeamTask($a_assignment_id, $a_team_id)
+    public static function getTeamTask($a_assignment_id, $a_team_id): self
     {
         $records = self::getCollection()
                        ->where(['assignment_id' => $a_assignment_id])
@@ -357,7 +359,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @param int $assignment_id
      * @return static
      */
-    public static function getExampleTask($assignment_id)
+    public static function getExampleTask($assignment_id): self
     {
         $records = self::getCollection()
                         ->where(['assignment_id' => $assignment_id])
@@ -392,7 +394,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @param int $assignment_id
      * @return static
      */
-    public static function getByUuid($uuid)
+    public static function getByUuid($uuid): ?self
     {
         $records = self::getCollection()
                        ->where(['uuid' => $uuid])
@@ -427,7 +429,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return int
      */
-    public function getId()
+    public function getId(): int
     {
         return (int) $this->id;
     }
@@ -435,7 +437,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param int $id
      */
-    public function setId(int $id)
+    public function setId(int $id): void
     {
         $this->id = $id;
     }
@@ -451,7 +453,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param int $id
      */
-    public function setAssignmentId(int $id)
+    public function setAssignmentId(int $id): void
     {
         $this->assignment_id = $id;
     }
@@ -459,7 +461,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return string
      */
-    public function getUuid()
+    public function getUuid(): mixed
     {
         return $this->uuid;
     }
@@ -467,7 +469,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param string $uuid
      */
-    public function setUuid($uuid)
+    public function setUuid($uuid): void
     {
         $this->uuid = $uuid;
     }
@@ -475,7 +477,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return int
      */
-    public function getUserId()
+    public function getUserId(): int
     {
         return $this->user_id;
     }
@@ -483,7 +485,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param int $user_id
      */
-    public function setUserId(int $user_id)
+    public function setUserId(int $user_id): void
     {
         $this->user_id = $user_id;
     }
@@ -491,7 +493,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return int
      */
-    public function getTeamId()
+    public function getTeamId(): int
     {
         return $this->team_id;
     }
@@ -499,7 +501,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param int $team_id
      */
-    public function setTeamId($team_id)
+    public function setTeamId($team_id): void
     {
         $this->team_id = $team_id;
     }
@@ -507,7 +509,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return string
      */
-    public function getSubmitTime()
+    public function getSubmitTime(): mixed
     {
         return $this->submit_time;
     }
@@ -515,7 +517,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param string $submit_time
      */
-    public function setSubmitTime( $submit_time)
+    public function setSubmitTime( $submit_time): void
     {
         $this->submit_time = $submit_time;
     }
@@ -523,7 +525,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return bool
      */
-    public function getSubmitSuccess()
+    public function getSubmitSuccess(): mixed
     {
         return $this->submit_success;
     }
@@ -531,7 +533,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param bool $submit_success
      */
-    public function setSubmitSuccess( $submit_success)
+    public function setSubmitSuccess( $submit_success): void
     {
         $this->submit_success = $submit_success;
     }
@@ -539,7 +541,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return string
      */
-    public function getSubmitMessage()
+    public function getSubmitMessage(): mixed
     {
         return  $this->submit_message;
     }
@@ -547,7 +549,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param int $submit_message
      */
-    public function setSubmitMessage( $submit_message)
+    public function setSubmitMessage( $submit_message): void
     {
         $this->submit_message = $submit_message;
     }
@@ -555,7 +557,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return int
      */
-    public function getReturnCode()
+    public function getReturnCode(): mixed
     {
         return $this->task_returncode;
     }
@@ -563,7 +565,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param int $task_returncode
      */
-    public function setReturnCode($task_returncode)
+    public function setReturnCode($task_returncode): void
     {
         $this->task_returncode = $task_returncode;
     }
@@ -571,7 +573,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return float
      */
-    public function getTaskDuration()
+    public function getTaskDuration(): mixed
     {
         return $this->task_duration;
     }
@@ -579,7 +581,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param float $task_duration
      */
-    public function setTaskDuration($task_duration)
+    public function setTaskDuration($task_duration): void
     {
         $this->task_duration = $task_duration;
     }
@@ -587,7 +589,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return string
      */
-    public function getReturnTime()
+    public function getReturnTime(): mixed
     {
         return $this->return_time;
     }
@@ -595,7 +597,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param string $return_time
      */
-    public function setReturnTime($return_time)
+    public function setReturnTime($return_time): void
     {
         $this->return_time = $return_time;
     }
@@ -603,7 +605,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return float
      */
-    public function getReturnPoints()
+    public function getReturnPoints(): mixed
     {
         return $this->return_points;
     }
@@ -611,7 +613,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param float $return_points
      */
-    public function setReturnPoints($return_points)
+    public function setReturnPoints($return_points): void
     {
         $this->return_points = $return_points;
     }
@@ -619,7 +621,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return string
      */
-    public function getInstantMessage()
+    public function getInstantMessage(): mixed
     {
         return $this->instant_message;
     }
@@ -627,7 +629,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param string $instant_message
      */
-    public function setInstantMessage($instant_message)
+    public function setInstantMessage($instant_message): void
     {
         $this->instant_message = $instant_message;
     }
@@ -635,7 +637,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return string
      */
-    public function getInstantStatus()
+    public function getInstantStatus(): mixed
     {
         return $this->instant_status;
     }
@@ -643,7 +645,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param string $instant_status
      */
-    public function setInstantStatus($instant_status)
+    public function setInstantStatus($instant_status): void
     {
         $this->instant_status = $instant_status;
     }
@@ -651,7 +653,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return string
      */
-    public function getProtectedStatus()
+    public function getProtectedStatus(): mixed
     {
         return $this->protected_status;
     }
@@ -659,7 +661,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param string $protected_status
      */
-    public function setProtectedStatus($protected_status)
+    public function setProtectedStatus($protected_status): void
     {
         $this->protected_status = $protected_status;
     }
@@ -667,7 +669,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return string
      */
-    public function getProtectedFeedbackText()
+    public function getProtectedFeedbackText(): mixed
     {
         return $this->protected_feedback_text;
     }
@@ -675,7 +677,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param string $protected_feedback_text
      */
-    public function setProtectedFeedbackText($protected_feedback_text)
+    public function setProtectedFeedbackText($protected_feedback_text): void
     {
         $this->protected_feedback_text = $protected_feedback_text;
     }
@@ -683,7 +685,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @return string
      */
-    public function getProtectedFeedbackHtml()
+    public function getProtectedFeedbackHtml(): mixed
     {
         return $this->protected_feedback_html;
     }
@@ -691,7 +693,7 @@ class ilExAutoScoreTask extends ActiveRecord
     /**
      * @param string $protected_feedback_html
      */
-    public function setProtectedFeedbackHtml($protected_feedback_html)
+    public function setProtectedFeedbackHtml($protected_feedback_html): void
     {
         $this->protected_feedback_html = $protected_feedback_html;
     }

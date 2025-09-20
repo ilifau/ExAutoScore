@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 require_once(__DIR__ . '/class.ilExAutoScoreFileBase.php');
@@ -26,7 +28,7 @@ class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
      * @con_length    2000
      * @con_is_notnull false
      */
-    protected $description;
+    protected mixed $description;
 
 
     /**
@@ -37,7 +39,7 @@ class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
      * @con_length    250
      * @con_is_notnull false
      */
-    protected $required_encoding;
+    protected mixed $required_encoding;
 
 
     /**
@@ -48,13 +50,13 @@ class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
      * @con_length     4
      * @con_is_notnull false
      */
-    protected $max_size;
+    protected mixed $max_size;
 
 
     /**
      * Get the selectable encoding options
      */
-    public static function getEncodingOptions() {
+    public static function getEncodingOptions(): array {
         return [
             '' => '',
             'ASCII' => 'ASCII',
@@ -79,7 +81,7 @@ class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
     /**
      * @param string $description
      */
-    public function setDescription(string $description)
+    public function setDescription(string $description): void
     {
         $this->description = $description;
     }
@@ -95,7 +97,7 @@ class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
     /**
      * @param string $encoding
      */
-    public function setRequiredEncoding(string $encoding)
+    public function setRequiredEncoding(string $encoding): void
     {
         $this->required_encoding = $encoding;
     }
@@ -111,7 +113,7 @@ class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
     /**
      * @param int $max_size
      */
-    public function setMaxSize(int $max_size)
+    public function setMaxSize(int $max_size): void
     {
         $this->max_size = $max_size;
     }

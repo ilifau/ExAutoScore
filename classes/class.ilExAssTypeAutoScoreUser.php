@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 require_once(__DIR__ . '/class.ilExAssTypeAutoScoreBase.php');
@@ -9,20 +11,20 @@ require_once(__DIR__ . '/class.ilExAssTypeAutoScoreBase.php');
 class ilExAssTypeAutoScoreUser extends ilExAssTypeAutoScoreBase implements ilExAssignmentTypeInterface
 {
     /** @var ilExAutoScorePlugin */
-    protected $plugin;
+    protected mixed $plugin;
 
 
     /**
      * @inheritdoc
      */
-    public function getTitle() {
+    public function getTitle(): string {
         return $this->plugin->txt('type_autoscore_user');
     }
 
     /**
      * @inheritdoc
      */
-    public function usesTeams() {
+    public function usesTeams(): bool {
         return false;
     }
 
@@ -30,7 +32,7 @@ class ilExAssTypeAutoScoreUser extends ilExAssTypeAutoScoreBase implements ilExA
     /**
      * @inheritdoc
      */
-    public function isSubmissionAssignedToTeam() {
+    public function isSubmissionAssignedToTeam(): bool {
         return false;
     }
 
