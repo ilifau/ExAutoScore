@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 require_once(__DIR__ . '/class.ilExAutoScoreFileBase.php');
@@ -47,7 +49,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * @con_length    10
      * @con_is_notnull false
      */
-    protected $purpose;
+    protected mixed $purpose;
 
 
     /**
@@ -58,7 +60,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * @con_length    250
      * @con_is_notnull false
      */
-    protected $description;
+    protected mixed $description;
 
     /**
      * @var bool
@@ -68,7 +70,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * @con_length    4
      * @con_is_notnull false
      */
-    protected $is_public;
+    protected mixed $is_public;
 
 
     /**
@@ -82,7 +84,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
     /**
      * @param string $purpose
      */
-    public function setPurpose(string $purpose)
+    public function setPurpose(string $purpose): void
     {
         $this->purpose = $purpose;
     }
@@ -119,7 +121,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
     /**
      * @param string $description
      */
-    public function setDescription(string $description)
+    public function setDescription(string $description): void
     {
         $this->description = $description;
     }
@@ -128,7 +130,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
     /**
      * @return bool
      */
-    public function isPublic()
+    public function isPublic(): bool
     {
         return $this->is_public;
     }
@@ -136,7 +138,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
     /**
      * @param bool $is_public
      */
-    public function setPublic(bool $is_public)
+    public function setPublic(bool $is_public): void
     {
         $this->is_public = $is_public;
     }
@@ -147,7 +149,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * @param int $assignment_id
      * @return self
      */
-    public static function getAssignmentDocker($assignment_id)
+    public static function getAssignmentDocker($assignment_id): self
     {
         $records = self::getCollection()
             ->where(['assignment_id' => $assignment_id])
@@ -169,7 +171,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * @param int $assignment_id
      * @return self[]
      */
-    public static function getAssignmentSupportFiles($assignment_id)
+    public static function getAssignmentSupportFiles($assignment_id): array
     {
         $records = self::getCollection()
                        ->where(['assignment_id' => $assignment_id])
@@ -184,7 +186,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * @param int $assignment_id
      * @return self[]
      */
-    public static function getAssignmentSubmitFiles($assignment_id)
+    public static function getAssignmentSubmitFiles($assignment_id): array
     {
         $records = self::getCollection()
                        ->where(['assignment_id' => $assignment_id])
@@ -199,7 +201,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * @param int $assignment_id
      * @return self[]
      */
-    public static function getAssignmentPublicFiles($assignment_id)
+    public static function getAssignmentPublicFiles($assignment_id): array
     {
         $records = self::getCollection()
                        ->where(['assignment_id' => $assignment_id])

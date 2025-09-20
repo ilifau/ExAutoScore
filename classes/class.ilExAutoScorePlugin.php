@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 require_once ('./Modules/Exercise/classes/class.ilAssignmentHookPlugin.php');
@@ -8,7 +10,7 @@ require_once ('./Modules/Exercise/classes/class.ilAssignmentHookPlugin.php');
 class ilExAutoScorePlugin extends ilAssignmentHookPlugin
 {
     /** @var ilExAutoScoreConfig */
-    protected $config;
+    protected mixed $config;
 
     /** @var self */
     protected static $instance;
@@ -26,8 +28,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     /**
      * Uninstall custom data of this plugin
      */
-    protected function uninstallCustom()
-    {
+    protected function uninstallCustom(): void
         global $DIC;
         $db = $DIC->database();
 
@@ -39,7 +40,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * Get the plugin instance
      * @return ilExAutoScorePlugin
      */
-    public static function getInstance() {
+    public static function getInstance(): self {
         if (!isset(self::$instance)) {
             self::$instance = new self();
         }
@@ -51,7 +52,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * Get the plugin configuration
      * @return ilExAutoScoreConfig
      */
-    public function getConfig()
+    public function getConfig(): mixed
     {
         if (!isset($this->config))
         {
@@ -64,7 +65,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     /**
      * Get the ids of the available assignment types
      */
-    public function getAssignmentTypeIds() {
+    public function getAssignmentTypeIds(): int {
         return [101, 102];
     }
 
@@ -74,7 +75,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * @param integer $a_id
      * @return ilExAssignmentTypeInterface
      */
-    public function getAssignmentTypeById($a_id) {
+    public function getAssignmentTypeById($a_id): ?ilExAssignmentTypeInterface {
         switch ((int) $a_id) {
             case 101:
                 require_once(__DIR__ . '/class.ilExAssTypeAutoScoreUser.php');
@@ -91,7 +92,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * @param integer $a_id
      * @return ilExAssignmentTypeGUIInterface
      */
-    public function getAssignmentTypeGUIById($a_id) {
+    public function getAssignmentTypeGUIById($a_id): ?ilExAssignmentTypeGUIInterface {
         switch ((int) $a_id) {
             case 101:
                 require_once(__DIR__ . '/class.ilExAssTypeAutoScoreUserGUI.php');
@@ -107,7 +108,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * Get the class names of the assignment type GUIs
      * @return string[] (indexed by type id)
      */
-    public function getAssignmentTypeGuiClassNames() {
+    public function getAssignmentTypeGuiClassNames(): string {
         return [
             101 => 'ilExAssTypeAutoScoreUserGUI',
             102 => 'ilExAssTypeAutoScoreTeamGUI'
@@ -117,7 +118,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     /**
      * Get the Url for sending back results
      */
-    public function getResultUrl() {
+    public function getResultUrl(): mixed {
         return ILIAS_HTTP_PATH . '/Customizing/global/plugins/Modules/Exercise/AssignmentHook/ExAutoScore/results.php';
     }
 
@@ -126,7 +127,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * Check if the user has administrative access
      * @return bool
      */
-    public function hasAdminAccess()
+    public function hasAdminAccess(): bool
     {
         global $DIC;
         return $DIC->rbac()->system()->checkAccess("visible", SYSTEM_FOLDER_ID);
@@ -136,7 +137,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     /**
      * Check if a user can define an assignment with the types of this plugin
      */
-    public function canDefine()
+    public function canDefine(): bool
     {
         global $DIC;
 
@@ -162,7 +163,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * - no script
      * @see \ilUtil::stripScriptHTML
      */
-    public function getAllowedTags()
+    public function getAllowedTags(): mixed
     {
         return
             '<a><abbr><acronym><address><applet><area>'.

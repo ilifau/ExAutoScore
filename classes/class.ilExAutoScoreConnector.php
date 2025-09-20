@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
@@ -20,16 +22,16 @@ class ilExAutoScoreConnector
 
 
     /** @var ilExAutoScorePlugin */
-    protected $plugin;
+    protected mixed $plugin;
 
     /** @var ilExAutoScoreConfig */
-    protected $config;
+    protected mixed $config;
 
     /** @var string */
-    protected $result_uuid;
+    protected mixed $result_uuid;
 
     /** @var string */
-    protected $result_message;
+    protected mixed $result_message;
 
 
 
@@ -258,14 +260,14 @@ class ilExAutoScoreConnector
      * Get the assignment uuid that is returned
      * @return string
      */
-    public function getResultUuid() {
+    public function getResultUuid(): mixed {
         return $this->result_uuid;
     }
 
     /**
      * @return string
      */
-    public function getResultMessage() {
+    public function getResultMessage(): mixed {
         return $this->result_message;
     }
 

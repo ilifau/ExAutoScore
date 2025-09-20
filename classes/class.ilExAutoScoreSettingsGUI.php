@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
@@ -16,10 +18,10 @@ class ilExAutoScoreSettingsGUI
     use ilExAutoScoreGUIBase;
 
     /** @var ilExAutoScorePlugin */
-    protected $plugin;
+    protected mixed $plugin;
 
     /** @var ilExAssignment */
-    protected $assignment;
+    protected mixed $assignment;
 
     /**
      * Constructor
@@ -37,7 +39,7 @@ class ilExAutoScoreSettingsGUI
     /**
      * Execute command
      */
-    public function executeCommand()
+    public function executeCommand(): void
     {
         $next_class = $this->ctrl->getNextClass($this);
         $cmd = $this->ctrl->getCmd('showSettings');
@@ -145,7 +147,7 @@ class ilExAutoScoreSettingsGUI
     /**
      * @return ilPropertyFormGUI
      */
-    public function initSettingsForm()
+    public function initSettingsForm(): ilPropertyFormGUI
     {
         $assAuto = ilExAutoScoreAssignment::findOrGetInstance($this->assignment->getId());
         $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
@@ -369,7 +371,7 @@ class ilExAutoScoreSettingsGUI
     }
 
 
-    public function setToolbar()
+    public function setToolbar(): void
     {
         $button = ilLinkButton::getInstance();
         $button->setCaption($this->plugin->txt('send_assignment'), false);

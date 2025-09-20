@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 /**
@@ -9,10 +11,19 @@
  */
 class ilExAutoScoreConfig
 {
+    /**
+     * @var ilExAutoScorePlugin
+     */
+    protected $plugin;
+
+    /**
+     * @var ilExAutoScoreParam[] parameters
+     */
+    protected array $params = [];
+
 	/**
 	 * @var ilExAutoScoreParam[]	$params		parameters: 	name => ilExAutoScoreParam
 	 */
-	protected $params = array();
 
 	/**
 	 * Constructor.
@@ -94,7 +105,7 @@ class ilExAutoScoreConfig
      * Get the array of all parameters
      * @return ilExAutoScoreParam[]
      */
-	public function getParams()
+	public function getParams(): mixed
     {
         return $this->params;
     }
@@ -104,7 +115,7 @@ class ilExAutoScoreConfig
      * @param $name
      * @return  mixed
      */
-	public function get($name)
+	public function get(string $name): mixed
     {
         if (!isset($this->params[$name]))
         {
@@ -136,7 +147,7 @@ class ilExAutoScoreConfig
     /**
      * Read the configuration from the database
      */
-	public function read()
+	public function read(): void
     {
         global $DIC;
         $ilDB = $DIC->database();
@@ -152,7 +163,7 @@ class ilExAutoScoreConfig
     /**
      * Write the configuration to the database
      */
-    public function write()
+    public function write(): void
     {
         global $DIC;
         $ilDB = $DIC->database();

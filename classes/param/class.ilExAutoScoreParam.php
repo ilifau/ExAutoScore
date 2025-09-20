@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 /**
@@ -23,34 +25,34 @@ class ilExAutoScoreParam
 	/**
 	 * @var string		name of the parameter (should be unique within an evaluation class)
 	 */
-	public $name;
+	public mixed $name;
 
 	/**
      * @var string     title of the parameter
      */
-	public $title;
+	public mixed $title;
 
 
     /**
      * @var string     description of the parameter
      */
-    public $description;
+    public mixed $description;
 
 
     /**
 	 * @var string		type of the parameter
 	 */
-	public $type;
+	public mixed $type;
 
 	/**
 	 * @var mixed 		actual value
 	 */
-	public $value;
+	public mixed $value;
 
     /**
      * @var array       options for a select param
      */
-	public $options;
+	public mixed $options;
 
 
     /**
@@ -81,7 +83,7 @@ class ilExAutoScoreParam
      * Set the value and cast it to the correct type
      * @param null $value
      */
-    public function setValue($value = null)
+    public function setValue($value = null): void
     {
         switch($this->type)
         {
@@ -115,7 +117,7 @@ class ilExAutoScoreParam
     /**
      * Get a form item for setting the parameter
      */
-    public function getFormItem()
+    public function getFormItem(): mixed
     {
         global $DIC;
 
@@ -199,7 +201,7 @@ class ilExAutoScoreParam
      * Read the data posted to the form
      * @param ilPropertyFormGUI $form
      */
-    public function setByForm($form)
+    public function setByForm($form): void
     {
         global $DIC;
 
@@ -264,7 +266,7 @@ class ilExAutoScoreParam
      * Get the post variable
      * @return string
      */
-    public function getPostvar() {
+    public function getPostvar(): mixed {
         return 'param_' . $this->name;
     }
 

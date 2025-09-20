@@ -1,4 +1,8 @@
 <?php
+declare(strict_types=1);
+
+use ILIAS\Exercise\Assignment\PropertyAndActionBuilderUI;
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
@@ -19,7 +23,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     use ilExAutoScoreGUIBase;
 
     /** @var ilExAutoScorePlugin */
-    protected $plugin;
+    protected mixed $plugin;
 
     /**
      * Constructor
@@ -34,7 +38,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     /**
      * Execute command
      */
-    public function executeCommand()
+    public function executeCommand(): void
     {
         global $DIC;
 
@@ -115,7 +119,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     /**
      * @inheritdoc
      */
-    public function addEditFormCustomProperties(ilPropertyFormGUI $form, $exercise_id = null, $assignment_id = null)
+    public function addEditFormCustomProperties(ilPropertyFormGUI $form, $exercise_id = null, $assignment_id = null): void
     {
         // handled on separate screens
     }
@@ -125,7 +129,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * @param ilExAssignment $ass
      * @param ilPropertyFormGUI $form
      */
-    public function importFormToAssignment(ilExAssignment $ass, ilPropertyFormGUI $form)
+    public function importFormToAssignment(ilExAssignment $ass, ilPropertyFormGUI $form): void
     {
         // handled on separate screens
     }
@@ -135,9 +139,9 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * @param ilExAssignment $ass
      * @return array
      */
-    public function getFormValuesArray(ilExAssignment $ass)
+    public function getFormValuesArray(ilExAssignment $ass): array
     {
-        // handled on separate screens
+        // handled on separate screens;
         return [];
     }
 
@@ -146,7 +150,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * @param ilInfoScreenGUI $a_info
      * @param ilExSubmission  $a_submission
      */
-    public function getOverviewContent(ilInfoScreenGUI $a_info, ilExSubmission $a_submission)
+    public function getOverviewContent(ilInfoScreenGUI $a_info, ilExSubmission $a_submission): void
     {
         // getOverviewSubmission() used instead
     }
@@ -154,7 +158,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     /**
      * @inheritdoc
      */
-    public function handleEditorTabs(ilTabsGUI $tabs)
+    public function handleEditorTabs(ilTabsGUI $tabs): void
     {
         $tabs->removeTab('ass_files');
 
@@ -187,7 +191,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * @param ilInfoScreenGUI $a_info
      * @param ilExAssignment  $a_assignment
      */
-    public function getOverviewAdditionalInstructions(ilInfoScreenGUI $a_info, ilExAssignment $a_assignment)
+    public function getOverviewAdditionalInstructions(ilInfoScreenGUI $a_info, ilExAssignment $a_assignment): void
     {
         $this->ctrl->setParameterByClass("ilExSubmissionGUI", "ass_id", $a_assignment->getId());
 
@@ -221,7 +225,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * @param ilInfoScreenGUI $a_info
      * @param ilExSubmission  $a_submission
      */
-    public function getOverviewSubmission(ilInfoScreenGUI $a_info, ilExSubmission $a_submission)
+    public function getOverviewSubmission(ilInfoScreenGUI $a_info, ilExSubmission $a_submission): void
     {
         if (!$a_submission->canView()) {
             return;
@@ -341,7 +345,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * @param ilInfoScreenGUI $a_info
      * @param ilExSubmission  $a_submission
      */
-    public function getOverviewAdditionalFeedback(ilInfoScreenGUI $a_info, ilExSubmission $a_submission)
+    public function getOverviewAdditionalFeedback(ilInfoScreenGUI $a_info, ilExSubmission $a_submission): void
     {
         $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
 
@@ -380,7 +384,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * @param ilInfoScreenGUI $a_info
      * @param ilExAssignment  $a_assignment
      */
-    public function getOverviewGeneralFeedback(ilInfoScreenGUI $a_info, ilExAssignment $a_assignment)
+    public function getOverviewGeneralFeedback(ilInfoScreenGUI $a_info, ilExAssignment $a_assignment): void
     {
         $this->ctrl->setParameterByClass("ilExSubmissionGUI", "ass_id", $a_assignment->getId());
 
@@ -505,7 +509,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * Init the submission form
      * @return ilPropertyFormGUI
      */
-    protected function initSubmissionForm()
+    protected function initSubmissionForm(): ilPropertyFormGUI
     {
         $existing = array();
         foreach ($this->submission->getFiles() as $file) {
@@ -695,7 +699,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             }
             // files that are no longer required
             foreach ($existing as $filename => $returned_ids) {
-                if (!isset($required[$filename])) {
+                if (!isset($required[$filename])) {;
                     $this->submission->deleteSelectedFiles($existing[$filename]);
                 }
             }
@@ -840,7 +844,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * @param ilExSubmission             $a_submission
      * @param <\ILIAS\UI\Component\Button\Shy|\ILIAS\UI\Component\Divider\Horizontal|\ILIAS\UI\Component\Link\Standard>[] $a_items
      */
-    public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_actions)
+    public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_actions): void
     {
         global $DIC;
 
@@ -865,5 +869,46 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
     protected function returnToParent() {
         $this->ctrl->returnToParent($this);
+    }
+
+    /**
+     * Build submission properties and actions for ILIAS 9
+     * @param \ILIAS\Exercise\Assignment\PropertyAndActionBuilderUI $builder
+     * @return void
+     */
+    public function buildSubmissionPropertiesAndActions(
+        \ILIAS\Exercise\Assignment\PropertyAndActionBuilderUI $builder
+    ): void {
+        // Get the submission from the builder
+        $submission = $builder->getSubmission();
+        
+        // Add custom properties
+        require_once(__DIR__ . '/models/class.ilExAutoScoreTask.php');
+        $task = \ilExAutoScoreTask::getSubmissionTask($submission);
+        
+        if (!empty($task->getReturnPoints())) {
+            $builder->addProperty(
+                $this->plugin->txt("return_points"),
+                (string) $task->getReturnPoints()
+            );
+        }
+        
+        if (!empty($task->getInstantStatus())) {
+            $builder->addProperty(
+                $this->plugin->txt("instant_status"),
+                $task->getInstantStatus()
+            );
+        }
+        
+        if (!empty($task->getProtectedFeedbackHtml())) {
+            // Add a custom action to view detailed feedback
+            $builder->addAction(
+                $this->plugin->txt("show_extended_feedback"),
+                $this->ctrl->getLinkTargetByClass(
+                    [strtolower(get_class($this))],
+                    "showExtendedFeedback"
+                )
+            );
+        }
     }
 }

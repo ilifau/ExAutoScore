@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 /**
@@ -11,32 +13,32 @@
 class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
 {
 	/** @var ilExAutoScorePlugin $plugin */
-	protected $plugin;
+	protected mixed $plugin;
 
 	/** @var ilExAutoScoreConfig $config */
-	protected $config;
+	protected mixed $config;
 
 	/** @var ilTabsGUI $tabs */
-    protected $tabs;
+    protected mixed $tabs;
 
     /** @var ilCtrl $ctrl */
-    protected $ctrl;
+    protected mixed $ctrl;
 
     /** @var ilLanguage $lng */
-	protected $lng;
+	protected mixed $lng;
 
     /** @var ilTemplate $lng */
-	protected $tpl;
+	protected mixed $tpl;
 
     /** @var  ilToolbarGUI $toolbar */
-    protected $toolbar;
+    protected mixed $toolbar;
 
     /**
 	 * Handles all commands, default is "configure"
      * @param string $cmd
      * @throws Exception
 	 */
-	public function performCommand($cmd)
+	public function performCommand(string $cmd): void
 	{
         global $DIC;
 
@@ -83,7 +85,7 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
     /**
      * Set the toolbar
      */
-    protected function setToolbar()
+    protected function setToolbar(): void
     {
         $this->toolbar->setFormAction($this->ctrl->getFormAction($this));
 
@@ -131,7 +133,7 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
 	 * Initialize the configuration form
 	 * @return ilPropertyFormGUI form object
 	 */
-	protected function initBasicConfigurationForm()
+	protected function initBasicConfigurationForm(): ilPropertyFormGUI
 	{
 		$form = new ilPropertyFormGUI();
         $form->setTitle($this->plugin->txt('basic_configuration'));

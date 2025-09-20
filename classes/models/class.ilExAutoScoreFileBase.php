@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 use ILIAS\FileUpload\Location;
@@ -29,7 +31,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @con_length     4
      * @con_sequence   true
      */
-    protected $id;
+    protected mixed $id;
 
     /**
      * @var int
@@ -40,7 +42,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @con_is_notnull true
      * @con_length     4
      */
-    protected $assignment_id;
+    protected mixed $assignment_id;
 
 
     /**
@@ -51,7 +53,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @con_length    250
      * @con_is_notnull false
      */
-    protected $filename;
+    protected mixed $filename;
 
     /**
      * @var int
@@ -61,7 +63,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @con_length     4
      * @con_is_notnull false
      */
-    protected $size;
+    protected mixed $size;
 
     /**
      * @var string
@@ -71,7 +73,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @con_length    50
      * @con_is_notnull false
      */
-    protected $hash;
+    protected mixed $hash;
 
 
 
@@ -79,7 +81,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * Wrapper to declare the return type
      * @return static
      */
-    public static function findOrGetInstance($primary_key, array $add_constructor_args = array())
+    public static function findOrGetInstance($primary_key, array $add_constructor_args = array(): self)
     {
         /** @var static $record */
         $record =  parent::findOrGetInstance($primary_key, $add_constructor_args);
@@ -91,7 +93,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @param int $assignment_id
      * @return static[]
      */
-    public static function getForAssignment($assignment_id)
+    public static function getForAssignment($assignment_id): array
     {
         $records = self::getCollection()
                        ->where(['assignment_id' => $assignment_id])
@@ -103,7 +105,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     /**
      * @return int
      */
-    public function getId()
+    public function getId(): int
     {
         return (int) $this->id;
     }
@@ -111,7 +113,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     /**
      * @param int $id
      */
-    public function setId(int $id)
+    public function setId(int $id): void
     {
         $this->id = $id;
     }
@@ -127,7 +129,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     /**
      * @param int $id
      */
-    public function setAssignmentId(int $id)
+    public function setAssignmentId(int $id): void
     {
         $this->assignment_id = $id;
     }
@@ -143,7 +145,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     /**
      * @param string $filename
      */
-    public function setFilename(string $filename)
+    public function setFilename(string $filename): void
     {
         $this->filename = $filename;
     }
@@ -159,7 +161,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     /**
      * @param int $size
      */
-    public function setSize(int $size)
+    public function setSize(int $size): void
     {
         $this->size = $size;
     }
@@ -175,7 +177,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     /**
      * @param string $hash
      */
-    public function setHash(string $hash)
+    public function setHash(string $hash): void
     {
         $this->hash = $hash;
     }
@@ -231,7 +233,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     /**
      * Delete a file
      */
-    public function delete()
+    public function delete(): void
     {
         global $DIC;
 
@@ -249,7 +251,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     /**
      * Get the sub directory of the file storage
      */
-    protected function getStorageSubDirectory()
+    protected function getStorageSubDirectory(): string
     {
         return $this->storage_sub_directory;
     }
@@ -258,7 +260,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * Get the storage directory for a file
      * @return string
      */
-    protected function getStorageDirectory()
+    protected function getStorageDirectory(): string
     {
         return ilExAutoScorePlugin::getStorageDirectory() . '/'
             . ilFileSystemStorage::_createPathFromId($this->getAssignmentId(), 'assignment')
@@ -270,7 +272,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * The uploaded filename is not used because it may be insecure
      * @return string
      */
-    protected function getStorageFilename()
+    protected function getStorageFilename(): string
     {
         return 'file' . $this->getId();
     }
@@ -279,7 +281,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * Get the full path of the stored file
      * @return string|null
      */
-    public function getAbsolutePath()
+    public function getAbsolutePath(): mixed
     {
         global $DIC;
 
@@ -296,7 +298,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * Get the relative path of the file in the storage
      * @return string
      */
-    public function getRelativePath()
+    public function getRelativePath(): mixed
     {
         return  $this->getStorageDirectory() . '/' . $this->getStorageFilename();
     }

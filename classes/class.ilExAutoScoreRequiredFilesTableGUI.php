@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // Copyright (c) 2021 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 /**
@@ -6,23 +8,11 @@
  */
 class ilExAutoScoreRequiredFilesTableGUI extends ilTable2GUI
 {
-    /** @var ilExAutoScoreRequiredFilesGUI */
-    protected $parent_obj;
-
-    /** @var string $parent_cmd */
-    protected $parent_cmd;
-
-    /** @var ilExAutoScorePlugin */
-    protected $plugin;
-
-    /** @var int */
-    protected $assignment_id;
-
-    /**
-     * Constructor
-     * @param ilExAutoScoreRequiredFilesGUI $a_parent_obj
-     * @param string $a_parent_cmd
-     */
+    // Note: $parent_obj and $parent_cmd are inherited from ilTable2GUI
+    
+    protected ilExAutoScorePlugin $plugin;
+    
+    protected int $assignment_id;
     public function __construct($a_parent_obj, $a_parent_cmd)
     {
         global $DIC;
@@ -70,7 +60,7 @@ class ilExAutoScoreRequiredFilesTableGUI extends ilTable2GUI
      * @param integer $assignment_id
      * @throws Exception
      */
-    public function loadData($assignment_id)
+    public function loadData($assignment_id): void
     {
         $this->assignment_id = $assignment_id;
 
@@ -105,7 +95,7 @@ class ilExAutoScoreRequiredFilesTableGUI extends ilTable2GUI
      * @param string $a_field
 	 * @return boolean  numeric ordering; default is false
 	 */
-	function numericOrdering($a_field)
+	function numericOrdering($a_field): bool
 	{
 	    if ($a_field == 'mas_size' || $a_field == 'example_size') {
 	        return true;
@@ -117,7 +107,7 @@ class ilExAutoScoreRequiredFilesTableGUI extends ilTable2GUI
 	 * fill row
 	 * @param array $data
 	 */
-	public function fillRow($data)
+	public function fillRow(array $data): void
 	{
 		$id = $data['id'];
 
