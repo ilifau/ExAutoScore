@@ -9,7 +9,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * Override: name of the database table
      * @var string
      */
-    protected $connector_container_name = 'exautoscore_task';
+    #protected $connector_container_name = 'exautoscore_task';
 
     /**
      * @var int
@@ -193,12 +193,17 @@ class ilExAutoScoreTask extends ActiveRecord
      */
     protected mixed $protected_feedback_html;
 
+    public static function returnDbTableName(): string
+    {
+        return 'exautoscore_task';
+    }
+
 
     /**
      * Wrapper to declare the return type
      * @return static
      */
-    public static function findOrGetInstance($primary_key, array $add_constructor_args = array(): self)
+    public static function findOrGetInstance($primary_key, array $add_constructor_args = array()): ilExAutoScoreTask
     {
         /** @var static $record */
         $record =  parent::findOrGetInstance($primary_key, $add_constructor_args);

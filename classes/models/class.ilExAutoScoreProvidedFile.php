@@ -11,7 +11,10 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * Override: name of the database table
      * @var string
      */
-    protected $connector_container_name = 'exautoscore_prov_file';
+    public static function returnDbTableName(): string
+    {
+        return 'exautoscore_prov_file';
+    }
 
     /**
      *  Override: name of the sub sub directory for storing the files

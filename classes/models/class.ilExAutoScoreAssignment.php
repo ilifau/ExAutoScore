@@ -7,7 +7,10 @@ class ilExAutoScoreAssignment extends ActiveRecord
     /**
      * @var string
      */
-    protected $connector_container_name = 'exautoscore_assignment';
+    public static function returnDbTableName(): string
+    {
+        return 'exautoscore_assignment';
+    }
 
 
     /**
