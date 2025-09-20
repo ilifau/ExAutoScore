@@ -70,7 +70,7 @@ class ilExAutoScoreSettingsGUI
         $this->setToolbar();
 
         if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
+            $this->tpl->setOnScreenMessage('info', $this->plugin->txt('info_existing_tasks'));
         }
 
         $form = $this->initSettingsForm();
@@ -133,7 +133,7 @@ class ilExAutoScoreSettingsGUI
                 ilExAutoScoreTask::updateAllSubmissions($this->assignment->getId());
                 $message = $this->plugin->txt('correction_settings_saved_with_update');
             }
-            ilUtil::sendSuccess($message, true);
+            $this->tpl->setOnScreenMessage('success', $message, true);
 
             $this->ctrl->redirect($this, 'showSettings');
         }
@@ -301,12 +301,12 @@ class ilExAutoScoreSettingsGUI
     {
         $connector = new ilExAutoScoreConnector();
         if ($connector->sendAssignment($this->assignment)) {
-            ilUtil::sendSuccess(sprintf($this->plugin->txt('assignment_send_success'), $connector->getResultMessage())
+            $this->tpl->setOnScreenMessage('success', sprintf($this->plugin->txt('assignment_send_success'), $connector->getResultMessage())
                 . sprintf('<p class="small"><a href="%s">%s</a></p>', $this->ctrl->getLinkTarget($this, 'showSettings'), $this->plugin->txt('refresh_screen_link'))
                 , true);
         }
         else {
-            ilUtil::sendFailure(sprintf($this->plugin->txt('assignment_send_failure'), $connector->getResultMessage()), true);
+            $this->tpl->setOnScreenMessage('failure', sprintf($this->plugin->txt('assignment_send_failure'), $connector->getResultMessage()), true);
         }
         $this->ctrl->redirect($this, 'showSettings');
     }
@@ -317,12 +317,12 @@ class ilExAutoScoreSettingsGUI
         global $DIC;
         $connector = new ilExAutoScoreConnector();
         if ($connector->sendExampleTask($this->assignment, $DIC->user())) {
-            ilUtil::sendSuccess(sprintf($this->plugin->txt('example_task_send_success'), $connector->getResultMessage())
+            $this->tpl->setOnScreenMessage('success', sprintf($this->plugin->txt('example_task_send_success'), $connector->getResultMessage())
                 . sprintf('<p class="small"><a href="%s">%s</a></p>', $this->ctrl->getLinkTarget($this, 'showSettings'), $this->plugin->txt('refresh_screen_link'))
                 , true);
         }
         else {
-            ilUtil::sendFailure(sprintf($this->plugin->txt('example_task_send_failure'), $connector->getResultMessage()), true);
+            $this->tpl->setOnScreenMessage('failure', sprintf($this->plugin->txt('example_task_send_failure'), $connector->getResultMessage()), true);
         }
 
         $this->ctrl->redirect($this, 'showSettings');
@@ -366,7 +366,7 @@ class ilExAutoScoreSettingsGUI
            }
        }
 
-       ilUtil::sendSuccess($this->plugin->txt('all_tasks_sent'), true);
+       $this->tpl->setOnScreenMessage('success', $this->plugin->txt('all_tasks_sent'), true);
        $this->ctrl->redirect($this, 'showSettings');
     }
 
