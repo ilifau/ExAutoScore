@@ -64,7 +64,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
 
         if (!$access) {
-            $this->tpl->setOnScreenMessage('failure', $$this->lng->txt("permission_denied"), true);
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->ctrl->returnToParent($this);
         }
 

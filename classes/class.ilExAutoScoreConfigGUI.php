@@ -30,7 +30,7 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
 	protected mixed $lng;
 
     /** @var ilTemplate $lng */
-	protected mixed $tpl;
+	protected ilGlobalTemplateInterface $tpl;
 
     /** @var  ilToolbarGUI $toolbar */
     protected mixed $toolbar;
@@ -74,7 +74,7 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
                 {
                     case "configure":
                     case "saveBasicSettings":
-                    case "updateLanguages":
+                    #case "updateLanguages": still needed? CSM
                     case "loadCampusExams":
                     case "generateDBUpdate":
                         $this->tabs->activateTab('basic');
@@ -89,12 +89,12 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
      */
     protected function setToolbar(): void
     {
-        $this->toolbar->setFormAction($this->ctrl->getFormAction($this));
+        $this->toolbar->setFormAction($this->ctrl->getFormAction($this, 'configure'));
 
-        $button = ilLinkButton::getInstance();
+        /*$button = ilLinkButton::getInstance();
         $button->setUrl($this->ctrl->getLinkTarget($this, 'updateLanguages'));
         $button->setCaption($this->plugin->txt('update_languages'), false);
-        $this->toolbar->addButtonInstance($button);
+        $this->toolbar->addButtonInstance($button);*/
 
         $button = ilLinkButton::getInstance();
         $button->setUrl($this->ctrl->getLinkTarget($this, 'generateDBUpdate'));
@@ -114,11 +114,11 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
     /**
      * Update Languages
      */
-    protected function updateLanguages()
+    /*protected function updateLanguages()
     {
         $this->plugin->updateLanguages();
         $this->ctrl->redirect($this, 'configure');
-    }
+    }*/
 
 
     /**
@@ -139,7 +139,7 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
 	{
 		$form = new ilPropertyFormGUI();
         $form->setTitle($this->plugin->txt('basic_configuration'));
-		$form->setFormAction($this->ctrl->getFormAction($this));
+		$form->setFormAction($this->ctrl->getFormAction($this, 'saveBasicSettings'));
 
         foreach($this->config->getParams() as $param) {
             $param->setValue($this->config->get($param->name));
@@ -164,8 +164,7 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
                 $this->config->set($param->name, $param->value);
             }
             $this->config->write();
-
-			ilUtil::sendSuccess($this->lng->txt("settings_saved"), true);
+            $this->tpl->setOnScreenMessage('success', $this->lng->txt("settings_saved"), true);
 			$this->ctrl->redirect($this, 'configure');
 		}
 		else

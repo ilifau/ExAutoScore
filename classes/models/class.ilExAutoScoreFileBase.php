@@ -8,11 +8,6 @@ use ILIAS\FileUpload\DTO\ProcessingStatus;
 
 abstract class ilExAutoScoreFileBase extends ActiveRecord
 {
-    /**
-     * Override: name of the database table
-     * @var string
-     */
-    protected $connector_container_name = '';
 
     /**
      *  Override: name of the sub sub directory for storing the files
@@ -75,7 +70,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      */
     protected mixed $hash;
 
-
+    abstract public static function returnDbTableName(): string;
 
     /**
      * Wrapper to declare the return type

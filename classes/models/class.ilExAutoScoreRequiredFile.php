@@ -7,11 +7,6 @@ require_once(__DIR__ . '/class.ilExAutoScoreFileBase.php');
 
 class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
 {
-    /**
-     * Override: name of the database table
-     * @var string
-     */
-    protected $connector_container_name = 'exautoscore_req_file';
 
     /**
      *  Override: name of the sub sub directory for storing the files
@@ -52,6 +47,10 @@ class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
      */
     protected mixed $max_size;
 
+    public static function returnDbTableName(): string
+    {
+        return 'exautoscore_req_file';
+    }
 
     /**
      * Get the selectable encoding options
