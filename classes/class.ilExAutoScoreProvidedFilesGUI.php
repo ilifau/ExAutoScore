@@ -64,7 +64,7 @@ class ilExAutoScoreProvidedFilesGUI
     public function listFiles()
     {
         if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
+            $this->tpl->setOnScreenMessage('info', $this->plugin->txt('info_existing_tasks'));
         }
 
         require_once (__DIR__ . '/class.ilExAutoScoreProvidedFilesTableGUI.php');
@@ -81,7 +81,7 @@ class ilExAutoScoreProvidedFilesGUI
     protected function addFile()
     {
         if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
+            $this->tpl->setOnScreenMessage('info', $this->plugin->txt('info_existing_tasks'));
         }
 
         $file = new ilExAutoScoreProvidedFile();
@@ -139,13 +139,13 @@ class ilExAutoScoreProvidedFilesGUI
         $this->setFileToolbar();
 
         if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            ilutil::sendInfo($this->plugin->txt('info_existing_tasks'));
+            $this->tpl->setOnScreenMessage('info', $this->plugin->txt('info_existing_tasks'));
         }
 
         /** @var ilExAutoScoreProvidedFile $file */
         $file = ilExAutoScoreProvidedFile::find((int) $_GET['id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
-            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->ctrl->returnToParent($this);
         }
 
@@ -165,7 +165,7 @@ class ilExAutoScoreProvidedFilesGUI
         /** @var ilExAutoScoreProvidedFile $file */
         $file = ilExAutoScoreProvidedFile::find((int) $_GET['id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
-            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->ctrl->returnToParent($this);
         }
 
@@ -275,7 +275,7 @@ class ilExAutoScoreProvidedFilesGUI
     protected function confirmDeleteFiles()
     {
         if (empty($_POST['ids'])) {
-            ilUtil::sendFailure($this->lng->txt('select_at_least_one_object'), true);
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt('select_at_least_one_object'), true);
             $this->ctrl->redirect($this,'listFiles');
         }
 
@@ -290,7 +290,7 @@ class ilExAutoScoreProvidedFilesGUI
 
         foreach($files as $file) {
             if ($file->getAssignmentId() != $this->assignment->getId()) {
-                ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+                $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
                 $this->ctrl->returnToParent($this);
             }
 
@@ -310,7 +310,7 @@ class ilExAutoScoreProvidedFilesGUI
 
         foreach($files as $file) {
             if ($file->getAssignmentId() != $this->assignment->getId()) {
-                ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+                $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
                 $this->ctrl->returnToParent($this);
             }
         }
@@ -371,21 +371,21 @@ class ilExAutoScoreProvidedFilesGUI
             // this will also reset the tasks
             ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
             if ($hasTasks) {
-                ilUtil::sendSuccess($message . ' ' . $this->plugin->txt('please_send_assignment_and_tasks'), true);
+                $this->tpl->setOnScreenMessage('success', $message . ' ' . $this->plugin->txt('please_send_assignment_and_tasks'), true);
             }
             else {
-                ilUtil::sendSuccess($message . ' ' . $this->plugin->txt('please_send_assignment'), true);
+                $this->tpl->setOnScreenMessage('success', $message . ' ' . $this->plugin->txt('please_send_assignment'), true);
             }
         }
         elseif ($resetTasks) {
             // clear at least the example
             ilExAutoScoreTask::clearAllSubmissions($this->assignment->getId());
             if ($hasTasks) {
-                ilUtil::sendSuccess($message . ' '. $this->plugin->txt('please_send_tasks'), true);
+                $this->tpl->setOnScreenMessage('success', $message . ' '. $this->plugin->txt('please_send_tasks'), true);
             }
         }
         else {
-            ilUtil::sendSuccess($message, true);
+            $this->tpl->setOnScreenMessage('success', $message, true);
         }
     }
 }

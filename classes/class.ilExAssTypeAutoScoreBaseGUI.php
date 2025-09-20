@@ -433,12 +433,12 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $this->handleSubmissionTabs($this->tabs);
 
         if (!$this->submission->canSubmit()) {
-            ilUtil::sendInfo($this->lng->txt("exercise_time_over"));
+            $this->tpl->setOnScreenMessage('info', $this->lng->txt("exercise_time_over"));
         }
         // fau: exStatement - suppress submission screen
         elseif ($this->submission->getAssignment()->isAuthorshipStatementRequired()
             && !$this->submission->getAssignment()->getMemberStatus()->hasAuthorshipStatement()) {
-            ilUtil::sendFailure($this->lng->txt('exc_msg_authorship_statement_required'));
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt('exc_msg_authorship_statement_required'));
         }
         // fau.
         else {
@@ -472,7 +472,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $this->handleSubmissionTabs($this->tabs);
 
         if (!$this->submission->canSubmit()) {
-            ilUtil::sendInfo($this->lng->txt("exercise_time_over"));
+            $this->tpl->setOnScreenMessage('info', $this->lng->txt("exercise_time_over"));
         }
 
         $gui = new ilConfirmationGUI();
@@ -489,7 +489,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     protected function deleteSubmission()
     {
         if (!$this->submission->canSubmit()) {
-            ilUtil::sendInfo($this->lng->txt("exercise_time_over"));
+            $this->tpl->setOnScreenMessage('info', $this->lng->txt("exercise_time_over"));
         }
         else {
             $this->submission->deleteAllFiles();
@@ -500,7 +500,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $task->updateMemberStatus();
         }
 
-        ilUtil::sendSuccess($this->plugin->txt('submission_deleted'), true);
+        $this->tpl->setOnScreenMessage('success', $this->plugin->txt('submission_deleted'), true);
         $this->returnToParent();
     }
 
@@ -563,7 +563,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         // fau: exStatement - suppress submission screen
         if ($this->submission->getAssignment()->isAuthorshipStatementRequired()
             && !$this->submission->getAssignment()->getMemberStatus()->hasAuthorshipStatement()) {
-           ilUtil::sendFailure($this->lng->txt('exc_msg_authorship_statement_required'));
+           $this->tpl->setOnScreenMessage('failure', $this->lng->txt('exc_msg_authorship_statement_required'));
            return;
         }
         // fau.
@@ -628,7 +628,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             }
         }
         if ($errors) {
-            ilUtil::sendFailure($this->plugin->txt('upload_error_file'));
+            $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('upload_error_file'));
             $this->tpl->setContent($form->getHTML());
             return;
         }
@@ -675,14 +675,14 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 }
             }
 
-            ilUtil::sendFailure(sprintf($this->plugin->txt("submission_upload_error"), $failed->getFilename()));
+            $this->tpl->setOnScreenMessage('failure', sprintf($this->plugin->txt("submission_upload_error"), $failed->getFilename()));
             $this->tpl->setContent($form->getHTML());
             return;
         }
 
         // no new upload => show info
         if (empty($new)) {
-            ilUtil::sendFailure($this->plugin->txt("submission_no_upload"));
+            $this->tpl->setOnScreenMessage('failure', $this->plugin->txt("submission_no_upload"));
             $this->tpl->setContent($form->getHTML());
             return;
         }
@@ -723,10 +723,10 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         require_once (__DIR__ . '/class.ilExAutoScoreConnector.php');
         $connector = new ilExAutoScoreConnector();
         if ($connector->sendSubmission($this->submission, $this->user)) {
-            ilUtil::sendSuccess($this->plugin->txt("submission_success"), true);
+            $this->tpl->setOnScreenMessage('success', $this->plugin->txt("submission_success"), true);
         }
         else {
-            ilUtil::sendFailure($this->plugin->txt("submission_error"), true);
+            $this->tpl->setOnScreenMessage('failure', $this->plugin->txt("submission_error"), true);
         }
 
         $this->returnToParent();
@@ -740,7 +740,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $delivered_id = (int) $_REQUEST["delivered"];
 
         if (!isset($this->submission) || !$this->submission->canView()) {
-            ilUtil::sendInfo($this->lng->txt("access_denied"), true);
+            $this->tpl->setOnScreenMessage('info', $this->lng->txt("access_denied"), true);
             $this->returnToParent();
         }
 
@@ -762,7 +762,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     {
         $file = ilExAutoScoreProvidedFile::findOrGetInstance($_REQUEST['file_id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
-            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->returnToParent();
         }
 
@@ -772,7 +772,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $state = ilExcAssMemberState::getInstanceByIds($this->assignment->getId(), $this->user->getId());
 
             if (!$state->areInstructionsVisible() || !$file->isPublic() || $file->getAssignmentId() != $this->assignment->getId()) {
-                ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+                $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
                 $this->returnToParent();
             }
         }
@@ -787,7 +787,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     {
         $file = ilExAutoScoreRequiredFile::findOrGetInstance($_REQUEST['file_id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
-            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->returnToParent();
         }
 
@@ -809,7 +809,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             }
 
             if (!$access) {
-                ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+                $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
                 $this->returnToParent();
                 return;
             }

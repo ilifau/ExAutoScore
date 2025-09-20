@@ -108,7 +108,7 @@ class ilExAutoScoreRequiredFilesGUI
             $message = $this->plugin->txt('file_created')
                 . ' '. $this->plugin->txt('example_task_reset')
                 . ' '. $this->plugin->txt('example_task_missing');
-            ilUtil::sendSuccess($message, true);
+            $this->tpl->setOnScreenMessage('success', $message, true);
 
             $this->ctrl->setParameter($this, 'id', $file->getId());
             $this->ctrl->redirect($this, "editFile");
@@ -128,7 +128,7 @@ class ilExAutoScoreRequiredFilesGUI
         /** @var ilExAutoScoreRequiredFile $file */
         $file = ilExAutoScoreRequiredFile::find((int) $_GET['id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
-            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->ctrl->returnToParent($this);
         }
 
@@ -148,7 +148,7 @@ class ilExAutoScoreRequiredFilesGUI
         /** @var ilExAutoScoreRequiredFile $file */
         $file = ilExAutoScoreRequiredFile::find((int) $_GET['id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
-            ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->ctrl->returnToParent($this);
         }
 
@@ -170,7 +170,7 @@ class ilExAutoScoreRequiredFilesGUI
             $message = $this->plugin->txt('file_updated')
                 . ' '. $this->plugin->txt('example_task_reset')
                 . ' '. $this->plugin->txt('example_task_missing');
-            ilUtil::sendSuccess($message, true);
+            $this->tpl->setOnScreenMessage('success', $message, true);
 
             $this->ctrl->redirect($this, "editFile");
         }
@@ -239,7 +239,7 @@ class ilExAutoScoreRequiredFilesGUI
     protected function confirmDeleteFiles()
     {
         if (empty($_POST['ids'])) {
-            ilUtil::sendFailure($this->lng->txt('select_at_least_one_object'), true);
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt('select_at_least_one_object'), true);
             $this->ctrl->redirect($this,'listFiles');
         }
 
@@ -255,7 +255,7 @@ class ilExAutoScoreRequiredFilesGUI
         foreach($files as $file) {
             $conf_gui->addItem('ids[]', $file->getId(), $file->getFilename());
             if ($file->getAssignmentId() != $this->assignment->getId()) {
-                ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+                $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
                 $this->ctrl->returnToParent($this);
             }
         }
@@ -273,7 +273,7 @@ class ilExAutoScoreRequiredFilesGUI
 
         foreach($files as $file) {
             if ($file->getAssignmentId() != $this->assignment->getId()) {
-                ilUtil::sendFailure($this->lng->txt("permission_denied"), true);
+                $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
                 $this->ctrl->returnToParent($this);
             }
         }
@@ -286,7 +286,7 @@ class ilExAutoScoreRequiredFilesGUI
         $message = $this->plugin->txt('files_deleted')
         . ' '. $this->plugin->txt('example_task_reset')
         . ' '. $this->plugin->txt('example_task_missing');
-        ilUtil::sendSuccess($message, true);
+        $this->tpl->setOnScreenMessage('success', $message, true);
 
         $this->ctrl->redirect($this, 'listFiles');
     }
