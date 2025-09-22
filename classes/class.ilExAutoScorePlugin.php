@@ -15,6 +15,17 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     /** @var self */
     protected static $instance;
 
+    /**
+     * Constructor for ILIAS 9 compatibility
+     */
+    public function __construct(
+        \ilDBInterface $db = null,
+        \ilComponentRepositoryWrite $component_repository = null,
+        string $id = ''
+    ) {
+        // Call parent constructor with proper parameters for ILIAS 9
+        parent::__construct($db, $component_repository, $id);
+    }
 
     /**
      * Get Plugin Name. Must be same as in class name il<Name>Plugin
@@ -35,6 +46,9 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
 
         $db->dropTable('exautoscore_assignment', false);
         $db->dropTable('exautoscore_provided_file', false);
+        $db->dropTable('exautoscore_req_file', false);
+        $db->dropTable('exautoscore_task', false);
+        $db->dropTable('exautoscore_config', false);
     }
 
     /**
@@ -43,11 +57,16 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      */
     public static function getInstance(): self {
         if (!isset(self::$instance)) {
-            self::$instance = new self();
+            global $DIC;
+            // Create instance with ILIAS 9 parameters
+            self::$instance = new self(
+                $DIC->database(),
+                $DIC['component.repository'],
+                'exautoscore'
+            );
         }
         return self::$instance;
     }
-
 
     /**
      * Get the plugin configuration
@@ -69,7 +88,6 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     public function getAssignmentTypeIds(): array {
         return [101, 102];
     }
-
 
     /**
      * Get an assignment type by its id
@@ -123,10 +141,9 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     /**
      * Get the Url for sending back results
      */
-    public function getResultUrl(): mixed {
+    public function getResultUrl(): string {
         return ILIAS_HTTP_PATH . '/Customizing/global/plugins/Modules/Exercise/AssignmentHook/ExAutoScore/results.php';
     }
-
 
     /**
      * Check if the user has administrative access
@@ -137,7 +154,6 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
         global $DIC;
         return $DIC->rbac()->system()->checkAccess("visible", SYSTEM_FOLDER_ID);
     }
-
 
     /**
      * Check if a user can define an assignment with the types of this plugin
@@ -195,7 +211,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * Get the plugin durectory in the file storage
      * @return string
      */
-    static function getStorageDirectory() {
+    static function getStorageDirectory(): string {
         return 'exautoscore';
     }
 }
