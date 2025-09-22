@@ -311,3 +311,26 @@ if (!$ilDB->tableColumnExists('exautoscore_assignment', 'failure_mails'))
     $ilDB->addTableColumn("exautoscore_assignment", 'failure_mails', $attributes);
 }
 ?>
+
+<#8>
+<?php
+// Add resource_id field to provided files table for ILIAS 9 compatibility
+if (!$ilDB->tableColumnExists('exautoscore_prov_file', 'resource_id'))
+{
+    $attributes = array(
+        'type' => 'text',
+        'length' => 250
+    );
+    $ilDB->addTableColumn("exautoscore_prov_file", 'resource_id', $attributes);
+}
+
+// Add resource_id field to required files table for ILIAS 9 compatibility  
+if (!$ilDB->tableColumnExists('exautoscore_req_file', 'resource_id'))
+{
+    $attributes = array(
+        'type' => 'text',
+        'length' => 250
+    );
+    $ilDB->addTableColumn("exautoscore_req_file", 'resource_id', $attributes);
+}
+?>

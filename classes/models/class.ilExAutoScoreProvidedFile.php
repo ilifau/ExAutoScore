@@ -22,7 +22,6 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      */
     protected $storage_sub_directory = 'provided';
 
-
     /**
      * Dockerfile to create the container image
      */
@@ -52,7 +51,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * @con_length    10
      * @con_is_notnull false
      */
-    protected mixed $purpose;
+    protected ?string $purpose = null;
 
 
     /**
@@ -63,7 +62,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * @con_length    250
      * @con_is_notnull false
      */
-    protected mixed $description;
+    protected ?string $description = null;
 
     /**
      * @var bool
@@ -73,7 +72,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      * @con_length    4
      * @con_is_notnull false
      */
-    protected mixed $is_public;
+    protected ?bool $is_public = null;
 
 
     /**
@@ -135,7 +134,7 @@ class ilExAutoScoreProvidedFile extends ilExAutoScoreFileBase
      */
     public function isPublic(): bool
     {
-        return $this->is_public;
+        return (bool) $this->is_public;
     }
 
     /**

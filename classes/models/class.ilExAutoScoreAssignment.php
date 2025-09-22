@@ -12,7 +12,6 @@ class ilExAutoScoreAssignment extends ActiveRecord
         return 'exautoscore_assignment';
     }
 
-
     /**
      * @var int
      * @con_is_primary true
@@ -22,7 +21,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_is_notnull true
      * @con_length     4
      */
-    protected mixed $id;
+    protected ?int $id = null;
 
     /**
      * @var int
@@ -31,7 +30,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_length     4
      * @con_is_notnull true
      */
-    protected $exercise_id = 0;
+    protected int $exercise_id = 0;
 
 
     /**
@@ -42,7 +41,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_length    50
      * @con_is_notnull false
      */
-    protected mixed $uuid;
+    protected ?string $uuid = null;
 
 
     /**
@@ -53,7 +52,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_length    250
      * @con_is_notnull false
      */
-    protected mixed $command;
+    protected ?string $command = null;
 
 
     /**
@@ -63,7 +62,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_fieldtype  float
      * @con_is_notnull false
      */
-    protected mixed $min_points;
+    protected ?float $min_points = null;
 
 
     /**
@@ -74,7 +73,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @con_length    250
      * @con_is_notnull false
      */
-    protected mixed $failure_mails;
+    protected ?string $failure_mails = null;
 
 
 
@@ -106,9 +105,9 @@ class ilExAutoScoreAssignment extends ActiveRecord
     }
 
     /**
-     * @return int
+     * @return int|null
      */
-    public function getId(): int
+    public function getId(): ?int
     {
         return $this->id;
     }

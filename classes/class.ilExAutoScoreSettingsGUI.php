@@ -187,7 +187,7 @@ class ilExAutoScoreSettingsGUI
         $minPoints->setInfo($this->plugin->txt('min_points_info'));
         $minPoints->setDecimals(2);
         $minPoints->setSize(10);
-        $minPoints->setValue(empty($assAuto->getMinPoints()) ? null : $assAuto->getMinPoints());
+        $minPoints->setValue(empty($assAuto->getMinPoints()) ? null : (string) $assAuto->getMinPoints());
         $form->addItem($minPoints);
 
         $failureMails = new ilTextInputGUI($this->plugin->txt('failure_mails'), 'exautoscore_failure_mails');

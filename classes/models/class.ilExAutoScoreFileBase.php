@@ -26,7 +26,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @con_length     4
      * @con_sequence   true
      */
-    protected mixed $id;
+    protected ?int $id = null;
 
     /**
      * @var int
@@ -37,7 +37,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @con_is_notnull true
      * @con_length     4
      */
-    protected mixed $assignment_id;
+    protected ?int $assignment_id = null;
 
 
     /**
@@ -48,7 +48,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @con_length    250
      * @con_is_notnull false
      */
-    protected mixed $filename;
+    protected ?string $filename = null;
 
     /**
      * @var int
@@ -58,7 +58,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @con_length     4
      * @con_is_notnull false
      */
-    protected mixed $size;
+    protected ?int $size = null;
 
     /**
      * @var string
@@ -68,7 +68,17 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * @con_length    50
      * @con_is_notnull false
      */
-    protected mixed $hash;
+    protected ?string $hash = null;
+
+    /**
+     * @var string
+     *
+     * @con_has_field true
+     * @con_fieldtype text
+     * @con_length    250
+     * @con_is_notnull false
+     */
+    protected ?string $resource_id = null;
 
     #abstract public static function returnDbTableName(): string;
 
@@ -98,11 +108,11 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
 
 
     /**
-     * @return int
+     * @return int|null
      */
-    public function getId(): int
+    public function getId(): ?int
     {
-        return (int) $this->id;
+        return $this->id;
     }
 
     /**
@@ -177,15 +187,28 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
         $this->hash = $hash;
     }
 
+    /**
+     * @return string|null
+     */
+    public function getResourceId(): ?string
+    {
+        return $this->resource_id;
+    }
 
     /**
-     * Store an uploaded file
-     * Only one file should be uploaded because there is no clean way to identify the related form property
-     * The record kees unchanged, if storing fails (e.g. no file is uploaded),
-     *
-     * @return bool             true, if file ist stored, false if not
+     * @param string|null $resource_id
      */
-    public function storeUploadedFile()
+    public function setResourceId(?string $resource_id): void
+    {
+        $this->resource_id = $resource_id;
+    }
+
+    /**
+     * Store an uploaded file using ILIAS 9 compatible methods
+     *
+     * @return bool true, if file ist stored, false if not
+     */
+    public function storeUploadedFile(): bool
     {
         global $DIC;
 
@@ -196,13 +219,8 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
 
         foreach ($upload->getResults() as $result) {
             if ($result->getStatus() == ProcessingStatus::OK && is_file($result->getPath())) {
-                $this->setHash(md5_file($result->getPath()));
-                $this->setSize($result->getSize());
-                $this->setFilename($result->getName());
-                $this->save();
-
-                $upload->moveOneFileTo($result, $this->getStorageDirectory(), Location::STORAGE, $this->getStorageFilename(), true);
-                return true;
+                
+                return $this->storeUploadedFileLegacy($result);
             }
 
             // only process the first uploaded file
@@ -213,33 +231,74 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     }
 
     /**
-     * Download the stored file
+     * Store file using ILIAS 9 filesystem
      */
-    public function downloadFile()
+    private function storeUploadedFileLegacy($result): bool
     {
-        ilFileDelivery::deliverFileAttached(
-            $this->getAbsolutePath(),
-            $this->getFilename()
-        );
-        exit;
+        try {
+            // Create directory structure manually - no ilFileSystemStorage needed
+            $storage_dir = $this->getStorageDirectoryPath();
+            $filename = $this->getStorageFilename();
+            
+            // Ensure directory exists
+            if (!is_dir($storage_dir)) {
+                mkdir($storage_dir, 0755, true);
+            }
+            
+            $target_file = $storage_dir . '/' . $filename;
+            
+            // Copy file
+            if (copy($result->getPath(), $target_file)) {
+                // Set the properties
+                $this->setHash(md5_file($result->getPath()));
+                $this->setSize($result->getSize());
+                $this->setFilename($result->getName());
+                $this->setResourceId(null); // Mark as legacy storage
+                $this->save();
+                
+                return true;
+            }
+            
+        } catch (Exception $e) {
+            error_log('ExAutoScore file storage error: ' . $e->getMessage());
+        }
+        
+        return false;
     }
 
+    /**
+     * Download the stored file
+     */
+    public function downloadFile(): void
+    {
+        $file_path = $this->getAbsolutePath();
+        
+        if ($file_path && is_file($file_path)) {
+            ilFileDelivery::deliverFileAttached($file_path, $this->getFilename());
+        } else {
+            throw new Exception('File not found');
+        }
+        
+        exit;
+    }
 
     /**
      * Delete a file
      */
     public function delete(): void
     {
-        global $DIC;
-
-        $storage = $DIC->filesystem()->storage();
-        if ($storage->has($this->getStorageDirectory() . '/' . $this->getStorageFilename())) {
-            $storage->delete($this->getStorageDirectory() . '/' . $this->getStorageFilename());
+        // Delete the physical file
+        $file_path = $this->getAbsolutePath();
+        if ($file_path && is_file($file_path)) {
+            unlink($file_path);
+            
+            // Try to remove empty directories
+            $dir = dirname($file_path);
+            if (is_dir($dir) && count(scandir($dir)) == 2) { // only . and ..
+                rmdir($dir);
+            }
         }
 
-        if ($storage->hasDir($this->getStorageDirectory()) && empty($storage->listContents($this->getStorageDirectory()))) {
-            $storage->deleteDir($this->getStorageDirectory());
-        }
         parent::delete();
     }
 
@@ -252,14 +311,35 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     }
 
     /**
-     * Get the storage directory for a file
+     * Get the storage directory path (full system path)
+     * @return string
+     */
+    protected function getStorageDirectoryPath(): string
+    {
+        return CLIENT_DATA_DIR . '/' . $this->getStorageDirectoryRelative();
+    }
+
+    /**
+     * Get the relative storage directory path
+     * @return string
+     */
+    protected function getStorageDirectoryRelative(): string
+    {
+        // Create a path structure similar to what ilFileSystemStorage would create
+        $assignment_id = $this->getAssignmentId();
+        $path_from_id = sprintf('%03d', ($assignment_id % 1000)) . '/' . sprintf('%03d', (int)($assignment_id / 1000));
+        
+        return ilExAutoScorePlugin::getStorageDirectory() . '/assignment/' 
+               . $path_from_id . '/' . $this->getStorageSubDirectory();
+    }
+
+    /**
+     * Get the storage directory for a file (for compatibility)
      * @return string
      */
     protected function getStorageDirectory(): string
     {
-        return ilExAutoScorePlugin::getStorageDirectory() . '/'
-            . ilFileSystemStorage::_createPathFromId($this->getAssignmentId(), 'assignment')
-            . '/' . $this->getStorageSubDirectory();
+        return $this->getStorageDirectoryRelative();
     }
 
     /**
@@ -276,25 +356,23 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      * Get the full path of the stored file
      * @return string|null
      */
-    public function getAbsolutePath(): mixed
+    public function getAbsolutePath(): ?string
     {
-        global $DIC;
-
-        $storage = $DIC->filesystem()->storage();
-        if ($storage->has($this->getStorageDirectory() . '/' . $this->getStorageFilename())) {
-            return CLIENT_DATA_DIR . '/' . $this->getStorageDirectory() . '/' . $this->getStorageFilename();
+        $file_path = $this->getStorageDirectoryPath() . '/' . $this->getStorageFilename();
+        
+        if (is_file($file_path)) {
+            return $file_path;
         }
-        else {
-            return null;
-        }
+        
+        return null;
     }
 
     /**
      * Get the relative path of the file in the storage
      * @return string
      */
-    public function getRelativePath(): mixed
+    public function getRelativePath(): string
     {
-        return  $this->getStorageDirectory() . '/' . $this->getStorageFilename();
+        return $this->getStorageDirectoryRelative() . '/' . $this->getStorageFilename();
     }
 }
