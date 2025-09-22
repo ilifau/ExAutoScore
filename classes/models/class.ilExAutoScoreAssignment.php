@@ -84,7 +84,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      * @param array $add_constructor_args
      * @return self
      */
-    public static function findOrGetInstance($primary_key, array $add_constructor_args = array(): self)
+    public static function findOrGetInstance($primary_key, array $add_constructor_args = array()): self
     {
         /** @var self $record */
         $record =  parent::findOrGetInstance($primary_key, $add_constructor_args);

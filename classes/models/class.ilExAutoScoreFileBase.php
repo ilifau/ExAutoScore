@@ -70,13 +70,13 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
      */
     protected mixed $hash;
 
-    abstract public static function returnDbTableName(): string;
+    #abstract public static function returnDbTableName(): string;
 
     /**
      * Wrapper to declare the return type
      * @return static
      */
-    public static function findOrGetInstance($primary_key, array $add_constructor_args = array(): self)
+    public static function findOrGetInstance($primary_key, array $add_constructor_args = []): self
     {
         /** @var static $record */
         $record =  parent::findOrGetInstance($primary_key, $add_constructor_args);
