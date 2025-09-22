@@ -1,9 +1,7 @@
 <?php
 declare(strict_types=1);
 
-
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
-
 
 require_once (__DIR__ . '/class.ilExAutoScorePlugin.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
@@ -19,21 +17,17 @@ class ilExAutoScoreConnector
     const NOTIFY_SEND_FAILURE = 'send_failure';
     const NOTIFY_RESULT_FAILURE = 'result_failure';
 
-
-
     /** @var ilExAutoScorePlugin */
-    protected mixed $plugin;
+    protected ilExAutoScorePlugin $plugin;
 
     /** @var ilExAutoScoreConfig */
     protected mixed $config;
 
-    /** @var string */
-    protected mixed $result_uuid;
+    /** @var string|null */
+    protected ?string $result_uuid = null;
 
-    /** @var string */
-    protected mixed $result_message;
-
-
+    /** @var string|null */
+    protected ?string $result_message = null;
 
     public function __construct()
     {
@@ -55,7 +49,7 @@ class ilExAutoScoreConnector
         $post = [];
         $post['api_key'] = $this->config->get('service_api_key');
         $post['name'] = $assignment->getTitle();
-        $post['priority'] = 'False';
+        $post['priority'] = false;
         $post['return_type'] = 'U';
         $post['return_address'] = $this->plugin->getResultUrl();
         $post['command'] = $scoreAss->getCommand();
@@ -75,13 +69,12 @@ class ilExAutoScoreConnector
         $this->addAssignmentFiles($post, $required, 'example', 'required.tgz');
 
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
-        $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
 
         $success =  $this->callService($url, $post, $timeout);
 
         $scoreTask->clearSubmissionData();
-        $scoreTask->setSubmitTime($submitTime);
-        $scoreTask->setUuid(($this->getResultUuid()));
+        $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
+        $scoreTask->setUuid($this->getResultUuid());
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
         $scoreTask->save();
@@ -98,7 +91,6 @@ class ilExAutoScoreConnector
      * @param ilExAssignment $assignment
      * @param ilObjUser $user
      * @return bool
-     * @throws ilCurlConnectionException
      */
     public function sendExampleTask($assignment, $user)
     {
@@ -118,12 +110,12 @@ class ilExAutoScoreConnector
         $this->addAssignmentFiles($post, $required, 'user_file', 'required.tgz');
 
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
-        $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
 
         $success =  $this->callService($url, $post, $timeout);
 
         $scoreTask->clearSubmissionData();
-        $scoreTask->setUuid(($this->getResultUuid()));
+        $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
+        $scoreTask->setUuid($this->getResultUuid());
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
         $scoreTask->save();
@@ -135,7 +127,6 @@ class ilExAutoScoreConnector
      * @param ilExSubmission $submission
      * @param ilObjUser $user
      * @return bool
-     * @throws ilCurlConnectionException
      */
     public function sendSubmission($submission, $user)
     {
@@ -158,7 +149,7 @@ class ilExAutoScoreConnector
 
         $scoreTask->clearSubmissionData();
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
-        $scoreTask->setUuid(($this->getResultUuid()));
+        $scoreTask->setUuid($this->getResultUuid());
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
         $scoreTask->save();
@@ -255,68 +246,139 @@ class ilExAutoScoreConnector
         }
     }
 
-
     /**
      * Get the assignment uuid that is returned
-     * @return string
+     * @return string|null
      */
-    public function getResultUuid(): mixed {
+    public function getResultUuid(): ?string {
         return $this->result_uuid;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getResultMessage(): mixed {
+    public function getResultMessage(): ?string {
         return $this->result_message;
     }
 
-
     /**
-     * Call the external service
+     * Call the external service using native PHP cURL
      * @param string $url
      * @param array  $post
      * @param int    $timeout
-     * @return string
+     * @return bool
      */
-    protected function callService($url, $post, $timeout)
+    protected function callService($url, $post, $timeout): bool
     {
         try {
-            $curlConnection = new ilCurlConnection($url);
-            $curlConnection->init();
+            // Use native PHP cURL
+            $curl = curl_init();
+            
+            // Basic cURL options
+            curl_setopt_array($curl, [
+                CURLOPT_URL => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $post,
+                CURLOPT_TIMEOUT => $timeout,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_FAILONERROR => false,
+                CURLOPT_HEADER => false,
+            ]);
+            
+            // Handle proxy settings
             $proxy = ilProxySettings::_getInstance();
             if ($proxy->isActive()) {
-                $curlConnection->setOpt(CURLOPT_HTTPPROXYTUNNEL, true);
+                curl_setopt($curl, CURLOPT_HTTPPROXYTUNNEL, true);
                 if (!empty($proxy->getHost())) {
-                    $curlConnection->setOpt(CURLOPT_PROXY, $proxy->getHost());
+                    curl_setopt($curl, CURLOPT_PROXY, $proxy->getHost());
                 }
                 if (!empty($proxy->getPort())) {
-                    $curlConnection->setOpt(CURLOPT_PROXYPORT, $proxy->getPort());
+                    curl_setopt($curl, CURLOPT_PROXYPORT, $proxy->getPort());
                 }
             }
-            $curlConnection->setOpt(CURLOPT_RETURNTRANSFER, true);
-            $curlConnection->setOpt(CURLOPT_VERBOSE, false);
-            $curlConnection->setOpt(CURLOPT_TIMEOUT, $timeout);
-            $curlConnection->setOpt(CURLOPT_POST, 1);
-            $curlConnection->setOpt(CURLOPT_POSTFIELDS, $post);
-
-            $result = $curlConnection->exec();
-            $result = json_decode($result, true);
-            if (isset($result['assignment_uuid'])) {
-                $this->result_uuid = (string) $result['assignment_uuid'];
+            
+            $result = curl_exec($curl);
+            
+            // Get cURL info
+            $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($curl);
+            $curl_errno = curl_errno($curl);
+            
+            curl_close($curl);
+            
+            if ($curl_errno !== 0) {
+                $this->result_uuid = null;
+                $this->result_message = 'cURL Error #' . $curl_errno . ': ' . $curl_error;
+                return false;
             }
-            if (isset($result['task_uuid'])) {
-                $this->result_uuid = (string) $result['task_uuid'];
+            
+            if ($result === false) {
+                $this->result_uuid = null;
+                $this->result_message = 'cURL execution failed';
+                return false;
             }
-            $this->result_message = (string) $result['message'];
-            return (bool) $result['success'];
+            
+            if ($http_code >= 400) {
+                $this->result_uuid = null;
+                $this->result_message = 'HTTP Error ' . $http_code . ': ' . $result;
+                return false;
+            }
+            
+            if (empty($result)) {
+                $this->result_uuid = null;
+                $this->result_message = 'Empty response from service (HTTP ' . $http_code . ')';
+                return false;
+            }
+            
+            $decoded_result = json_decode($result, true);
+            $json_error = json_last_error();
+            
+            if ($json_error !== JSON_ERROR_NONE) {
+                $this->result_uuid = null;
+                $this->result_message = 'Invalid JSON response from service: ' . json_last_error_msg();
+                return false;
+            }
+            
+            // Handle different response formats - check for error field first
+            if (isset($decoded_result['error'])) {
+                $this->result_uuid = null;
+                $this->result_message = 'Service error: ' . $decoded_result['error'];
+                return false;
+            }
+            
+            // Process the result
+            if (isset($decoded_result['assignment_uuid'])) {
+                $this->result_uuid = (string) $decoded_result['assignment_uuid'];
+            }
+            if (isset($decoded_result['task_uuid'])) {
+                $this->result_uuid = (string) $decoded_result['task_uuid'];
+            }
+            
+            // Handle message field - try different field names
+            if (isset($decoded_result['message'])) {
+                $this->result_message = (string) $decoded_result['message'];
+            } elseif (isset($decoded_result['msg'])) {
+                $this->result_message = (string) $decoded_result['msg'];
+            } else {
+                $this->result_message = 'Success';
+            }
+            
+            $success = isset($decoded_result['success']) ? (bool) $decoded_result['success'] : false;
+            
+            return $success;
+            
         }
         catch(Exception $e) {
-            if (isset($curlConnection)) {
-                $curlConnection->close();
+            if (isset($curl) && is_resource($curl)) {
+                curl_close($curl);
             }
+            
             $this->result_uuid = null;
-            $this->result_message = $e->getMessage();
+            $this->result_message = 'Connection exception: ' . $e->getMessage();
+            
             return false;
         }
     }
@@ -348,7 +410,6 @@ class ilExAutoScoreConnector
             }
         }
     }
-
 
     /**
      * Add the files of a submission to the post request
@@ -392,7 +453,6 @@ class ilExAutoScoreConnector
             }
          }
     }
-
 
     /**
      * Pack files for transmission
