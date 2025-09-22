@@ -81,67 +81,67 @@ class ilExAutoScoreSettingsGUI
     /**
      * Save the settings
      */
-    public function saveSettings()
-    {
-        global $DIC;
+        public function saveSettings()
+        {
+            global $DIC;
 
-        $form = $this->initSettingsForm();
-        $form->setValuesByPost();
-        if ($form->checkInput()) {
-            $assAuto = ilExAutoScoreAssignment::findOrGetInstance($this->assignment->getId());
-            $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
+            $form = $this->initSettingsForm();
+            $form->setValuesByPost();
+            if ($form->checkInput()) {
+                $assAuto = ilExAutoScoreAssignment::findOrGetInstance($this->assignment->getId());
+                $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
 
-            $request = $DIC->http()->request();
-            $params = $request->getParsedBody();
+                $request = $DIC->http()->request();
+                $params = $request->getParsedBody();
 
-            $resetNeeded = false;
-            $updateNeeded = false;
+                $resetNeeded = false;
+                $updateNeeded = false;
 
-            $assCont->setDescription((string) $params['exautoscore_docker_description']);
-            $assCont->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_DOCKER);
-            $assCont->setPublic(false);
-            $assCont->save();
+                $assCont->setDescription((string) $params['exautoscore_docker_description']);
+                $assCont->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_DOCKER);
+                $assCont->setPublic(false);
+                $assCont->save();
 
-            if ($assCont->storeUploadedFile()) {
-                $resetNeeded = true;
-            }
+                if ($assCont->storeUploadedFile()) {
+                    $resetNeeded = true;
+                }
 
-            if ($assAuto->getCommand() != (string) $params['exautoscore_docker_command']) {
-                $resetNeeded = true;
-            }
+                if ($assAuto->getCommand() != (string) $params['exautoscore_docker_command']) {
+                    $resetNeeded = true;
+                }
 
             if ($assAuto->getMinPoints() != (float) $params['exautoscore_min_points']) {
-                $updateNeeded = true;
-            }
+                    $updateNeeded = true;
+                }
 
-            $assAuto->setCommand((string) $params['exautoscore_docker_command']);
+                $assAuto->setCommand((string) $params['exautoscore_docker_command']);
             $assAuto->setMinPoints((float) $params['exautoscore_min_points']);
-            $assAuto->setFailureMails((string) $params['exautoscore_failure_mails']);
-            $assAuto->save();
+                $assAuto->setFailureMails((string) $params['exautoscore_failure_mails']);
+                $assAuto->save();
 
-            $message = $this->plugin->txt('correction_settings_saved');
-            if ($resetNeeded) {
-                ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
-                if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-                    $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
+                $message = $this->plugin->txt('correction_settings_saved');
+                if ($resetNeeded) {
+                    ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+                    if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+                        $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
+                    }
+                    else {
+                        $message .= ' ' . $this->plugin->txt('please_send_assignment');
+                    }
                 }
-                else {
-                    $message .= ' ' . $this->plugin->txt('please_send_assignment');
+                elseif ($updateNeeded) {
+                    ilExAutoScoreTask::updateAllSubmissions($this->assignment->getId());
+                    $message = $this->plugin->txt('correction_settings_saved_with_update');
                 }
-            }
-            elseif ($updateNeeded) {
-                ilExAutoScoreTask::updateAllSubmissions($this->assignment->getId());
-                $message = $this->plugin->txt('correction_settings_saved_with_update');
-            }
-            $this->tpl->setOnScreenMessage('success', $message, true);
+                $this->tpl->setOnScreenMessage('success', $message, true);
 
-            $this->ctrl->redirect($this, 'showSettings');
-        }
-        else {
-            $form->setValuesByPost();
-            $this->tpl->setContent($form->getHTML());
-        }
-   }
+                $this->ctrl->redirect($this, 'showSettings');
+            }
+            else {
+                $form->setValuesByPost();
+                $this->tpl->setContent($form->getHTML());
+            }
+    }
 
 
     /**
@@ -187,7 +187,7 @@ class ilExAutoScoreSettingsGUI
         $minPoints->setInfo($this->plugin->txt('min_points_info'));
         $minPoints->setDecimals(2);
         $minPoints->setSize(10);
-        $minPoints->setValue(empty($assAuto->getMinPoints()) ? null : (string) $assAuto->getMinPoints());
+        $minPoints->setValue(empty($assAuto->getMinPoints()) ? null : $this->formatFloatForInput($assAuto->getMinPoints()));
         $form->addItem($minPoints);
 
         $failureMails = new ilTextInputGUI($this->plugin->txt('failure_mails'), 'exautoscore_failure_mails');
@@ -250,20 +250,20 @@ class ilExAutoScoreSettingsGUI
 
             if (!empty($assTask->getInstantStatus())) {
                 $instantStatus = new ilNonEditableValueGUI($this->plugin->txt('instant_status'), 'exautoscore_instant_status', true);
-                $instantStatus->setValue('<span class="ilTag">' . ilUtil::prepareFormOutput($assTask->getInstantStatus()) . '</span>');
+                $instantStatus->setValue('<span class="ilTag">' . htmlspecialchars($assTask->getInstantStatus()) . '</span>');
                 $form->addItem($instantStatus);
             }
 
             if (!empty($assTask->getInstantMessage())) {
                 $instantMessage = new ilNonEditableValueGUI($this->plugin->txt('instant_message'), 'exautoscore_instant_message', true);
-                $instantMessage->setValue('<pre>' . ilUtil::prepareFormOutput($assTask->getInstantMessage()) . '</pre>');
+                $instantMessage->setValue('<pre>' . htmlspecialchars($assTask->getInstantMessage()) . '</pre>');
                 $form->addItem($instantMessage);
             }
 
 
             if (!empty($assTask->getProtectedStatus())) {
                 $protectedStatus = new ilNonEditableValueGUI($this->plugin->txt('protected_status'), 'exautoscore_protected_status', true);
-                $protectedStatus->setValue('<span class="ilTag">' . ilUtil::prepareFormOutput($assTask->getProtectedStatus()) . '</span>');
+                $protectedStatus->setValue('<span class="ilTag">' . htmlspecialchars($assTask->getProtectedStatus()) . '</span>');
                 $form->addItem($protectedStatus);
             }
 
@@ -391,5 +391,12 @@ class ilExAutoScoreSettingsGUI
         $this->toolbar->addButtonInstance($button);
     }
 
+    private function formatFloatForInput(?float $value, int $decimals = 2): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        return sprintf('%.' . $decimals . 'f', $value);
+    }
 
 }
