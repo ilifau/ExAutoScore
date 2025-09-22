@@ -876,39 +876,54 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * @param \ILIAS\Exercise\Assignment\PropertyAndActionBuilderUI $builder
      * @return void
      */
+/**
+     * Build submission properties and actions for ILIAS 9
+     * @param \ILIAS\Exercise\Assignment\PropertyAndActionBuilderUI $builder
+     * @return void
+     */
     public function buildSubmissionPropertiesAndActions(
         \ILIAS\Exercise\Assignment\PropertyAndActionBuilderUI $builder
     ): void {
-        // Get the submission from the builder
-        $submission = $builder->getSubmission();
-        
-        // Add custom properties
-        require_once(__DIR__ . '/models/class.ilExAutoScoreTask.php');
-        $task = \ilExAutoScoreTask::getSubmissionTask($submission);
-        
-        if (!empty($task->getReturnPoints())) {
-            $builder->addProperty(
-                $this->plugin->txt("return_points"),
-                (string) $task->getReturnPoints()
-            );
-        }
-        
-        if (!empty($task->getInstantStatus())) {
-            $builder->addProperty(
-                $this->plugin->txt("instant_status"),
-                $task->getInstantStatus()
-            );
-        }
-        
-        if (!empty($task->getProtectedFeedbackHtml())) {
-            // Add a custom action to view detailed feedback
-            $builder->addAction(
-                $this->plugin->txt("show_extended_feedback"),
-                $this->ctrl->getLinkTargetByClass(
-                    [strtolower(get_class($this))],
-                    "showExtendedFeedback"
-                )
-            );
+        try {
+            // Get the submission from the builder
+            $submission = $builder->getSubmission();
+            
+            if ($submission === null) {
+                return; // No submission available, skip
+            }
+            
+            // Add custom properties
+            require_once(__DIR__ . '/models/class.ilExAutoScoreTask.php');
+            $task = \ilExAutoScoreTask::getSubmissionTask($submission);
+            
+            if ($task->getReturnPoints() !== null) {
+                $builder->addProperty(
+                    $this->plugin->txt("return_points"),
+                    (string) $task->getReturnPoints()
+                );
+            }
+            
+            if (!empty($task->getInstantStatus())) {
+                $builder->addProperty(
+                    $this->plugin->txt("instant_status"),
+                    $task->getInstantStatus()
+                );
+            }
+            
+            if (!empty($task->getProtectedFeedbackHtml())) {
+                // Add a simple action for viewing detailed feedback
+                $this->ctrl->setParameter($this, 'task_id', $task->getId());
+                $link = $this->ctrl->getLinkTarget($this, 'showExtendedFeedback');
+                
+                $builder->addAction(
+                    $this->plugin->txt("show_extended_feedback"),
+                    $link
+                );
+            }
+            
+        } catch (\Throwable $e) {
+            // Log the error but don't break the UI
+            error_log('ExAutoScore buildSubmissionPropertiesAndActions error: ' . $e->getMessage());
         }
     }
 }

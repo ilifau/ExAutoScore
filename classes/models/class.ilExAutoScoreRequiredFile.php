@@ -7,13 +7,16 @@ require_once(__DIR__ . '/class.ilExAutoScoreFileBase.php');
 
 class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
 {
-
     /**
      *  Override: name of the sub sub directory for storing the files
      * @var string
      */
     protected $storage_sub_directory = 'required';
 
+    public static function returnDbTableName(): string
+    {
+        return 'exautoscore_req_file';
+    }
 
     /**
      * @var string
@@ -23,7 +26,7 @@ class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
      * @con_length    2000
      * @con_is_notnull false
      */
-    protected mixed $description;
+    protected ?string $description = null;
 
 
     /**
@@ -34,7 +37,7 @@ class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
      * @con_length    250
      * @con_is_notnull false
      */
-    protected mixed $required_encoding;
+    protected ?string $required_encoding = null;
 
 
     /**
@@ -45,12 +48,7 @@ class ilExAutoScoreRequiredFile extends ilExAutoScoreFileBase
      * @con_length     4
      * @con_is_notnull false
      */
-    protected mixed $max_size;
-
-    public static function returnDbTableName(): string
-    {
-        return 'exautoscore_req_file';
-    }
+    protected ?int $max_size = null;
 
     /**
      * Get the selectable encoding options

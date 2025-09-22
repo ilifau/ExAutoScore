@@ -9,7 +9,10 @@ class ilExAutoScoreTask extends ActiveRecord
      * Override: name of the database table
      * @var string
      */
-    #protected $connector_container_name = 'exautoscore_task';
+    public static function returnDbTableName(): string
+    {
+        return 'exautoscore_task';
+    }
 
     /**
      * @var int
@@ -22,7 +25,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length     4
      * @con_sequence   true
      */
-    protected mixed $id;
+    protected ?int $id = null;
 
     /**
      * @var int
@@ -32,7 +35,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull true
      * @con_length     4
      */
-    protected mixed $assignment_id;
+    protected ?int $assignment_id = null;
 
 
     /**
@@ -43,7 +46,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    50
      * @con_is_notnull false
      */
-    protected mixed $uuid;
+    protected ?string $uuid = null;
 
 
     /**
@@ -54,7 +57,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull false
      * @con_length     4
      */
-    protected mixed $user_id;
+    protected ?int $user_id = null;
 
     /**
      * @var int
@@ -64,7 +67,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull false
      * @con_length     4
      */
-    protected mixed $team_id;
+    protected ?int $team_id = null;
 
 
     /**
@@ -74,7 +77,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_fieldtype  timestamp
      * @con_is_notnull false
      */
-    protected mixed $submit_time;
+    protected ?string $submit_time = null;
 
 
     /**
@@ -85,7 +88,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull false
      * @con_length     4
      */
-    protected mixed $submit_success;
+    protected ?bool $submit_success = null;
 
 
     /**
@@ -96,7 +99,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    250
      * @con_is_notnull false
      */
-    protected mixed $submit_message;
+    protected ?string $submit_message = null;
 
 
     /**
@@ -107,7 +110,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull false
      * @con_length     4
      */
-    protected mixed $task_returncode;
+    protected ?int $task_returncode = null;
 
 
     /**
@@ -115,10 +118,10 @@ class ilExAutoScoreTask extends ActiveRecord
      *
      * @con_has_field  true
      * @con_fieldtype  float
-     * @con_is_notnull false
      * @con_length     4
+     * @con_is_notnull false
      */
-    protected mixed $task_duration;
+    protected ?float $task_duration = null;
 
 
     /**
@@ -128,7 +131,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_fieldtype  timestamp
      * @con_is_notnull false
      */
-    protected mixed $return_time;
+    protected ?string $return_time = null;
 
 
     /**
@@ -138,7 +141,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_fieldtype  float
      * @con_is_notnull false
      */
-    protected mixed $return_points;
+    protected ?float $return_points = null;
 
 
     /**
@@ -149,7 +152,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    4000
      * @con_is_notnull false
      */
-    protected mixed $instant_message;
+    protected ?string $instant_message = null;
 
 
     /**
@@ -160,7 +163,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    10
      * @con_is_notnull false
      */
-    protected mixed $instant_status;
+    protected ?string $instant_status = null;
 
 
     /**
@@ -171,7 +174,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    10
      * @con_is_notnull false
      */
-    protected mixed $protected_status;
+    protected ?string $protected_status = null;
 
     /**
      * @var string
@@ -181,7 +184,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_length    4000
      * @con_is_notnull false
      */
-    protected mixed $protected_feedback_text;
+    protected ?string $protected_feedback_text = null;
 
 
     /**
@@ -191,12 +194,7 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_fieldtype  clob
      * @con_is_notnull false
      */
-    protected mixed $protected_feedback_html;
-
-    public static function returnDbTableName(): string
-    {
-        return 'exautoscore_task';
-    }
+    protected ?string $protected_feedback_html = null;
 
 
     /**
@@ -432,11 +430,11 @@ class ilExAutoScoreTask extends ActiveRecord
     }
 
     /**
-     * @return int
+     * @return int|null
      */
-    public function getId(): int
+    public function getId(): ?int
     {
-        return (int) $this->id;
+        return $this->id;
     }
 
     /**
@@ -464,25 +462,25 @@ class ilExAutoScoreTask extends ActiveRecord
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getUuid(): mixed
+    public function getUuid(): ?string
     {
         return $this->uuid;
     }
 
     /**
-     * @param string $uuid
+     * @param string|null $uuid
      */
-    public function setUuid($uuid): void
+    public function setUuid(?string $uuid): void
     {
         $this->uuid = $uuid;
     }
 
     /**
-     * @return int
+     * @return int|null
      */
-    public function getUserId(): int
+    public function getUserId(): ?int
     {
         return $this->user_id;
     }
@@ -496,209 +494,209 @@ class ilExAutoScoreTask extends ActiveRecord
     }
 
     /**
-     * @return int
+     * @return int|null
      */
-    public function getTeamId(): int
+    public function getTeamId(): ?int
     {
         return $this->team_id;
     }
 
     /**
-     * @param int $team_id
+     * @param int|null $team_id
      */
-    public function setTeamId($team_id): void
+    public function setTeamId(?int $team_id): void
     {
         $this->team_id = $team_id;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getSubmitTime(): mixed
+    public function getSubmitTime(): ?string
     {
         return $this->submit_time;
     }
 
     /**
-     * @param string $submit_time
+     * @param string|null $submit_time
      */
-    public function setSubmitTime( $submit_time): void
+    public function setSubmitTime(?string $submit_time): void
     {
         $this->submit_time = $submit_time;
     }
 
     /**
-     * @return bool
+     * @return bool|null
      */
-    public function getSubmitSuccess(): mixed
+    public function getSubmitSuccess(): ?bool
     {
         return $this->submit_success;
     }
 
     /**
-     * @param bool $submit_success
+     * @param bool|null $submit_success
      */
-    public function setSubmitSuccess( $submit_success): void
+    public function setSubmitSuccess(?bool $submit_success): void
     {
         $this->submit_success = $submit_success;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getSubmitMessage(): mixed
+    public function getSubmitMessage(): ?string
     {
-        return  $this->submit_message;
+        return $this->submit_message;
     }
 
     /**
-     * @param int $submit_message
+     * @param string|null $submit_message
      */
-    public function setSubmitMessage( $submit_message): void
+    public function setSubmitMessage(?string $submit_message): void
     {
         $this->submit_message = $submit_message;
     }
 
     /**
-     * @return int
+     * @return int|null
      */
-    public function getReturnCode(): mixed
+    public function getReturnCode(): ?int
     {
         return $this->task_returncode;
     }
 
     /**
-     * @param int $task_returncode
+     * @param int|null $task_returncode
      */
-    public function setReturnCode($task_returncode): void
+    public function setReturnCode(?int $task_returncode): void
     {
         $this->task_returncode = $task_returncode;
     }
 
     /**
-     * @return float
+     * @return float|null
      */
-    public function getTaskDuration(): mixed
+    public function getTaskDuration(): ?float
     {
         return $this->task_duration;
     }
 
     /**
-     * @param float $task_duration
+     * @param float|null $task_duration
      */
-    public function setTaskDuration($task_duration): void
+    public function setTaskDuration(?float $task_duration): void
     {
         $this->task_duration = $task_duration;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getReturnTime(): mixed
+    public function getReturnTime(): ?string
     {
         return $this->return_time;
     }
 
     /**
-     * @param string $return_time
+     * @param string|null $return_time
      */
-    public function setReturnTime($return_time): void
+    public function setReturnTime(?string $return_time): void
     {
         $this->return_time = $return_time;
     }
 
     /**
-     * @return float
+     * @return float|null
      */
-    public function getReturnPoints(): mixed
+    public function getReturnPoints(): ?float
     {
         return $this->return_points;
     }
 
     /**
-     * @param float $return_points
+     * @param float|null $return_points
      */
-    public function setReturnPoints($return_points): void
+    public function setReturnPoints(?float $return_points): void
     {
         $this->return_points = $return_points;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getInstantMessage(): mixed
+    public function getInstantMessage(): ?string
     {
         return $this->instant_message;
     }
 
     /**
-     * @param string $instant_message
+     * @param string|null $instant_message
      */
-    public function setInstantMessage($instant_message): void
+    public function setInstantMessage(?string $instant_message): void
     {
         $this->instant_message = $instant_message;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getInstantStatus(): mixed
+    public function getInstantStatus(): ?string
     {
         return $this->instant_status;
     }
 
     /**
-     * @param string $instant_status
+     * @param string|null $instant_status
      */
-    public function setInstantStatus($instant_status): void
+    public function setInstantStatus(?string $instant_status): void
     {
         $this->instant_status = $instant_status;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getProtectedStatus(): mixed
+    public function getProtectedStatus(): ?string
     {
         return $this->protected_status;
     }
 
     /**
-     * @param string $protected_status
+     * @param string|null $protected_status
      */
-    public function setProtectedStatus($protected_status): void
+    public function setProtectedStatus(?string $protected_status): void
     {
         $this->protected_status = $protected_status;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getProtectedFeedbackText(): mixed
+    public function getProtectedFeedbackText(): ?string
     {
         return $this->protected_feedback_text;
     }
 
     /**
-     * @param string $protected_feedback_text
+     * @param string|null $protected_feedback_text
      */
-    public function setProtectedFeedbackText($protected_feedback_text): void
+    public function setProtectedFeedbackText(?string $protected_feedback_text): void
     {
         $this->protected_feedback_text = $protected_feedback_text;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getProtectedFeedbackHtml(): mixed
+    public function getProtectedFeedbackHtml(): ?string
     {
         return $this->protected_feedback_html;
     }
 
     /**
-     * @param string $protected_feedback_html
+     * @param string|null $protected_feedback_html
      */
-    public function setProtectedFeedbackHtml($protected_feedback_html): void
+    public function setProtectedFeedbackHtml(?string $protected_feedback_html): void
     {
         $this->protected_feedback_html = $protected_feedback_html;
     }
@@ -756,7 +754,7 @@ class ilExAutoScoreTask extends ActiveRecord
 
     /**
      * Reset the status of users (e.g. ex team members)
-     * @param int[] $a_user_id
+     * @param int[] $a_user_ids
      */
     public function resetMemberStatus ($a_user_ids) {
         foreach ($a_user_ids as $user_id) {
