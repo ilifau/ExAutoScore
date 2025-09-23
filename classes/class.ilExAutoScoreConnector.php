@@ -50,7 +50,7 @@ class ilExAutoScoreConnector
         $post['api_key'] = $this->config->get('service_api_key');
         $post['name'] = $assignment->getTitle();
         $post['priority'] = false;
-        $post['return_type'] = 'U';
+        $post['return_type'] = 'F'; #früher U
         $post['return_address'] = $this->plugin->getResultUrl();
         $post['command'] = $scoreAss->getCommand();
         $post['timeout'] = $timeout;
@@ -94,8 +94,15 @@ class ilExAutoScoreConnector
      */
     public function sendExampleTask($assignment, $user)
     {
+
         $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($assignment->getId());
         $scoreTask = ilExAutoScoreTask::getExampleTask($assignment->getId());
+
+        if (empty($scoreAss->getUuid())) {
+            echo "<pre>" . var_export('Assignment must be sent first before testing example task') . "</pre>";
+            exit();
+            return false;
+        }        
 
         $url = $this->config->get('service_task_url');
         $timeout = (int) $this->config->get('service_timeout');

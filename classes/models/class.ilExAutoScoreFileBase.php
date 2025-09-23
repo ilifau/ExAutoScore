@@ -217,8 +217,8 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
             $upload->process();
         }
 
-        foreach ($upload->getResults() as $result) {
-            if ($result->getStatus() == ProcessingStatus::OK && is_file($result->getPath())) {
+        foreach ($upload->getResults() as $result) {          
+            if ($result->getStatus()->getCode() == ProcessingStatus::OK && is_file($result->getPath())) {
                 
                 return $this->storeUploadedFileLegacy($result);
             }
@@ -249,9 +249,9 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
             
             // Copy file
             if (copy($result->getPath(), $target_file)) {
-                // Set the properties
+                // Set the properties - get file size from actual file, not from result
                 $this->setHash(md5_file($result->getPath()));
-                $this->setSize($result->getSize());
+                $this->setSize(filesize($target_file));  // ← Verwende filesize() statt $result->getSize()
                 $this->setFilename($result->getName());
                 $this->setResourceId(null); // Mark as legacy storage
                 $this->save();

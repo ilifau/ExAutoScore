@@ -107,9 +107,12 @@ class ilExAutoScoreProvidedFilesGUI
             $request = $DIC->http()->request();
             $params = $request->getParsedBody();
 
-            $file->setDescription((string) $params['exautoscore_file_description']);
-            $file->setPurpose((string) $params['exautoscore_file_purpose']);
-            $file->setPublic((bool) $params['exautoscore_file_public']);
+            $file->setDescription((string) ($params['exautoscore_file_description'] ?? ''));
+            $file->setPurpose((string) ($params['exautoscore_file_purpose'] ?? ''));
+            
+            // Fix für Checkbox - in ILIAS 9 sind unchecked Checkboxes nicht im POST array
+            $file->setPublic(isset($params['exautoscore_file_public']) && (bool) $params['exautoscore_file_public']);
+            
             $file->save();
             $file->storeUploadedFile();
 
