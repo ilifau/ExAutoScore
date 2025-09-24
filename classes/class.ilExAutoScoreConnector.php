@@ -99,8 +99,6 @@ class ilExAutoScoreConnector
         $scoreTask = ilExAutoScoreTask::getExampleTask($assignment->getId());
 
         if (empty($scoreAss->getUuid())) {
-            echo "<pre>" . var_export('Assignment must be sent first before testing example task') . "</pre>";
-            exit();
             return false;
         }        
 
