@@ -744,14 +744,14 @@ class ilExAutoScoreTask extends ActiveRecord
 
         foreach ($user_ids as $user_id) {
             $memberStatus = new ilExAssignmentMemberStatus($this->getAssignmentId(), $user_id);
-            $memberStatus->setReturned($this->getSubmitSuccess());
-            $memberStatus->setComment($this->getProtectedFeedbackText());
+            $memberStatus->setReturned($this->getSubmitSuccess() ?? false);
+            $memberStatus->setComment($this->getProtectedFeedbackText() ?? '');
             $memberStatus->setStatus($status);
-            $memberStatus->setMark($mark);
+            $memberStatus->setMark($mark !== null ? (string) $mark : '');
             $memberStatus->update();
         }
     }
-
+    
     /**
      * Reset the status of users (e.g. ex team members)
      * @param int[] $a_user_ids
