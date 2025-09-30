@@ -27,11 +27,45 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     /** @var ilExAutoScorePlugin */
     protected mixed $plugin;
 
+    /** @var ilExSubmission|null */
+    protected $submission = null;
+
+    /** @var ilObjExercise|null */
+    protected $exercise = null;
+
     public function __construct($plugin)
     {
         $this->initGlobals();
         $this->plugin = $plugin;
     }
+
+    /**
+     * Get the submission object
+     * @return ilExSubmission|null
+     */
+    public function getSubmission(): ?ilExSubmission
+    {
+        return $this->submission ?? null;
+    }
+
+    /**
+     * Set the submission object (called by ilExSubmissionGUI)
+     * @param ilExSubmission $submission
+     */
+    public function setSubmission(ilExSubmission $submission): void
+    {
+        $this->submission = $submission;
+        $this->assignment = $submission->getAssignment();
+    }
+
+    /**
+     * Set the exercise object (called by ilExSubmissionGUI)
+     * @param ilObjExercise $exercise
+     */
+    public function setExercise(ilObjExercise $exercise): void
+    {
+        $this->exercise = $exercise;
+    }    
 
     public function executeCommand(): void
     {
@@ -66,14 +100,19 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $this->ctrl->setReturnByClass(ilObjExerciseGUI::class, 'showOverview');
 
         $next_class = $this->ctrl->getNextClass($this);
-        $cmd = $this->ctrl->getCmd();
+        $cmd = $this->ctrl->getCmd('submissionScreen'); // WICHTIG: Default-Command setzen!
+
+        $DIC->logger()->root()->debug('ExAutoScore executeCommand', [
+            'next_class' => $next_class, 
+            'cmd' => $cmd,
+            'gui_class' => get_class($this)
+        ]);
 
         switch ($next_class) {
             case 'ilexautoscoresettingsgui':
                 require_once(__DIR__ . '/class.ilExAutoScoreSettingsGUI.php');
                 $gui = new ilExAutoScoreSettingsGUI($this->plugin, $this->assignment, $this);
                 $this->tabs->activateTab('exautoscore_settings');
-                $DIC->logger()->root()->debug('ExAutoScore forward', ['next_class' => $next_class, 'cmd' => $cmd]);
                 $this->ctrl->forwardCommand($gui);
                 break;
 
@@ -81,7 +120,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 require_once(__DIR__ . '/class.ilExAutoScoreProvidedFilesGUI.php');
                 $gui = new ilExAutoScoreProvidedFilesGUI($this->plugin, $this->assignment, $this);
                 $this->tabs->activateTab('exautoscore_provided_files');
-                $DIC->logger()->root()->debug('ExAutoScore forward', ['next_class' => $next_class, 'cmd' => $cmd]);
                 $this->ctrl->forwardCommand($gui);
                 break;
 
@@ -89,15 +127,14 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 require_once(__DIR__ . '/class.ilExAutoScoreRequiredFilesGUI.php');
                 $gui = new ilExAutoScoreRequiredFilesGUI($this->plugin, $this->assignment, $this);
                 $this->tabs->activateTab('exautoscore_required_files');
-                $DIC->logger()->root()->debug('ExAutoScore forward', ['next_class' => $next_class, 'cmd' => $cmd]);
                 $this->ctrl->forwardCommand($gui);
                 break;
 
+            case '':
             default:
+                // WICHTIG: Hier alle Commands explizit behandeln
                 switch ($cmd) {
                     case 'submissionScreen':
-                        $this->submissionScreen();
-                        break;
                     case 'downloadProvidedFile':
                     case 'downloadSubmittedFile':
                     case 'downloadExampleFile':
@@ -110,11 +147,12 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                         break;
 
                     default:
-                        $this->tpl->setContent("Unknown Command: " . ilUtil::secureString($cmd));
+                        // Fallback für unbekannte Commands
+                        $DIC->logger()->root()->warning('ExAutoScore: Unknown command: ' . $cmd);
+                        $this->submissionScreen();
                 }
         }
     }
-
     public function addEditFormCustomProperties(ilPropertyFormGUI $form, $exercise_id = null, $assignment_id = null): void {}
     public function importFormToAssignment(ilExAssignment $ass, ilPropertyFormGUI $form): void {}
     public function getFormValuesArray(ilExAssignment $ass): array { return []; }
@@ -740,8 +778,8 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $this->ctrl->returnToParent($this);
     }
 
-    public function buildSubmissionPropertiesAndActions(
-        \ILIAS\Exercise\Assignment\PropertyAndActionBuilderUI $builder
+        public function buildSubmissionPropertiesAndActions(
+        PropertyAndActionBuilderUI $builder
     ): void {
         global $DIC;
 
@@ -764,17 +802,26 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         if ($sub->canSubmit()) {
             $title = ($sub->getFiles() ? $lng->txt('exc_edit_submission') : $lng->txt('exc_hand_in'));
 
+            // WICHTIG: Zuerst die Parameter setzen
+            $ctrl->setParameterByClass($gui_class, 'ass_id', $sub->getAssignment()->getId());
+            
+            // WICHTIG: Den nächsten GUI-Kontext setzen BEVOR wir den Link generieren
+            $ctrl->setParameterByClass(ilExSubmissionGUI::class, 'ass_id', $sub->getAssignment()->getId());
+            
+            /*$url = $ctrl->getLinkTargetByClass(
+                [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, $gui_class ], // OHNE strtolower!
+                'submissionScreen'
+            );*/
             $ctrl->setParameterByClass(ilExSubmissionGUI::class, 'ass_id', $sub->getAssignment()->getId());
             $url = $ctrl->getLinkTargetByClass(
-                [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, strtolower($gui_class) ],
-                'submissionScreen'
-            );
+                [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, $gui_class ],
+                '');              
 
-            $DIC->logger()->root()->debug('ExAutoScore link', [
+            $DIC->logger()->root()->debug('ExAutoScore link generation', [
                 'ass_id' => $sub->getAssignment()->getId(),
-                'gui'    => strtolower($gui_class),
-                'url'    => $url,
-                'cmd'    => 'submissionScreen'
+                'gui_class' => $gui_class,
+                'url' => $url,
+                'cmd' => 'submissionScreen'
             ]);
 
             $builder->setMainAction($builder::SEC_SUBMISSION, $f->button()->primary($title, $url));
@@ -782,9 +829,11 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
         } else {
             if (count($sub->getFiles()) > 0) {
+                $ctrl->setParameterByClass($gui_class, 'ass_id', $sub->getAssignment()->getId());
                 $ctrl->setParameterByClass(ilExSubmissionGUI::class, 'ass_id', $sub->getAssignment()->getId());
+                
                 $url = $ctrl->getLinkTargetByClass(
-                    [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, strtolower($gui_class) ],
+                    [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, $gui_class ],
                     'submissionScreen'
                 );
                 $builder->addAction($builder::SEC_SUBMISSION, $f->link()->standard($lng->txt('already_delivered_files'), $url));
@@ -804,10 +853,11 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
 
         if ($task && $task->getProtectedFeedbackHtml()) {
-            $ctrl->setParameterByClass(strtolower($gui_class), 'task_id', $task->getId());
+            $ctrl->setParameterByClass($gui_class, 'task_id', $task->getId());
             $ctrl->setParameterByClass(ilExSubmissionGUI::class, 'ass_id', $sub->getAssignment()->getId());
+            
             $url = $ctrl->getLinkTargetByClass(
-                [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, strtolower($gui_class) ],
+                [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, $gui_class ],
                 'showExtendedFeedback'
             );
             $builder->addAction($builder::SEC_SUBMISSION, $f->button()->standard($this->plugin->txt('show_extended_feedback'), $url));
