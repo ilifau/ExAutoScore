@@ -590,9 +590,8 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     protected function uploadSubmission()
     {
         global $DIC;
-        
+
         $DIC->logger()->root()->error('ExAutoScore uploadSubmission CALLED');
-        
 
         $this->handleSubmissionTabs($this->tabs);
 
@@ -603,7 +602,9 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
         if (!$form->checkInput()) {
             $this->tpl->setContent($form->getHTML());
-            return;
+            $DIC->logger()->root()->error('ExAutoScore: form validation failed, printing template');
+            $this->tpl->printToStdout();
+            exit;
         }
 
         $upload = $DIC->upload();
@@ -644,10 +645,13 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 }
             }
         }
+        
         if ($errors) {
             $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('upload_error_file'));
             $this->tpl->setContent($form->getHTML());
-            return;
+            $DIC->logger()->root()->error('ExAutoScore: upload errors, printing template');
+            $this->tpl->printToStdout();
+            exit;
         }
 
         $existing = [];
@@ -687,13 +691,17 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
             $this->tpl->setOnScreenMessage('failure', sprintf($this->plugin->txt("submission_upload_error"), $failed->getFilename()));
             $this->tpl->setContent($form->getHTML());
-            return;
+            $DIC->logger()->root()->error('ExAutoScore: file upload failed, printing template');
+            $this->tpl->printToStdout();
+            exit;
         }
 
         if (empty($new)) {
             $this->tpl->setOnScreenMessage('failure', $this->plugin->txt("submission_no_upload"));
             $this->tpl->setContent($form->getHTML());
-            return;
+            $DIC->logger()->root()->error('ExAutoScore: no new files, printing template');
+            $this->tpl->printToStdout();
+            exit;
         }
 
         if (!empty($new)) {
