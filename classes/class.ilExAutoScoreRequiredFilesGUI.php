@@ -5,9 +5,7 @@ require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
 
 /**
- * Class ilExAutoScoreRequiredFilesGUI
- *
- * @ilCtrl_isCalledBy ilExAutoScoreRequiredFilesGUI: ilExAssTypeAutoScoreUserGUI, ilExAssTypeAutoScoreTeamGUI
+ * @ilCtrl_IsCalledBy ilExAutoScoreRequiredFilesGUI: ilExAssTypeAutoScoreUserGUI, ilExAssTypeAutoScoreTeamGUI, ilExAssignmentEditorGUI
  */
 class ilExAutoScoreRequiredFilesGUI
 {
