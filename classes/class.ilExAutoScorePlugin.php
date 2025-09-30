@@ -115,15 +115,20 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * @return ilExAssignmentTypeGUIInterface
      */
     public function getAssignmentTypeGUIById($a_id): ?ilExAssignmentTypeGUIInterface {
+        global $DIC;
+        $logger = $DIC->logger()->root();
+              
         switch ((int) $a_id) {
             case 101:
                 require_once(__DIR__ . '/class.ilExAssTypeAutoScoreUserGUI.php');
-                return new ilExAssTypeAutoScoreUserGUI($this);
-
+                $gui = new ilExAssTypeAutoScoreUserGUI($this);
+                return $gui;
             case 102:
                 require_once(__DIR__ . '/class.ilExAssTypeAutoScoreTeamGUI.php');
-                return new ilExAssTypeAutoScoreTeamGUI($this);
+                $gui = new ilExAssTypeAutoScoreTeamGUI($this);
+                return $gui;
             default:
+                $logger->info("ExAutoScore Plugin: Unbekannte ID: $a_id");
                 return null;
         }
     }

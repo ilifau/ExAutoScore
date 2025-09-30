@@ -10,8 +10,7 @@ require_once (__DIR__ . '/class.ilExAutoScoreConnector.php');
 
 /**
  * Specific settings of an auto score assignment
- *
- * @ilCtrl_isCalledBy ilExAutoScoreSettingsGUI: ilExAssTypeAutoScoreUserGUI, ilExAssTypeAutoScoreTeamGUI
+ * @ilCtrl_IsCalledBy ilExAutoScoreSettingsGUI: ilExAssTypeAutoScoreUserGUI, ilExAssTypeAutoScoreTeamGUI, ilExAssignmentEditorGUI
  */
 class ilExAutoScoreSettingsGUI
 {
