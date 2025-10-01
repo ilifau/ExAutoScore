@@ -913,6 +913,7 @@ public function buildSubmissionPropertiesAndActions(
     $lng  = $DIC->language();
     $ctrl = $DIC->ctrl();
     $f    = $DIC->ui()->factory();
+    $r    = $DIC->ui()->renderer();
     $sub  = $this->getSubmission();
     
     if (!$sub) {
@@ -966,6 +967,7 @@ public function buildSubmissionPropertiesAndActions(
     
     $DIC->logger()->root()->error('ExAutoScore: Task loaded, ID = ' . ($task ? $task->getId() : 'NULL'));
     
+    // Füge Punkte und Status zur SUBMISSION Section hinzu (nicht TUTOR_EVAL, da dort schon Note/Status sind)
     if ($task && $task->getReturnPoints() !== null) {
         $DIC->logger()->root()->error('ExAutoScore: Adding return_points = ' . $task->getReturnPoints());
         $builder->addProperty($builder::SEC_SUBMISSION, $this->plugin->txt('return_points'), (string) $task->getReturnPoints());
@@ -978,16 +980,45 @@ public function buildSubmissionPropertiesAndActions(
         $builder->addProperty($builder::SEC_SUBMISSION, $this->plugin->txt('instant_status'), $task->getInstantStatus());
     }
     
+    // Modal für erweitertes Feedback - NUR DAS zur TUTOR_EVAL Section
     if ($task && $task->getProtectedFeedbackHtml()) {
-        $DIC->logger()->root()->error('ExAutoScore: Adding feedback button');
-        $ctrl->setParameterByClass($gui_class, 'task_id', $task->getId());
-        $ctrl->setParameterByClass(ilExSubmissionGUI::class, 'ass_id', $sub->getAssignment()->getId());
+        $DIC->logger()->root()->error('ExAutoScore: Adding feedback modal');
         
-        $url = $ctrl->getLinkTargetByClass(
-            [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, $gui_class ],
-            'showExtendedFeedback'
-        );
-        $builder->addAction($builder::SEC_SUBMISSION, $f->button()->standard($this->plugin->txt('show_extended_feedback'), $url));
+        try {
+            $item_id = "exautoscore_feedback_modal_" . $task->getId();
+            
+            // Erstelle Legacy Modal (funktioniert in ILIAS 9)
+            $modal = ilModalGUI::getInstance();
+            $modal->setId($item_id);
+            $modal->setType(ilModalGUI::TYPE_LARGE);
+            $modal->setBody(ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
+            $modal->setHeading($this->plugin->txt('protected_feedback_html'));
+            
+            // Rendere das Modal HTML
+            $modal_html = $modal->getHTML();
+            
+            // Erstelle Button mit onclick JavaScript
+            $button_html = sprintf(
+                '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\'); return false;">%s</button>',
+                $item_id,
+                $this->plugin->txt('show_extended_feedback')
+            );
+            
+            // Kombiniere Modal + Button
+            $combined_html = $modal_html . $button_html;
+            
+            // Füge NUR den Button zur TUTOR_EVAL Section hinzu
+            $builder->addProperty(
+                $builder::SEC_TUTOR_EVAL, 
+                '',  // Kein Label
+                $combined_html
+            );
+            
+            $DIC->logger()->root()->error('ExAutoScore: Feedback button added successfully');
+            
+        } catch (Exception $e) {
+            $DIC->logger()->root()->error('ExAutoScore: Error adding feedback: ' . $e->getMessage());
+        }
     }
     
     $DIC->logger()->root()->error('ExAutoScore buildSubmissionPropertiesAndActions FINISHED');
