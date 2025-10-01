@@ -272,24 +272,26 @@ class ilExAutoScoreSettingsGUI
                 $form->addItem($protectedFeedbackText);
             }
 
-            if (!empty($assTask->getProtectedFeedbackHtml())) {
-                $protectedFeedbackHtml = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_html'), 'exautoscore_protected_feedback_html', true);
-
-                $item_id = "exautoscore_feedback_html_" . $this->assignment->getId();
-
-                $modal = ilModalGUI::getInstance();
-                $modal->setId($item_id);
-                $modal->setType(ilModalGUI::TYPE_LARGE);
-                $modal->setBody(ilUtil::stripScriptHTML($assTask->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
-                $modal->setHeading($this->plugin->txt('protected_feedback_html'));
-
-                $button = ilJsLinkButton::getInstance();
-                $button->setCaption($this->plugin->txt('show_extended_feedback'), false);
-                $button->setOnClick("$('#$item_id').modal('show')");
-
-                $protectedFeedbackHtml->setValue($modal->getHTML() . $button->getToolbarHTML());
-                $form->addItem($protectedFeedbackHtml);
-            }
+if (!empty($assTask->getProtectedFeedbackHtml())) {
+    $protectedFeedbackHtml = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_html'), 'exautoscore_protected_feedback_html', true);
+    $item_id = "exautoscore_feedback_html_" . $this->assignment->getId();
+    
+    $modal = ilModalGUI::getInstance();
+    $modal->setId($item_id);
+    $modal->setType(ilModalGUI::TYPE_LARGE);
+    $modal->setBody(ilUtil::stripScriptHTML($assTask->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
+    $modal->setHeading($this->plugin->txt('protected_feedback_html'));
+    
+    // Direkter HTML-Button statt ilLinkButton
+    $button_html = sprintf(
+        '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\');">%s</button>',
+        $item_id,
+        $this->plugin->txt('show_extended_feedback')
+    );
+    
+    $protectedFeedbackHtml->setValue($modal->getHTML() . $button_html);
+    $form->addItem($protectedFeedbackHtml);
+}
         }
 
         return $form;

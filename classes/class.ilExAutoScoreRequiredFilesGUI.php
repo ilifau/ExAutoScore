@@ -251,7 +251,7 @@ class ilExAutoScoreRequiredFilesGUI
         $files = ilExAutoScoreRequiredFile::where(['id' => $_POST['ids']])->get();
 
         foreach($files as $file) {
-            $conf_gui->addItem('ids[]', $file->getId(), $file->getFilename());
+            $conf_gui->addItem('ids[]', (string) $file->getId(), $file->getFilename());
             if ($file->getAssignmentId() != $this->assignment->getId()) {
                 $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
                 $this->ctrl->returnToParent($this);
