@@ -50,7 +50,7 @@ class ilExAutoScoreConnector
         $post['api_key'] = $this->config->get('service_api_key');
         $post['name'] = $assignment->getTitle();
         $post['priority'] = false;
-        $post['return_type'] = 'F'; #früher U
+        $post['return_type'] = 'U';
         $post['return_address'] = $this->plugin->getResultUrl();
         $post['command'] = $scoreAss->getCommand();
         $post['timeout'] = $timeout;
@@ -176,7 +176,36 @@ class ilExAutoScoreConnector
         $content = $DIC->http()->request()->getBody()->getContents();
         $files = \GuzzleHttp\Psr7\ServerRequest::normalizeFiles($DIC->http()->request()->getUploadedFiles());
 
+        // DEBUG: Was haben wir empfangen?
+        $DIC->logger()->root()->error('ExAutoScore receiveResult: Content length = ' . strlen($content));
+        $DIC->logger()->root()->error('ExAutoScore receiveResult: Files count = ' . count($files));
+        
+        // Versuche JSON aus Body zu parsen (für return_type = 'U')
         $result = json_decode($content, true);
+        
+        // Wenn kein JSON im Body, dann prüfe ob eine result.json Datei hochgeladen wurde (für return_type = 'F')
+        if (empty($result) && !empty($files)) {
+            $DIC->logger()->root()->error('ExAutoScore: No JSON in body, checking uploaded files...');
+            foreach ($files as $file) {
+                $filename = $file->getClientFilename();
+                $DIC->logger()->root()->error('ExAutoScore: Found uploaded file: ' . $filename);
+                
+                if ($filename === 'result.json') {
+                    $filePath = $file->getStream()->getMetadata('uri');
+                    $fileContent = file_get_contents($filePath);
+                    $result = json_decode($fileContent, true);
+                    $DIC->logger()->root()->error('ExAutoScore: Using result.json from uploaded file');
+                    break;
+                }
+            }
+        }
+        
+        if (empty($result)) {
+            $DIC->logger()->root()->error('ExAutoScore: ERROR - No result data found in body or files!');
+            return;
+        }
+        
+        $DIC->logger()->root()->error('ExAutoScore receiveResult data: ' . print_r($result, true));
 
         if (isset($result['assignment_uuid'])) {
             $this->result_uuid = (string) $result['assignment_uuid'];
@@ -185,28 +214,41 @@ class ilExAutoScoreConnector
             $this->result_uuid = (string) $result['task_uuid'];
         }
 
-        $task =  ilExAutoScoreTask::getByUuid($this->result_uuid);
-        if (isset($task)) {
-            $returnTime = new ilDateTime(time(), IL_CAL_UNIX);
-            $task->setReturnTime($returnTime->get(IL_CAL_DATETIME));
-            $task->setReturncode((int) $result['task_returncode']);
-            $task->setReturnPoints((float) $result['points']);
-            $task->setTaskDuration((float) $result['task_time']);
-            $task->setInstantStatus($result['instant_status']);
-            $task->setInstantMessage($result['instant_message']);
-            $task->setProtectedStatus($result['protected_status']);
-            $task->setProtectedFeedbackText($result['protected_feedback_text']);
-            $task->setProtectedFeedbackHtml($result['protected_feedback_html']);
-            $task->save();
-            $task->updateMemberStatus();
-
-            $this->saveFeedbackFiles($task, $files);
+        $task = ilExAutoScoreTask::getByUuid($this->result_uuid);
+        
+        if (!isset($task)) {
+            $DIC->logger()->root()->error('ExAutoScore: ERROR - Task not found for UUID: ' . $this->result_uuid);
+            return;
         }
+        
+        $DIC->logger()->root()->error('ExAutoScore: Task found, ID = ' . $task->getId());
+
+        $returnTime = new ilDateTime(time(), IL_CAL_UNIX);
+        $task->setReturnTime($returnTime->get(IL_CAL_DATETIME));
+        
+        // Robuster Zugriff auf die Felder - mit Fallback-Werten
+        $task->setReturncode(isset($result['task_returncode']) ? (int) $result['task_returncode'] : null);
+        $task->setReturnPoints(isset($result['points']) ? (float) $result['points'] : null);
+        $task->setTaskDuration(isset($result['task_time']) ? (float) $result['task_time'] : null);
+        $task->setInstantStatus(isset($result['instant_status']) ? $result['instant_status'] : null);
+        $task->setInstantMessage(isset($result['instant_message']) ? $result['instant_message'] : null);
+        $task->setProtectedStatus(isset($result['protected_status']) ? $result['protected_status'] : null);
+        $task->setProtectedFeedbackText(isset($result['protected_feedback_text']) ? $result['protected_feedback_text'] : null);
+        $task->setProtectedFeedbackHtml(isset($result['protected_feedback_html']) ? $result['protected_feedback_html'] : null);
+        
+        $DIC->logger()->root()->error('ExAutoScore: Saving task with points = ' . ($task->getReturnPoints() ?? 'NULL'));
+        
+        $task->save();
+        $task->updateMemberStatus();
+
+        $this->saveFeedbackFiles($task, $files);
 
         if (empty($result['success']) || strtolower($result['success']) == 'false') {
             $assignment = new ilExAssignment($task->getAssignmentId());
             $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
         }
+        
+        $DIC->logger()->root()->error('ExAutoScore receiveResult: FINISHED successfully');
     }
 
     /**
@@ -276,10 +318,8 @@ class ilExAutoScoreConnector
     protected function callService($url, $post, $timeout): bool
     {
         try {
-            // Use native PHP cURL
             $curl = curl_init();
             
-            // Basic cURL options
             curl_setopt_array($curl, [
                 CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
@@ -293,7 +333,6 @@ class ilExAutoScoreConnector
                 CURLOPT_HEADER => false,
             ]);
             
-            // Handle proxy settings
             $proxy = ilProxySettings::_getInstance();
             if ($proxy->isActive()) {
                 curl_setopt($curl, CURLOPT_HTTPPROXYTUNNEL, true);
@@ -306,8 +345,6 @@ class ilExAutoScoreConnector
             }
             
             $result = curl_exec($curl);
-            
-            // Get cURL info
             $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
             $curl_error = curl_error($curl);
             $curl_errno = curl_errno($curl);
@@ -328,7 +365,8 @@ class ilExAutoScoreConnector
             
             if ($http_code >= 400) {
                 $this->result_uuid = null;
-                $this->result_message = 'HTTP Error ' . $http_code . ': ' . $result;
+                // WICHTIG: Zeige die vollständige Server-Antwort
+                $this->result_message = 'HTTP Error ' . $http_code . ': ' . substr($result, 0, 1000);
                 return false;
             }
             
@@ -343,14 +381,25 @@ class ilExAutoScoreConnector
             
             if ($json_error !== JSON_ERROR_NONE) {
                 $this->result_uuid = null;
-                $this->result_message = 'Invalid JSON response from service: ' . json_last_error_msg();
+                // WICHTIG: Zeige die rohe Antwort wenn kein JSON
+                $this->result_message = 'Invalid JSON response: ' . substr($result, 0, 500);
                 return false;
             }
             
-            // Handle different response formats - check for error field first
+            // Prüfe auf error-Feld im JSON
             if (isset($decoded_result['error'])) {
                 $this->result_uuid = null;
+                // WICHTIG: Zeige den kompletten Error aus dem Service
                 $this->result_message = 'Service error: ' . $decoded_result['error'];
+                
+                // Falls es zusätzliche Details gibt
+                if (isset($decoded_result['details'])) {
+                    $this->result_message .= ' | Details: ' . $decoded_result['details'];
+                }
+                if (isset($decoded_result['traceback'])) {
+                    $this->result_message .= ' | Traceback: ' . substr($decoded_result['traceback'], 0, 500);
+                }
+                
                 return false;
             }
             
@@ -362,7 +411,6 @@ class ilExAutoScoreConnector
                 $this->result_uuid = (string) $decoded_result['task_uuid'];
             }
             
-            // Handle message field - try different field names
             if (isset($decoded_result['message'])) {
                 $this->result_message = (string) $decoded_result['message'];
             } elseif (isset($decoded_result['msg'])) {
@@ -559,12 +607,12 @@ class ilExAutoScoreConnector
             $body .= "$label: $content\n";
         }
 
-        try {
+        /*try {
             $mail = new ilMail(ANONYMOUS_USER_ID);
             $mail->sendMail($scoreAss->getFailureMails(), '', '', $subject, $body, [], false);
         }
         catch (Exception $e) {
             return;
-        }
+        }*/
     }
 }

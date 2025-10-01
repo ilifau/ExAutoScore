@@ -295,7 +295,8 @@ class ilExAutoScoreProvidedFilesGUI
                 $this->ctrl->returnToParent($this);
             }
 
-            $conf_gui->addItem('ids[]', $file->getId(), $file->getFilename());
+            // WICHTIG: Cast to string für ILIAS 9
+            $conf_gui->addItem('ids[]', (string) $file->getId(), $file->getFilename());
         }
 
         $this->tpl->setContent($conf_gui->getHTML());
