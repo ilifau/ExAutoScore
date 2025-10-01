@@ -58,7 +58,7 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
     public function handleTeamCreated(ilExAssignmentTeam $team)
     {
         global $DIC;
-
+$DIC->logger()->root()->error('ExAutoScore TeamHandler: handleTeamCreated CALLED');
         if (empty($members = $team->getMembers())) {
             return;
         }
@@ -96,6 +96,11 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
      */
     public function handleTeamAddedUsers(ilExAssignmentTeam $team, $added_users = [])
     {
+
+        global $DIC;
+        $DIC->logger()->root()->error('ExAutoScore TeamHandler: handleTeamAddedUsers CALLED');
+        $DIC->logger()->root()->error('ExAutoScore TeamHandler: added_users = ' . implode(', ', $added_users));        
+
         if ($this->is_management) {
             // team is extended by exercise admin
             // => select the latest complete set of uploads and delete all others
@@ -206,7 +211,10 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
      */
     public function handleTeamRemovedUsers(ilExAssignmentTeam $team, $removed_users = [])
     {
-        global $DIC;
+    global $DIC;
+    $DIC->logger()->root()->error('ExAutoScore TeamHandler: handleTeamRemovedUsers CALLED');
+    $DIC->logger()->root()->error('ExAutoScore TeamHandler: removed_users = ' . implode(', ', $removed_users));
+ 
 
         $team_members = $team->getMembers();
         $team_user = null;                  // team user that should get copies of the removed submissions
@@ -311,22 +319,24 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
         $result = $db->query($query);
         $row = $db->fetchAssoc($result);
 
-        if (empty($row) ||!is_file($row['filename'])) {
+        if (empty($row) || !is_file($row['filename'])) {
+            $DIC->logger()->root()->error('ExAutoScore TeamHandler: File not found for returned_id ' . $returned_id);
             return false;
         }
 
         $tempfile = ilUtil::ilTempnam();
         copy($row['filename'], $tempfile);
 
-        // simulate an already unzipped upload (file will be moved by standard rename)
+        // Simuliere einen Upload (Datei wird per rename verschoben)
         $post = [
             'name' => $row['filetitle'],
             'tmp_name' => $tempfile,
             'size' => filesize($tempfile)
         ];
+        
         $deliver_result = $this->storage->uploadFile($post, $user_id, true);
 
-        // save new entry with other user and new uploaded path
+        // Speichere neuen Eintrag mit anderem User und neuem Upload-Pfad
         if ($deliver_result) {
             $next_id = $db->nextId("exc_returned");
             $query = sprintf(
@@ -342,13 +352,16 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
                 $db->quote($row['ts'], "timestamp"),
                 $db->quote($row['ass_id'], "integer"),
                 $db->quote($row['late'], "integer"),
-                $db->quote(0, "integer")
+                $db->quote(0, "integer")  // team_id=0 für Einzeluser
             );
             $db->manipulate($query);
+            
+            $DIC->logger()->root()->error('ExAutoScore TeamHandler: Copied file to user ' . $user_id . ', new returned_id = ' . $next_id);
 
             return true;
         }
 
+        $DIC->logger()->root()->error('ExAutoScore TeamHandler: Upload failed for user ' . $user_id);
         return false;
     }
 }
