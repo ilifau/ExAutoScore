@@ -243,7 +243,17 @@ class ilExAutoScoreConnector
 
         $this->saveFeedbackFiles($task, $files);
 
-        if (empty($result['success']) || strtolower($result['success']) == 'false') {
+        // Prüfe ob die Aufgabe fehlgeschlagen ist
+        $success_failed = false;
+        if (isset($result['success'])) {
+            if (is_bool($result['success'])) {
+                $success_failed = !$result['success'];
+            } elseif (is_string($result['success'])) {
+                $success_failed = (strtolower($result['success']) == 'false');
+            }
+        }
+
+        if (empty($result['success']) || $success_failed) {
             $assignment = new ilExAssignment($task->getAssignmentId());
             $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
         }
