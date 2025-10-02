@@ -196,6 +196,13 @@ class ilExAutoScoreTask extends ActiveRecord
      */
     protected ?string $protected_feedback_html = null;
 
+    /**
+     * @var string
+     * @con_has_field  true
+     * @con_fieldtype  clob
+     * @con_is_notnull false
+     */
+    protected ?string $debug_logs = null;
 
     /**
      * Wrapper to declare the return type
@@ -796,4 +803,20 @@ class ilExAutoScoreTask extends ActiveRecord
 
         $fstorage->deleteDirectory($fb_path);
     }
+
+    /**
+     * @return string|null
+     */
+    public function getDebugLogs(): ?string
+    {
+        return $this->debug_logs;
+    }    
+
+    /**
+     * @param string|null $debug_logs
+     */
+    public function setDebugLogs(?string $debug_logs): void
+    {
+        $this->debug_logs = $debug_logs;
+    }    
 }

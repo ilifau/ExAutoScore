@@ -7,3 +7,10 @@
 //
 
 <!-- language file start -->
+enable_debug_logs#:#Enable Debug Logs
+enable_debug_logs_info#:#When enabled, debug logs can be requested from the correction service for individual assignments. These include Celery logs, Docker build output, and task execution details. Only visible to administrators.
+debug_mode#:#Debug Mode for this Assignment
+debug_mode_info#:#When enabled, detailed debug information will be returned from the correction service. This includes Celery logs, Docker build output, and task execution details. This option is only visible when debug logs are globally enabled and you have administrator privileges.
+debug_logs#:#Debug Log
+show_debug_logs#:#Show Debug Log
+debug_logs_info#:#Technical details about the correction execution are displayed here, including Celery logs, Docker build output, and task execution details. This information helps with troubleshooting.

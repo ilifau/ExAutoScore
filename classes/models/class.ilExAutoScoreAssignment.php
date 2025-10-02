@@ -75,7 +75,14 @@ class ilExAutoScoreAssignment extends ActiveRecord
      */
     protected ?string $failure_mails = null;
 
-
+    /**
+     * @var bool
+     * @con_has_field  true
+     * @con_fieldtype  integer
+     * @con_length     1
+     * @con_is_notnull false
+     */
+    protected ?bool $debug_mode = null;
 
     /**
      * Wrapper to declare the return type
@@ -217,4 +224,20 @@ class ilExAutoScoreAssignment extends ActiveRecord
         }
         parent::store();
     }
+
+    /**
+     * @return bool
+     */
+    public function getDebugMode(): bool
+    {
+        return (bool) $this->debug_mode;
+    }    
+
+    /**
+     * @param bool $debug_mode
+     */
+    public function setDebugMode(bool $debug_mode): void
+    {
+        $this->debug_mode = $debug_mode;
+    }    
 }

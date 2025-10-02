@@ -34,6 +34,7 @@ class ilExAutoScoreSettingsGUI
         $this->assignment = $assignment;
         $this->parentGUI = $parentGUI;
     }
+    
 
     /**
      * Execute command
@@ -79,74 +80,79 @@ class ilExAutoScoreSettingsGUI
 
     /**
      * Save the settings
-     */
-        public function saveSettings()
-        {
-            global $DIC;
+     */    
+    public function saveSettings()
+    {
+        global $DIC;
 
-            $form = $this->initSettingsForm();
-            $form->setValuesByPost();
-            if ($form->checkInput()) {
-                $assAuto = ilExAutoScoreAssignment::findOrGetInstance($this->assignment->getId());
-                $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
+        $form = $this->initSettingsForm();
+        $form->setValuesByPost();
+        if ($form->checkInput()) {
+            $assAuto = ilExAutoScoreAssignment::findOrGetInstance($this->assignment->getId());
+            $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
 
-                $request = $DIC->http()->request();
-                $params = $request->getParsedBody();
+            $request = $DIC->http()->request();
+            $params = $request->getParsedBody();
 
-                $resetNeeded = false;
-                $updateNeeded = false;
+            $resetNeeded = false;
+            $updateNeeded = false;
 
-                $assCont->setDescription((string) $params['exautoscore_docker_description']);
-                $assCont->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_DOCKER);
-                $assCont->setPublic(false);
-                $assCont->save();
+            $assCont->setDescription((string) $params['exautoscore_docker_description']);
+            $assCont->setPurpose(ilExAutoScoreProvidedFile::PURPOSE_DOCKER);
+            $assCont->setPublic(false);
+            $assCont->save();
 
-                if ($assCont->storeUploadedFile()) {
-                    $resetNeeded = true;
-                }
+            if ($assCont->storeUploadedFile()) {
+                $resetNeeded = true;
+            }
 
-                if ($assAuto->getCommand() != (string) $params['exautoscore_docker_command']) {
-                    $resetNeeded = true;
-                }
+            if ($assAuto->getCommand() != (string) $params['exautoscore_docker_command']) {
+                $resetNeeded = true;
+            }
 
             if ($assAuto->getMinPoints() != (float) $params['exautoscore_min_points']) {
-                    $updateNeeded = true;
-                }
+                $updateNeeded = true;
+            }
 
-                $assAuto->setCommand((string) $params['exautoscore_docker_command']);
+            $assAuto->setCommand((string) $params['exautoscore_docker_command']);
             $assAuto->setMinPoints((float) $params['exautoscore_min_points']);
-                $assAuto->setFailureMails((string) $params['exautoscore_failure_mails']);
-                $assAuto->save();
-
-                $message = $this->plugin->txt('correction_settings_saved');
-                if ($resetNeeded) {
-                    ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
-                    if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-                        $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
-                    }
-                    else {
-                        $message .= ' ' . $this->plugin->txt('please_send_assignment');
-                    }
-                }
-                elseif ($updateNeeded) {
-                    ilExAutoScoreTask::updateAllSubmissions($this->assignment->getId());
-                    $message = $this->plugin->txt('correction_settings_saved_with_update');
-                }
-                $this->tpl->setOnScreenMessage('success', $message, true);
-
-                $this->ctrl->redirect($this, 'showSettings');
+            $assAuto->setFailureMails((string) $params['exautoscore_failure_mails']);
+            
+            // NEU: Debug-Modus speichern (nur für Admins)
+            if ($this->plugin->hasAdminAccess()) {
+                $assAuto->setDebugMode(isset($params['exautoscore_debug_mode']) && (bool) $params['exautoscore_debug_mode']);
             }
-            else {
-                $form->setValuesByPost();
-                $this->tpl->setContent($form->getHTML());
+            
+            $assAuto->save();
+
+            $message = $this->plugin->txt('correction_settings_saved');
+            if ($resetNeeded) {
+                ilExAutoScoreAssignment::resetCorrection($this->assignment->getId());
+                if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+                    $message .= ' ' . $this->plugin->txt('please_send_assignment_and_tasks');
+                }
+                else {
+                    $message .= ' ' . $this->plugin->txt('please_send_assignment');
+                }
             }
+            elseif ($updateNeeded) {
+                ilExAutoScoreTask::updateAllSubmissions($this->assignment->getId());
+                $message = $this->plugin->txt('correction_settings_saved_with_update');
+            }
+            $this->tpl->setOnScreenMessage('success', $message, true);
+
+            $this->ctrl->redirect($this, 'showSettings');
+        }
+        else {
+            $form->setValuesByPost();
+            $this->tpl->setContent($form->getHTML());
+        }
     }
 
 
     /**
      * @return ilPropertyFormGUI
-     */
-    public function initSettingsForm(): ilPropertyFormGUI
+     */    public function initSettingsForm(): ilPropertyFormGUI
     {
         $assAuto = ilExAutoScoreAssignment::findOrGetInstance($this->assignment->getId());
         $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
@@ -166,7 +172,6 @@ class ilExAutoScoreSettingsGUI
                     .'<a href="' . $link . '">' . $assCont->getFilename() . '</a></p>';
         }
         else {
-            // force an upload if no file is provided yet
             $contUploadFile->setRequired(true);
         }
         $contUploadFile->setInfo($info);
@@ -194,6 +199,16 @@ class ilExAutoScoreSettingsGUI
         $failureMails->setValue($assAuto->getFailureMails());
         $form->addItem($failureMails);
 
+        // NEU: Debug-Modus (nur für Admins sichtbar/editierbar)
+        if ($this->plugin->hasAdminAccess() && $this->plugin->getConfig()->get('enable_debug_logs')) {
+            $debugMode = new ilCheckboxInputGUI(
+                $this->plugin->txt('debug_mode'), 
+                'exautoscore_debug_mode'
+            );
+            $debugMode->setInfo($this->plugin->txt('debug_mode_info'));
+            $debugMode->setChecked($assAuto->getDebugMode());
+            $form->addItem($debugMode);
+        }
 
         if (!empty($assAuto->getUuid())) {
             $headAssResult = new ilFormSectionHeaderGUI();
@@ -259,7 +274,6 @@ class ilExAutoScoreSettingsGUI
                 $form->addItem($instantMessage);
             }
 
-
             if (!empty($assTask->getProtectedStatus())) {
                 $protectedStatus = new ilNonEditableValueGUI($this->plugin->txt('protected_status'), 'exautoscore_protected_status', true);
                 $protectedStatus->setValue('<span class="ilTag">' . htmlspecialchars($assTask->getProtectedStatus()) . '</span>');
@@ -272,26 +286,58 @@ class ilExAutoScoreSettingsGUI
                 $form->addItem($protectedFeedbackText);
             }
 
-if (!empty($assTask->getProtectedFeedbackHtml())) {
-    $protectedFeedbackHtml = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_html'), 'exautoscore_protected_feedback_html', true);
-    $item_id = "exautoscore_feedback_html_" . $this->assignment->getId();
-    
-    $modal = ilModalGUI::getInstance();
-    $modal->setId($item_id);
-    $modal->setType(ilModalGUI::TYPE_LARGE);
-    $modal->setBody(ilUtil::stripScriptHTML($assTask->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
-    $modal->setHeading($this->plugin->txt('protected_feedback_html'));
-    
-    // Direkter HTML-Button statt ilLinkButton
-    $button_html = sprintf(
-        '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\');">%s</button>',
-        $item_id,
-        $this->plugin->txt('show_extended_feedback')
-    );
-    
-    $protectedFeedbackHtml->setValue($modal->getHTML() . $button_html);
-    $form->addItem($protectedFeedbackHtml);
-}
+            if (!empty($assTask->getProtectedFeedbackHtml())) {
+                $protectedFeedbackHtml = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_html'), 'exautoscore_protected_feedback_html', true);
+                $item_id = "exautoscore_feedback_html_" . $this->assignment->getId();
+                
+                $modal = ilModalGUI::getInstance();
+                $modal->setId($item_id);
+                $modal->setType(ilModalGUI::TYPE_LARGE);
+                $modal->setBody(ilUtil::stripScriptHTML($assTask->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
+                $modal->setHeading($this->plugin->txt('protected_feedback_html'));
+                
+                $button_html = sprintf(
+                    '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\');">%s</button>',
+                    $item_id,
+                    $this->plugin->txt('show_extended_feedback')
+                );
+                
+                $protectedFeedbackHtml->setValue($modal->getHTML() . $button_html);
+                $form->addItem($protectedFeedbackHtml);
+            }
+
+            // NEU: Debug-Logs anzeigen (nur wenn aktiviert und vorhanden)
+            if (!empty($assTask->getDebugLogs()) 
+                && $this->plugin->getConfig()->get('enable_debug_logs')
+                && $assAuto->getDebugMode()) {
+                
+                $debugLogs = new ilNonEditableValueGUI(
+                    $this->plugin->txt('debug_logs'), 
+                    'exautoscore_debug_logs', 
+                    true
+                );
+                
+                $item_id = "exautoscore_debug_logs_modal_" . $this->assignment->getId();
+                
+                $modal = ilModalGUI::getInstance();
+                $modal->setId($item_id);
+                $modal->setType(ilModalGUI::TYPE_LARGE);
+                $modal->setBody(
+                    '<pre style="max-height:70vh;overflow:auto;background:#1e1e1e;color:#dcdcdc;padding:15px;border-radius:4px;font-family:\'Courier New\',monospace;font-size:12px;line-height:1.4;">' 
+                    . htmlspecialchars($assTask->getDebugLogs()) 
+                    . '</pre>'
+                );
+                $modal->setHeading($this->plugin->txt('debug_logs'));
+                
+                $button_html = sprintf(
+                    '<button type="button" class="btn btn-warning" onclick="$(\'#%s\').modal(\'show\');" style="margin-top:5px;"><i class="glyphicon glyphicon-console"></i> %s</button>',
+                    $item_id,
+                    $this->plugin->txt('show_debug_logs')
+                );
+                
+                $debugLogs->setValue($modal->getHTML() . $button_html);
+                $form->addItem($debugLogs);
+            }
         }
 
         return $form;

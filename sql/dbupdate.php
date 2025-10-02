@@ -333,4 +333,30 @@ if (!$ilDB->tableColumnExists('exautoscore_req_file', 'resource_id'))
     );
     $ilDB->addTableColumn("exautoscore_req_file", 'resource_id', $attributes);
 }
+
+?>
+<#9>
+<?php
+// Add debug_mode field to assignment table
+if (!$ilDB->tableColumnExists('exautoscore_assignment', 'debug_mode'))
+{
+    $attributes = array(
+        'type' => 'integer',
+        'length' => 1,
+        'default' => 0
+    );
+    $ilDB->addTableColumn("exautoscore_assignment", 'debug_mode', $attributes);
+}
+?>
+
+<#10>
+<?php
+// Add debug_logs field to task table
+if (!$ilDB->tableColumnExists('exautoscore_task', 'debug_logs'))
+{
+    $attributes = array(
+        'type' => 'clob'
+    );
+    $ilDB->addTableColumn("exautoscore_task", 'debug_logs', $attributes);
+}
 ?>
