@@ -29,15 +29,15 @@ class ilExAutoScoreConfig
 	 * Constructor.
 	 * @param ilPlugin|string $a_plugin_object
 	 */
-	public function __construct($a_plugin_object = "")
-	{
-		$this->plugin = $a_plugin_object;
+    public function __construct($a_plugin_object = "")
+    {
+        $this->plugin = $a_plugin_object;
         if (!class_exists('ilExAutoScoreParam')) {
             require_once(__DIR__ . '/class.ilExAutoScoreParam.php');
         }
 
-		/** @var ilExAutoScoreParam[] $params */
-		$params = array();
+        /** @var ilExAutoScoreParam[] $params */
+        $params = array();
 
         $params[] = ilExAutoScoreParam::_create(
             'service_assignment_url',
@@ -78,6 +78,15 @@ class ilExAutoScoreConfig
             ilExAutoScoreParam::TYPE_ROLES,
             []
         );
+        
+        // NEU: Debug-Modus global aktivieren/deaktivieren
+        $params[] = ilExAutoScoreParam::_create(
+            'enable_debug_logs',
+            $this->plugin->txt('enable_debug_logs'),
+            $this->plugin->txt('enable_debug_logs_info'),
+            ilExAutoScoreParam::TYPE_BOOLEAN,
+            false
+        );
 
         $params[] = ilExAutoScoreParam::_create(
             'tar_command',
@@ -95,13 +104,12 @@ class ilExAutoScoreConfig
             '/bin/tar xzf'
         );
 
-
         foreach ($params as $param)
         {
             $this->params[$param->name] = $param;
         }
         $this->read();
-	}
+    }
 
     /**
      * Get the array of all parameters

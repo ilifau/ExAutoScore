@@ -127,3 +127,10 @@ team_member_remove_sure#:#Wollen Sie wirklich die folgenden Mitglieder Ihres Tea
 delete_submission#:#Einreichnung löschen
 confirm_delete_submission#:#Möchten Sie die Einreichung und alle hochgeladenen Dateien löschen? Damit wird auch Ihr Status zurückgesetzt.
 submission_deleted#:#Die Einreichung wurde gelöscht und Ihr Status zurückgesetzt.
+enable_debug_logs#:#Debug-Logs aktivieren
+enable_debug_logs_info#:#Wenn aktiviert, können für einzelne Übungen Debug-Logs vom Korrekturservice angefordert werden. Diese enthalten Celery-Logs, Docker-Build-Output und Task-Ausführungsdetails. Nur für Administratoren sichtbar.
+debug_mode#:#Debug-Modus für diese Übung
+debug_mode_info#:#Wenn aktiviert, werden detaillierte Debug-Informationen vom Korrekturservice zurückgegeben. Dies umfasst Celery-Logs, Docker-Build-Output und Task-Ausführungsdetails. Diese Option ist nur sichtbar, wenn Debug-Logs global aktiviert sind und Sie über Administrator-Rechte verfügen.
+debug_logs#:#Debug-Protokoll
+show_debug_logs#:#Debug-Protokoll anzeigen
+debug_logs_info#:#Hier werden technische Details zur Ausführung der Korrektur angezeigt, einschließlich Celery-Logs, Docker-Build-Output und Task-Ausführungsdetails. Diese Informationen helfen bei der Fehlersuche.

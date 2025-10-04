@@ -29,6 +29,8 @@ class ilExAutoScoreConnector
     /** @var string|null */
     protected ?string $result_message = null;
 
+    protected ?string $debug_logs = null;    
+
     public function __construct()
     {
         $this->plugin = ilExAutoScorePlugin::getInstance();
@@ -54,6 +56,10 @@ class ilExAutoScoreConnector
         $post['return_address'] = $this->plugin->getResultUrl();
         $post['command'] = $scoreAss->getCommand();
         $post['timeout'] = $timeout;
+        
+        // NEU: Debug-Modus mitschicken
+        $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
+        $post['debug_mode'] = $debugEnabled ? 'true' : 'false';
 
         $docker = ilExAutoScoreProvidedFile::getAssignmentDocker($assignment->getId());
         if (!empty($docker->getAbsolutePath())) {
@@ -70,13 +76,19 @@ class ilExAutoScoreConnector
 
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
 
-        $success =  $this->callService($url, $post, $timeout);
+        $success = $this->callService($url, $post, $timeout);
 
         $scoreTask->clearSubmissionData();
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
         $scoreTask->setUuid($this->getResultUuid());
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
+        
+        // NEU: Debug-Logs speichern
+        if ($debugEnabled && $this->debug_logs) {
+            $scoreTask->setDebugLogs($this->debug_logs);
+        }
+        
         $scoreTask->save();
 
         if ($success) {
@@ -94,7 +106,6 @@ class ilExAutoScoreConnector
      */
     public function sendExampleTask($assignment, $user)
     {
-
         $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($assignment->getId());
         $scoreTask = ilExAutoScoreTask::getExampleTask($assignment->getId());
 
@@ -108,6 +119,10 @@ class ilExAutoScoreConnector
         $post = [];
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
+        
+        // NEU: Debug-Modus mitschicken (nur für Task, nicht nochmal für Assignment)
+        $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
+        $post['debug_mode'] = $debugEnabled ? 'true' : 'false';
 
         $required = array_merge(
             ilExAutoScoreProvidedFile::getAssignmentSubmitFiles($assignment->getId()),
@@ -116,13 +131,19 @@ class ilExAutoScoreConnector
 
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
 
-        $success =  $this->callService($url, $post, $timeout);
+        $success = $this->callService($url, $post, $timeout);
 
         $scoreTask->clearSubmissionData();
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
         $scoreTask->setUuid($this->getResultUuid());
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
+        
+        // NEU: Debug-Logs speichern
+        if ($debugEnabled && $this->debug_logs) {
+            $scoreTask->setDebugLogs($this->debug_logs);
+        }
+        
         $scoreTask->save();
 
         return $success;
@@ -176,14 +197,11 @@ class ilExAutoScoreConnector
         $content = $DIC->http()->request()->getBody()->getContents();
         $files = \GuzzleHttp\Psr7\ServerRequest::normalizeFiles($DIC->http()->request()->getUploadedFiles());
 
-        // DEBUG: Was haben wir empfangen?
         $DIC->logger()->root()->error('ExAutoScore receiveResult: Content length = ' . strlen($content));
         $DIC->logger()->root()->error('ExAutoScore receiveResult: Files count = ' . count($files));
         
-        // Versuche JSON aus Body zu parsen (für return_type = 'U')
         $result = json_decode($content, true);
         
-        // Wenn kein JSON im Body, dann prüfe ob eine result.json Datei hochgeladen wurde (für return_type = 'F')
         if (empty($result) && !empty($files)) {
             $DIC->logger()->root()->error('ExAutoScore: No JSON in body, checking uploaded files...');
             foreach ($files as $file) {
@@ -201,7 +219,7 @@ class ilExAutoScoreConnector
         }
         
         if (empty($result)) {
-            $DIC->logger()->root()->error('ExAutoScore: ERROR - No result data found in body or files!');
+            $DIC->logger()->root()->error('ExAutoScore: ERROR - No result data found!');
             return;
         }
         
@@ -226,7 +244,6 @@ class ilExAutoScoreConnector
         $returnTime = new ilDateTime(time(), IL_CAL_UNIX);
         $task->setReturnTime($returnTime->get(IL_CAL_DATETIME));
         
-        // Robuster Zugriff auf die Felder - mit Fallback-Werten
         $task->setReturncode(isset($result['task_returncode']) ? (int) $result['task_returncode'] : null);
         $task->setReturnPoints(isset($result['points']) ? (float) $result['points'] : null);
         $task->setTaskDuration(isset($result['task_time']) ? (float) $result['task_time'] : null);
@@ -236,6 +253,12 @@ class ilExAutoScoreConnector
         $task->setProtectedFeedbackText(isset($result['protected_feedback_text']) ? $result['protected_feedback_text'] : null);
         $task->setProtectedFeedbackHtml(isset($result['protected_feedback_html']) ? $result['protected_feedback_html'] : null);
         
+        // NEU: Debug-Logs speichern wenn vorhanden
+        if (isset($result['debug_logs'])) {
+            $task->setDebugLogs($result['debug_logs']);
+            $DIC->logger()->root()->error('ExAutoScore: Saved debug logs');
+        }
+        
         $DIC->logger()->root()->error('ExAutoScore: Saving task with points = ' . ($task->getReturnPoints() ?? 'NULL'));
         
         $task->save();
@@ -243,7 +266,6 @@ class ilExAutoScoreConnector
 
         $this->saveFeedbackFiles($task, $files);
 
-        // Prüfe ob die Aufgabe fehlgeschlagen ist
         $success_failed = false;
         if (isset($result['success'])) {
             if (is_bool($result['success'])) {
@@ -318,12 +340,8 @@ class ilExAutoScoreConnector
         return $this->result_message;
     }
 
-    /**
+        /**
      * Call the external service using native PHP cURL
-     * @param string $url
-     * @param array  $post
-     * @param int    $timeout
-     * @return bool
      */
     protected function callService($url, $post, $timeout): bool
     {
@@ -375,7 +393,6 @@ class ilExAutoScoreConnector
             
             if ($http_code >= 400) {
                 $this->result_uuid = null;
-                // WICHTIG: Zeige die vollständige Server-Antwort
                 $this->result_message = 'HTTP Error ' . $http_code . ': ' . substr($result, 0, 1000);
                 return false;
             }
@@ -391,18 +408,14 @@ class ilExAutoScoreConnector
             
             if ($json_error !== JSON_ERROR_NONE) {
                 $this->result_uuid = null;
-                // WICHTIG: Zeige die rohe Antwort wenn kein JSON
                 $this->result_message = 'Invalid JSON response: ' . substr($result, 0, 500);
                 return false;
             }
             
-            // Prüfe auf error-Feld im JSON
             if (isset($decoded_result['error'])) {
                 $this->result_uuid = null;
-                // WICHTIG: Zeige den kompletten Error aus dem Service
                 $this->result_message = 'Service error: ' . $decoded_result['error'];
                 
-                // Falls es zusätzliche Details gibt
                 if (isset($decoded_result['details'])) {
                     $this->result_message .= ' | Details: ' . $decoded_result['details'];
                 }
@@ -427,6 +440,11 @@ class ilExAutoScoreConnector
                 $this->result_message = (string) $decoded_result['msg'];
             } else {
                 $this->result_message = 'Success';
+            }
+            
+            // NEU: Debug-Logs extrahieren
+            if (isset($decoded_result['debug_logs'])) {
+                $this->debug_logs = $decoded_result['debug_logs'];
             }
             
             $success = isset($decoded_result['success']) ? (bool) $decoded_result['success'] : false;
@@ -616,13 +634,15 @@ class ilExAutoScoreConnector
         foreach ($info as $label => $content) {
             $body .= "$label: $content\n";
         }
-
-        /*try {
-            $mail = new ilMail(ANONYMOUS_USER_ID);
-            $mail->sendMail($scoreAss->getFailureMails(), '', '', $subject, $body, [], false);
-        }
-        catch (Exception $e) {
-            return;
-        }*/
     }
+
+    /**
+     * Get debug logs returned from service
+     * @return string|null
+     */
+    public function getDebugLogs(): ?string
+    {
+        return $this->debug_logs;
+    }
+
 }
