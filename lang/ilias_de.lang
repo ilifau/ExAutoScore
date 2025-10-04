@@ -63,7 +63,7 @@ max_size#:#Max. Größe
 example_upload#:#Musterlösung
 example_size#:#Größe Musterlösung
 autoscore_settings#:#Korrektur-Einstellungen
-send_assignment#:#Korektur einrichten
+send_assignment#:#Korrektur einrichten
 send_example_task#:#Musterlösung testen
 head_send_assignment_result#:#Ergebnis der Einrichtung / Test der Musterlösung
 submit_time#:#Eingesendet
@@ -134,3 +134,4 @@ debug_mode_info#:#Wenn aktiviert, werden detaillierte Debug-Informationen vom Ko
 debug_logs#:#Debug-Protokoll
 show_debug_logs#:#Debug-Protokoll anzeigen
 debug_logs_info#:#Hier werden technische Details zur Ausführung der Korrektur angezeigt, einschließlich Celery-Logs, Docker-Build-Output und Task-Ausführungsdetails. Diese Informationen helfen bei der Fehlersuche.
+file_not_found#:#Die Datei wurde nicht gefunden oder existiert nicht mehr.

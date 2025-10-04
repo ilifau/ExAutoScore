@@ -14,3 +14,124 @@ debug_mode_info#:#When enabled, detailed debug information will be returned from
 debug_logs#:#Debug Log
 show_debug_logs#:#Show Debug Log
 debug_logs_info#:#Technical details about the correction execution are displayed here, including Celery logs, Docker build output, and task execution details. This information helps with troubleshooting.
+type_autoscore_user#:#Programming Assignment (Individual)
+type_autoscore_team#:#Programming Assignment (Team)
+service_assignment_url#:#Registration URL
+service_assignment_url_info#:#URL for registering a programming assignment. The Dockerfile, support files and sample solution for testing are sent to this URL. The service builds the container image from this and executes the sample solution as a test.
+service_task_url#:#Submission URL
+service_task_url_info#:#URL for submitting a participant solution. The submitted files are sent to this URL for grading.
+service_api_key#:#API Key
+service_api_key_info#:#The API key authenticates the service calls.
+service_timeout#:#Timeout
+service_timeout_info#:#Maximum time in seconds to wait for a response from the service
+creator_roles#:#Creator Roles
+creator_roles_info#:#Only members of these roles can create new programming assignments or edit their grading settings and thus trigger the creation of a container on the grading server.
+update_languages#:#Update Languages
+generate_db_update#:#Generate Database Update
+basic_configuration#:#Basic Configuration
+docker_upload#:#Upload Dockerfile
+docker_upload_info#:#Command file for Docker to create a container image for grading this exercise. Upload additional required files on the "Provided Files" tab.
+existing_file#:#Existing File
+docker_description_info#:#The description is only displayed here. You can provide information about the version or special features to be noted.
+docker_command#:#Grading Command
+docker_command_info#:#Command that is called in the container image to grade a submission.
+assignment_uuid#:#UUID
+assignment_uuid_info#:#The UUID is assigned by the container service to this exercise unit when the Dockerfile and provided files are uploaded to create the container image. It is used when grading submissions to identify this exercise unit.
+provided_files#:#Provided Files
+purpose#:#Purpose
+purpose_docker#:#Dockerfile
+purpose_docker_info#:#Command file for Docker to create a container image for grading this exercise. There may only be one Dockerfile per exercise unit. Upload additional required files after creating this exercise unit on the "Provided Files" tab.
+purpose_support#:#Setup
+purpose_support_info#:#Support file used to create the container image. Multiple files of this type are passed compressed with gzip when setting up the grading (extension .tgz). If this file is changed, the container image becomes invalid and the grading must be set up again. All already submitted submissions will be reset.
+purpose_submit#:#Grading
+purpose_submit_info#:#Support file used to grade an assignment. Files of this type are passed compressed with gzip with each grading along with the student submission (extension .tgz). If this file is changed, the container image remains valid, but already submitted submissions will be reset.
+purpose_ignore#:#Ignored
+purpose_ignore_info#:#Files of this type are not sent to the grading service. They can be templates for students, for example.
+purpose_example#:#Sample Solution
+purpose_example_info#:#File of a sample solution. Students must upload a file with this name. This file is used to test the functioning of the grading. Multiple files of this type are passed to the container service compressed with gzip (extension .tgz).
+file_description_info#:#If the file is public, the description is also displayed to students.
+is_public_info#:#The file is offered to students for download along with the assignment.
+file_upload#:#Upload File
+filename#:#Filename
+file_size#:#Size (Bytes)
+is_public#:#Public
+edit_file#:#Edit File
+update_file#:#Update File
+delete_files#:#Delete Files
+add_file#:#Add File
+file_created#:#The file has been created.
+file_updated#:#The file has been updated.
+files_deleted#:#The file(s) have been deleted.
+back_to_list#:#Back to List
+confirm_delete_files#:#Do you want to delete the selected files?
+required_files#:#Required Files
+encoding#:#Allowed Encoding
+max_size#:#Max. Size
+example_upload#:#Sample Solution
+example_size#:#Sample Solution Size
+autoscore_settings#:#Grading Settings
+send_assignment#:#Set Up Grading
+send_example_task#:#Test Sample Solution
+head_send_assignment_result#:#Result of Setup / Sample Solution Test
+submit_time#:#Submitted
+submit_success#:#Submission Successful
+submit_message#:#Submission Response
+return_time#:#Result Received
+return_code#:#Calculation Result Code
+return_points#:#Points Achieved
+task_duration#:#Duration (s)
+task_duration_inline#:#Duration: %01.2f seconds
+instant_message#:#Instant Feedback
+instant_status#:#Instant Status
+protected_status#:#Feedback Status
+protected_feedback_text#:#Feedback
+protected_feedback_html#:#Extended Feedback
+required_filename_info#:#Required filename: %s
+required_encoding_info#:#Required encoding: %s
+required_max_size_info#:#Maximum size for this file: %s KB
+existing_file_size_info#:#Existing file: %s KB
+files_missing#:#Still to be submitted
+upload_error_file#:#An uploaded file does not match the expected format!
+upload_error_filename#:#This file does not have the required name.
+upload_error_max_size#:#This file exceeds the maximum size.
+upload_error_encoding#:#This file does not have the required encoding.
+submission_no_upload#:#You have not uploaded a new file. Your submission has not been changed.
+submission_upload_error#:#The upload of file "%s" failed. Your submission has not been changed.
+submission_success#:#Your submission has been submitted. It may take a few minutes before the grading service feedback is displayed here.
+submission_error#:#An error occurred while submitting your files to the grading service. Please try again later.
+send_submission#:#Send to Grading Service
+send_submission_again#:#Send to Grading Service Again
+show_extended_feedback#:#Show Extended Feedback
+min_points#:#Points to Pass
+min_points_info#:#If the grading service returns at least this number of points, the submission status is set to "Passed", otherwise to "Failed".
+example_files#:#Sample Solution Files
+info_existing_tasks#:#Note: Submissions already exist.
+correction_settings_saved#:#The grading settings have been saved.
+correction_settings_saved_with_update#:#The grading settings have been saved and the results updated.
+please_send_assignment#:#Please set up the grading!
+please_send_assignment_and_tasks#:#Please set up the grading and grade all submissions!
+please_send_tasks#:#Please grade all submissions!
+send_all_tasks#:#Grade All Submissions
+confirm_send_all_tasks#:#Do you want to send all submissions to the grading service?
+send#:#Send
+all_tasks_sent#:#All submissions have been sent to the grading service.
+tar_command#:#Pack Command
+tar_command_info#:#Path and parameters of the Linux "tar" command to pack files into an archive. The format must be .tgz.
+untar_command#:#Unpack Command
+untar_command_info#:#Path and parameters of the Linux "tar" command to unpack an archive. The format must be .tgz.
+failure_mails#:#Failure Recipients
+failure_mails_info#:#Usernames or email addresses (comma-separated) to which a message should be sent in case of a failed grading.
+failure_subject_send#:#Error sending submission in "%s"
+failure_subject_result#:#Error evaluating submission in "%s"
+assignment_send_success#:#The assignment was sent to the grading service for setup. Grading service message:<pre>%s</pre>
+assignment_send_failure#:#An error occurred while setting up the assignment. Grading service message:<pre>%s</pre>
+example_task_send_success#:#The sample solution was sent for grading. Grading service message:<pre>%s</pre>
+example_task_send_failure#:#An error occurred while sending the sample solution. Grading service message:<pre>%s</pre>
+example_task_reset#:#The grading result of the sample solution has been reset.
+example_task_missing#:#Please test the sample solution when all required files have been uploaded.
+refresh_screen_link#:#» Refresh Display
+team_member_remove_sure#:#Do you really want to remove the following members from your team? The removed members will receive copies of all uploaded files from the team.
+delete_submission#:#Delete Submission
+confirm_delete_submission#:#Do you want to delete the submission and all uploaded files? This will also reset your status.
+submission_deleted#:#The submission has been deleted and your status has been reset.
+file_not_found#:#The file was not found or no longer exists.
