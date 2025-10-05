@@ -135,3 +135,4 @@ delete_submission#:#Delete Submission
 confirm_delete_submission#:#Do you want to delete the submission and all uploaded files? This will also reset your status.
 submission_deleted#:#The submission has been deleted and your status has been reset.
 file_not_found#:#The file was not found or no longer exists.
+file_not_found_debug#:#The file "%s" (ID: %s) was not found. Error: %s. Check the ILIAS log for detailed debug information.

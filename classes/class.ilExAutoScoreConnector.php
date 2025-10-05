@@ -59,7 +59,9 @@ class ilExAutoScoreConnector
         
         // NEU: Debug-Modus mitschicken
         $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
-        $post['debug_mode'] = $debugEnabled ? 'true' : 'false';
+        if ($debugEnabled) {
+            $post['debug_mode'] = 'true';
+        }
 
         $docker = ilExAutoScoreProvidedFile::getAssignmentDocker($assignment->getId());
         if (!empty($docker->getAbsolutePath())) {
@@ -337,6 +339,8 @@ class ilExAutoScoreConnector
      * @return string|null
      */
     public function getResultMessage(): ?string {
+        global $DIC;
+        $DIC->logger()->root()->error($this->result_message);
         return $this->result_message;
     }
 
@@ -377,6 +381,23 @@ class ilExAutoScoreConnector
             $curl_error = curl_error($curl);
             $curl_errno = curl_errno($curl);
             
+// NEU: Detailliertes Debug-Logging
+global $DIC;
+$DIC->logger()->root()->error('ExAutoScore cURL Debug: ' . print_r([
+    'url' => $url,
+    'http_code' => $http_code,
+    'curl_errno' => $curl_errno,
+    'curl_error' => $curl_error,
+    'response_length' => strlen($result),
+    'response_preview' => substr($result, 0, 500),
+    'post_params' => array_map(function($v) {
+        if ($v instanceof CURLFile) {
+            return 'CURLFile: ' . $v->getFilename();
+        }
+        return $v;
+    }, $post)
+], true));
+
             curl_close($curl);
             
             if ($curl_errno !== 0) {

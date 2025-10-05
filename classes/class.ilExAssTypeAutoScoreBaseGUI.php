@@ -790,6 +790,8 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
     protected function downloadSubmittedFile()
     {
+        global $DIC;
+        
         $delivered_id = (int) $_REQUEST["delivered"];
 
         if (!isset($this->submission) || !$this->submission->canView()) {
@@ -801,9 +803,29 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         if (!is_array($delivered_id) && $delivered_id > 0) {
             $delivered_id = [$delivered_id];
         }
+        
         if (count($delivered_id) > 0) {
-            $this->submission->downloadFiles($delivered_id);
-            exit;
+            try {
+                $this->submission->downloadFiles($delivered_id);
+                exit;
+            } catch (Exception $e) {
+                $DIC->logger()->root()->error('ExAutoScore: Submitted file download failed - ' . $e->getMessage());
+                
+                // Im Debug-Modus: Detaillierte Fehlermeldung
+                $plugin = ilExAutoScorePlugin::getInstance();
+                if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
+                    $error_msg = sprintf(
+                        $this->plugin->txt('submitted_file_not_found_debug'),
+                        $delivered_id[0],
+                        $e->getMessage()
+                    );
+                } else {
+                    $error_msg = $this->plugin->txt('file_not_found');
+                }
+                
+                $this->tpl->setOnScreenMessage('failure', $error_msg, true);
+                $this->returnToParent();
+            }
         } else {
             $this->returnToParent();
         }
@@ -811,6 +833,8 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
     protected function downloadProvidedFile()
     {
+        global $DIC;
+        
         $file = ilExAutoScoreProvidedFile::findOrGetInstance($_REQUEST['file_id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
             $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
@@ -828,19 +852,33 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             }
         }
 
-        // Try-Catch um Exception abzufangen
         try {
             $file->downloadFile();
         } catch (Exception $e) {
-            global $DIC;
-            $DIC->logger()->root()->error('ExAutoScore: File not found - ' . $e->getMessage());
-            $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('file_not_found'), true);
+            $DIC->logger()->root()->error('ExAutoScore: File download failed - ' . $e->getMessage());
+            
+            // Im Debug-Modus: Detaillierte Fehlermeldung
+            $plugin = ilExAutoScorePlugin::getInstance();
+            if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
+                $error_msg = sprintf(
+                    $this->plugin->txt('file_not_found_debug'),
+                    $file->getFilename(),
+                    $file->getId(),
+                    $e->getMessage()
+                );
+            } else {
+                $error_msg = $this->plugin->txt('file_not_found');
+            }
+            
+            $this->tpl->setOnScreenMessage('failure', $error_msg, true);
             $this->returnToParent();
         }
     }
 
     protected function downloadExampleFile()
     {
+        global $DIC;
+        
         $file = ilExAutoScoreRequiredFile::findOrGetInstance($_REQUEST['file_id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
             $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
@@ -868,13 +906,25 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             }
         }
 
-        // Try-Catch um Exception abzufangen
         try {
             $file->downloadFile();
         } catch (Exception $e) {
-            global $DIC;
-            $DIC->logger()->root()->error('ExAutoScore: File not found - ' . $e->getMessage());
-            $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('file_not_found'), true);
+            $DIC->logger()->root()->error('ExAutoScore: File download failed - ' . $e->getMessage());
+            
+            // Im Debug-Modus: Detaillierte Fehlermeldung
+            $plugin = ilExAutoScorePlugin::getInstance();
+            if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
+                $error_msg = sprintf(
+                    $this->plugin->txt('file_not_found_debug'),
+                    $file->getFilename(),
+                    $file->getId(),
+                    $e->getMessage()
+                );
+            } else {
+                $error_msg = $this->plugin->txt('file_not_found');
+            }
+            
+            $this->tpl->setOnScreenMessage('failure', $error_msg, true);
             $this->returnToParent();
         }
     }
