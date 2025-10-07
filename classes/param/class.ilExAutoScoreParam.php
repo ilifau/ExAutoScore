@@ -248,7 +248,7 @@ class ilExAutoScoreParam
                         if (trim($title)) {
                             $role_id = $DIC->rbac()->review()->roleExists($title);
                             if ($role_id) {
-                                $role_ids[] = $role_id;
+                                $role_ids[] = (int) $role_id;
                             }
                         }
                     }

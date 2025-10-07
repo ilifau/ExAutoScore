@@ -86,6 +86,11 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * Get the ids of the available assignment types
      */
     public function getAssignmentTypeIds(): array {
+        $can_define = $this->canDefine();
+        if (!$can_define) {
+            return [];
+        }
+        
         return [101, 102];
     }
 
@@ -160,9 +165,6 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
         return $DIC->rbac()->system()->checkAccess("visible", SYSTEM_FOLDER_ID);
     }
 
-    /**
-     * Check if a user can define an assignment with the types of this plugin
-     */
     public function canDefine(): bool
     {
         global $DIC;
@@ -171,8 +173,21 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
             return true;
         }
 
-        $roles = explode(',', $this->getConfig()->get('creator_roles'));
+        $roles_string = $this->getConfig()->get('creator_roles');
+        $DIC->logger()->root()->error('ExAutoScore canDefine: creator_roles=' . $roles_string);
+        
+        if (empty(trim($roles_string))) {
+            return false;
+        }
+
+        $roles = explode(',', $roles_string);
         foreach ($roles as $role_id) {
+            $role_id = (int) trim($role_id);
+            
+            if ($role_id <= 0) {
+                continue;
+            }
+            
             if ($DIC->rbac()->review()->isAssigned($DIC->user()->getId(), $role_id)) {
                 return true;
             }
