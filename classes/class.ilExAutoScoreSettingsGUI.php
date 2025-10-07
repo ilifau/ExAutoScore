@@ -305,6 +305,15 @@ class ilExAutoScoreSettingsGUI
                 $protectedFeedbackHtml->setValue($modal->getHTML() . $button_html);
                 $form->addItem($protectedFeedbackHtml);
             }
+            
+            global $DIC;
+                        $DIC->logger()->root()->error('ExAutoScore Debug Check: ' . print_r([
+                'has_debug_logs' => !empty($assTask->getDebugLogs()),
+                'debug_logs_length' => strlen($assTask->getDebugLogs() ?? ''),
+                'enable_debug_logs' => $this->plugin->getConfig()->get('enable_debug_logs'),
+                'debug_mode' => $assAuto->getDebugMode(),
+                'has_feedback_html' => !empty($assTask->getProtectedFeedbackHtml())
+            ], true));
 
             // NEU: Debug-Logs anzeigen (nur wenn aktiviert und vorhanden)
             if (!empty($assTask->getDebugLogs()) 

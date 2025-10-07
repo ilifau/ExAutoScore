@@ -1109,7 +1109,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 $combined_html = $modal_html . $button_html;
                 
                 $builder->addProperty(
-                    $builder::SEC_TUTOR_EVAL, 
+                    $builder::SEC_SUBMISSION, 
                     '',
                     $combined_html
                 );

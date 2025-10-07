@@ -57,7 +57,7 @@ class ilExAutoScoreConnector
         $post['command'] = $scoreAss->getCommand();
         $post['timeout'] = $timeout;
         
-        // NEU: Debug-Modus mitschicken
+        // Debug-Modus mitschicken
         $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
         if ($debugEnabled) {
             $post['debug_mode'] = 'true';
@@ -86,7 +86,7 @@ class ilExAutoScoreConnector
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
         
-        // NEU: Debug-Logs speichern
+        // Debug-Logs speichern
         if ($debugEnabled && $this->debug_logs) {
             $scoreTask->setDebugLogs($this->debug_logs);
         }
@@ -122,7 +122,7 @@ class ilExAutoScoreConnector
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
         
-        // NEU: Debug-Modus mitschicken (nur für Task, nicht nochmal für Assignment)
+        // Debug-Modus mitschicken
         $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
         $post['debug_mode'] = $debugEnabled ? 'true' : 'false';
 
@@ -141,7 +141,7 @@ class ilExAutoScoreConnector
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
         
-        // NEU: Debug-Logs speichern
+        // Debug-Logs speichern
         if ($debugEnabled && $this->debug_logs) {
             $scoreTask->setDebugLogs($this->debug_logs);
         }
@@ -168,6 +168,10 @@ class ilExAutoScoreConnector
         $post = [];
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
+        
+        // Debug-Modus mitschicken
+        $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
+        $post['debug_mode'] = $debugEnabled ? 'true' : 'false';
 
         $this->addSubmissionFiles($post, $submission, 'user_file', 'required.tgz');
 
@@ -180,6 +184,12 @@ class ilExAutoScoreConnector
         $scoreTask->setUuid($this->getResultUuid());
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
+        
+        // Debug-Logs auch hier speichern!
+        if ($debugEnabled && $this->debug_logs) {
+            $scoreTask->setDebugLogs($this->debug_logs);
+        }
+        
         $scoreTask->save();
         $scoreTask->updateMemberStatus();
 
@@ -196,30 +206,49 @@ class ilExAutoScoreConnector
     {
         global $DIC;
 
-        $content = $DIC->http()->request()->getBody()->getContents();
-        $files = \GuzzleHttp\Psr7\ServerRequest::normalizeFiles($DIC->http()->request()->getUploadedFiles());
+        // KOMPLETT-LOG des Requests für Debugging
+        $DIC->logger()->root()->error('ExAutoScore receiveResult FULL DEBUG: ' . print_r([
+            'content_type' => $_SERVER['CONTENT_TYPE'] ?? 'not set',
+            'content_length' => $_SERVER['CONTENT_LENGTH'] ?? 'not set',
+            'files_count' => count($_FILES),
+            'files_keys' => array_keys($_FILES),
+            'post_keys' => array_keys($_POST),
+        ], true));
 
-        $DIC->logger()->root()->error('ExAutoScore receiveResult: Content length = ' . strlen($content));
-        $DIC->logger()->root()->error('ExAutoScore receiveResult: Files count = ' . count($files));
-        
-        $result = json_decode($content, true);
-        
-        if (empty($result) && !empty($files)) {
-            $DIC->logger()->root()->error('ExAutoScore: No JSON in body, checking uploaded files...');
-            foreach ($files as $file) {
-                $filename = $file->getClientFilename();
-                $DIC->logger()->root()->error('ExAutoScore: Found uploaded file: ' . $filename);
-                
-                if ($filename === 'result.json') {
-                    $filePath = $file->getStream()->getMetadata('uri');
-                    $fileContent = file_get_contents($filePath);
-                    $result = json_decode($fileContent, true);
-                    $DIC->logger()->root()->error('ExAutoScore: Using result.json from uploaded file');
-                    break;
+        $files = \GuzzleHttp\Psr7\ServerRequest::normalizeFiles($DIC->http()->request()->getUploadedFiles());
+        $result = null;
+
+        $DIC->logger()->root()->error('ExAutoScore: Normalized files count = ' . count($files));
+
+        // ZUERST: Prüfe ob result.json als File hochgeladen wurde (Standard für Multipart)
+        foreach ($files as $file) {
+            $filename = $file->getClientFilename();
+            $DIC->logger()->root()->error('ExAutoScore: Found uploaded file: ' . $filename);
+            
+            if ($filename === 'result.json') {
+                $filePath = $file->getStream()->getMetadata('uri');
+                $fileContent = file_get_contents($filePath);
+                $result = json_decode($fileContent, true);
+                $DIC->logger()->root()->error('ExAutoScore: Loaded result.json from uploaded file (' . strlen($fileContent) . ' bytes)');
+                break;
+            }
+        }
+
+        // FALLBACK: Versuche Body als JSON (für Nicht-Multipart Requests)
+        if (empty($result)) {
+            $content = $DIC->http()->request()->getBody()->getContents();
+            $DIC->logger()->root()->error('ExAutoScore: Body content length = ' . strlen($content));
+            
+            if (!empty($content)) {
+                $result = json_decode($content, true);
+                if ($result !== null) {
+                    $DIC->logger()->root()->error('ExAutoScore: Loaded result from request body');
+                } else {
+                    $DIC->logger()->root()->error('ExAutoScore: JSON decode failed: ' . json_last_error_msg());
                 }
             }
         }
-        
+
         if (empty($result)) {
             $DIC->logger()->root()->error('ExAutoScore: ERROR - No result data found!');
             return;
@@ -227,6 +256,7 @@ class ilExAutoScoreConnector
         
         $DIC->logger()->root()->error('ExAutoScore receiveResult data: ' . print_r($result, true));
 
+        // UUID extrahieren
         if (isset($result['assignment_uuid'])) {
             $this->result_uuid = (string) $result['assignment_uuid'];
         }
@@ -255,10 +285,12 @@ class ilExAutoScoreConnector
         $task->setProtectedFeedbackText(isset($result['protected_feedback_text']) ? $result['protected_feedback_text'] : null);
         $task->setProtectedFeedbackHtml(isset($result['protected_feedback_html']) ? $result['protected_feedback_html'] : null);
         
-        // NEU: Debug-Logs speichern wenn vorhanden
+        // Debug-Logs speichern wenn vorhanden
         if (isset($result['debug_logs'])) {
             $task->setDebugLogs($result['debug_logs']);
-            $DIC->logger()->root()->error('ExAutoScore: Saved debug logs');
+            $DIC->logger()->root()->error('ExAutoScore: Saved debug logs (' . strlen($result['debug_logs']) . ' bytes)');
+        } else {
+            $DIC->logger()->root()->error('ExAutoScore: No debug_logs in result');
         }
         
         $DIC->logger()->root()->error('ExAutoScore: Saving task with points = ' . ($task->getReturnPoints() ?? 'NULL'));
@@ -323,7 +355,10 @@ class ilExAutoScoreConnector
         }
 
         foreach ($files as $file) {
-            $file->moveTo($fb_path . "/". ilUtil::getASCIIFilename($file->getClientFilename()));
+            // Überspringe result.json - das wurde bereits verarbeitet
+            if ($file->getClientFilename() !== 'result.json') {
+                $file->moveTo($fb_path . "/". ilUtil::getASCIIFilename($file->getClientFilename()));
+            }
         }
     }
 
@@ -344,7 +379,7 @@ class ilExAutoScoreConnector
         return $this->result_message;
     }
 
-        /**
+    /**
      * Call the external service using native PHP cURL
      */
     protected function callService($url, $post, $timeout): bool
@@ -381,22 +416,22 @@ class ilExAutoScoreConnector
             $curl_error = curl_error($curl);
             $curl_errno = curl_errno($curl);
             
-// NEU: Detailliertes Debug-Logging
-global $DIC;
-$DIC->logger()->root()->error('ExAutoScore cURL Debug: ' . print_r([
-    'url' => $url,
-    'http_code' => $http_code,
-    'curl_errno' => $curl_errno,
-    'curl_error' => $curl_error,
-    'response_length' => strlen($result),
-    'response_preview' => substr($result, 0, 500),
-    'post_params' => array_map(function($v) {
-        if ($v instanceof CURLFile) {
-            return 'CURLFile: ' . $v->getFilename();
-        }
-        return $v;
-    }, $post)
-], true));
+            // Detailliertes Debug-Logging
+            global $DIC;
+            $DIC->logger()->root()->error('ExAutoScore cURL Debug: ' . print_r([
+                'url' => $url,
+                'http_code' => $http_code,
+                'curl_errno' => $curl_errno,
+                'curl_error' => $curl_error,
+                'response_length' => strlen($result),
+                'response_preview' => substr($result, 0, 500),
+                'post_params' => array_map(function($v) {
+                    if ($v instanceof CURLFile) {
+                        return 'CURLFile: ' . $v->getFilename();
+                    }
+                    return $v;
+                }, $post)
+            ], true));
 
             curl_close($curl);
             
@@ -463,9 +498,12 @@ $DIC->logger()->root()->error('ExAutoScore cURL Debug: ' . print_r([
                 $this->result_message = 'Success';
             }
             
-            // NEU: Debug-Logs extrahieren
+            // Debug-Logs extrahieren
             if (isset($decoded_result['debug_logs'])) {
                 $this->debug_logs = $decoded_result['debug_logs'];
+                $DIC->logger()->root()->error('ExAutoScore: Extracted debug_logs from response (' . strlen($this->debug_logs) . ' bytes)');
+            } else {
+                $DIC->logger()->root()->error('ExAutoScore: No debug_logs in response');
             }
             
             $success = isset($decoded_result['success']) ? (bool) $decoded_result['success'] : false;
