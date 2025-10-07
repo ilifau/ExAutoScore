@@ -767,9 +767,9 @@ class ilExAutoScoreTask extends ActiveRecord
         foreach ($a_user_ids as $user_id) {
             $memberStatus = new ilExAssignmentMemberStatus($this->getAssignmentId(), $user_id);
             $memberStatus->setReturned(false);
-            $memberStatus->setComment(null);
+            $memberStatus->setComment('');
             $memberStatus->setStatus('notgraded');
-            $memberStatus->setMark(null);
+            $memberStatus->setMark('');
             $memberStatus->update();
         }
     }
