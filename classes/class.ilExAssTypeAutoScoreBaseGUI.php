@@ -346,7 +346,17 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $modal = ilModalGUI::getInstance();
             $modal->setId($item_id);
             $modal->setType(ilModalGUI::TYPE_LARGE);
-            $modal->setBody(ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
+            
+            // Feedback HTML holen
+            $feedbackHtml = $task->getProtectedFeedbackHtml();
+            
+            // Entferne stdout/stderr für Studierende (nicht für Admins/Tutoren)
+            if (!$this->plugin->canDefine()) {
+                // Entferne <details>...</details> Block mit stdout/stderr
+                $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
+            }
+            
+            $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
             $modal->setHeading($this->plugin->txt('protected_feedback_html'));
 
             $button_html = sprintf(
@@ -1095,7 +1105,17 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 $modal = ilModalGUI::getInstance();
                 $modal->setId($item_id);
                 $modal->setType(ilModalGUI::TYPE_LARGE);
-                $modal->setBody(ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
+                
+                // Feedback HTML holen
+                $feedbackHtml = $task->getProtectedFeedbackHtml();
+                
+                // Entferne stdout/stderr für Studierende (nicht für Admins/Tutoren)
+                if (!$this->plugin->canDefine()) {
+                    // Entferne <details>...</details> Block mit stdout/stderr
+                    $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
+                }
+                
+                $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
                 $modal->setHeading($this->plugin->txt('protected_feedback_html'));
                 
                 $modal_html = $modal->getHTML();
