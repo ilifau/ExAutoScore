@@ -212,7 +212,7 @@ class ilExAutoScoreRequiredFilesGUI
         $fileMaxSize->allowDecimals(false);
         $fileMaxSize->setSize(10);
         if ($file->getMaxSize()) {
-            $fileMaxSize->setValue(ceil($file->getMaxSize() / 1000));
+            $fileMaxSize->setValue((string) ceil($file->getMaxSize() / 1000));
         }
         $form->addItem($fileMaxSize);
 
