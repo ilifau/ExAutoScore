@@ -981,28 +981,45 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $DIC->logger()->root()->error('ExAutoScore handleSubmissionTabs FINISHED');
     }
 
-    public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_actions): void
-    {
-        global $DIC;
+public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_actions): void
+{
+    global $DIC;
 
-        $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
-        if (!empty($task->getProtectedFeedbackHtml())) {
+    $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
+    if (!empty($task->getProtectedFeedbackHtml())) {
 
-            $factory = $DIC->ui()->factory();
-            $renderer = $DIC->ui()->renderer();
+        $factory = $DIC->ui()->factory();
+        $renderer = $DIC->ui()->renderer();
 
-            $page = $factory->modal()->lightboxTextPage(
-                ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()),
-                $this->plugin->txt('protected_feedback_html')
-            );
-            $modal = $factory->modal()->lightbox([$page]);
-
-            $this->tpl->addLightbox($renderer->render($modal), 'exautoscore_lightbox_' . $task->getId());
-
-            $a_actions[] = $factory->button()->shy($this->plugin->txt("protected_feedback_html"), '')
-                ->withOnClick($modal->getShowSignal());
+        // Feedback HTML vorbereiten (ohne stdout/stderr für Studierende)
+        $feedbackHtml = $task->getProtectedFeedbackHtml();
+        if (!$this->plugin->canDefine()) {
+            $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
         }
+
+        $page = $factory->modal()->lightboxTextPage(
+            ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()),
+            $this->plugin->txt('protected_feedback_html')
+        );
+        $modal = $factory->modal()->lightbox([$page]);
+
+        // Modal dem Template hinzufügen (ähnlich wie früher addLightbox)
+        $modal_id = 'exautoscore_modal_' . $task->getId();
+        $DIC->ui()->mainTemplate()->addOnLoadCode(
+            "document.body.insertAdjacentHTML('beforeend', " . 
+            json_encode($renderer->render($modal)) . 
+            ");"
+        );
+
+        // Nur den Button als UI-Component in Actions
+        $button = $factory->button()->shy(
+            $this->plugin->txt("protected_feedback_html"), 
+            ''
+        )->withOnClick($modal->getShowSignal());
+
+        $a_actions[] = $button;  // Hier NUR das Button-Objekt, kein String!
     }
+}
 
     protected function returnToParent() {
         $this->ctrl->returnToParent($this);
