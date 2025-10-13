@@ -289,8 +289,8 @@ class ilExAutoScoreSettingsGUI
                 $modal->setType(ilModalGUI::TYPE_LARGE);
                 
                 $feedbackHtml = $assTask->getProtectedFeedbackHtml();
-                $cleanFeedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
-                                            
+                $cleanFeedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);                                                 
+                
                 $modal->setBody(ilUtil::stripScriptHTML($cleanFeedbackHtml, $this->plugin->getAllowedTags()));
                 $modal->setHeading($this->plugin->txt('protected_feedback_html'));
                 
@@ -303,15 +303,6 @@ class ilExAutoScoreSettingsGUI
                 $protectedFeedbackHtml->setValue($modal->getHTML() . $button_html);
                 $form->addItem($protectedFeedbackHtml);
             }
-            
-            global $DIC;
-                        $DIC->logger()->root()->error('ExAutoScore Debug Check: ' . print_r([
-                'has_debug_logs' => !empty($assTask->getDebugLogs()),
-                'debug_logs_length' => strlen($assTask->getDebugLogs() ?? ''),
-                'enable_debug_logs' => $this->plugin->getConfig()->get('enable_debug_logs'),
-                'debug_mode' => $assAuto->getDebugMode(),
-                'has_feedback_html' => !empty($assTask->getProtectedFeedbackHtml())
-            ], true));
 
             // NEU: Debug-Logs anzeigen (nur wenn aktiviert und vorhanden)
             if (!empty($assTask->getDebugLogs()) 
@@ -323,23 +314,32 @@ class ilExAutoScoreSettingsGUI
                     'exautoscore_debug_logs', 
                     true
                 );
+
+                // Zeige das Datum der Log-Erstellung
+                $logDate = '';
+                if (!empty($assTask->getReturnTime())) {
+                    $time = new ilDateTime($assTask->getReturnTime(), IL_CAL_DATETIME);
+                    $logDate = ' (' . ilDatePresentation::formatDate($time) . ')';
+                }                
                 
                 $item_id = "exautoscore_debug_logs_modal_" . $this->assignment->getId();
                 
                 $modal = ilModalGUI::getInstance();
                 $modal->setId($item_id);
                 $modal->setType(ilModalGUI::TYPE_LARGE);
+                $formattedLogs = $this->formatDebugLogs($assTask->getDebugLogs());                
                 $modal->setBody(
-                    '<pre style="max-height:70vh;overflow:auto;background:#1e1e1e;color:#dcdcdc;padding:15px;border-radius:4px;font-family:\'Courier New\',monospace;font-size:12px;line-height:1.4;">' 
-                    . htmlspecialchars($assTask->getDebugLogs()) 
+                    '<pre style="max-height:70vh;overflow:auto;background:white;color:black;padding:15px;border-radius:4px;font-family:monospace;font-size:12px;line-height:1.4;">' 
+                    . htmlspecialchars($formattedLogs) 
                     . '</pre>'
                 );
                 $modal->setHeading($this->plugin->txt('debug_logs'));
                 
                 $button_html = sprintf(
-                    '<button type="button" class="btn btn-warning" onclick="$(\'#%s\').modal(\'show\');" style="margin-top:5px;"><i class="glyphicon glyphicon-console"></i> %s</button>',
+                    '<button type="button" class="btn btn-warning" onclick="$(\'#%s\').modal(\'show\');">%s%s</button>',
                     $item_id,
-                    $this->plugin->txt('show_debug_logs')
+                    $this->plugin->txt('show_debug_logs'),
+                    $logDate
                 );
                 
                 $debugLogs->setValue($modal->getHTML() . $button_html);
@@ -452,5 +452,59 @@ class ilExAutoScoreSettingsGUI
         }
         return sprintf('%.' . $decimals . 'f', $value);
     }
+
+
+    /**
+     * Formatiert Debug-Logs für bessere Lesbarkeit und einheitliche Zeitstempel
+     * @param string $logs Rohe Debug-Logs
+     * @return string Formatierte Debug-Logs
+     */
+    private function formatDebugLogs(string $logs): string 
+    {
+        if (empty($logs)) {
+            return $logs;
+        }
+        
+        // Zeilen aufteilen
+        $lines = explode("\n", $logs);
+        $formatted_lines = [];
+        
+        foreach ($lines as $line) {
+            // Celery Timestamps normalisieren: [2025-10-13 06:36:52,313: -> [13.10.2025 08:36:52:
+            // Füge +2h für CEST hinzu
+            $line = preg_replace_callback(
+                '/\[(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}),\d+:/',
+                function($matches) {
+                    $hour = (int)$matches[4];
+                    $adjusted_hour = ($hour + 2) % 24; // +2h für CEST
+                    return sprintf('[%s.%s.%s %02d:%s:%s:', 
+                        $matches[3], $matches[2], $matches[1], 
+                        $adjusted_hour, $matches[5], $matches[6]);
+                },
+                $line
+            );
+            
+            // Journalctl Timestamps: Okt 13 08:36:52 -> 13.10.2025 08:36:52
+            $line = preg_replace('/Okt (\d+) (\d{2}):(\d{2}):(\d{2})/', 
+                            '13.10.2025 $2:$3:$4', $line);
+            
+            // Weitere Monate falls nötig
+            $line = preg_replace('/Nov (\d+) (\d{2}):(\d{2}):(\d{2})/', 
+                            '${1}.11.2025 $2:$3:$4', $line);
+            $line = preg_replace('/Dez (\d+) (\d{2}):(\d{2}):(\d{2})/', 
+                            '${1}.12.2025 $2:$3:$4', $line);
+            $line = preg_replace('/Jan (\d+) (\d{2}):(\d{2}):(\d{2})/', 
+                            '${1}.01.2026 $2:$3:$4', $line);
+            
+            $formatted_lines[] = $line;
+        }
+        
+        // Header mit Erklärung hinzufügen
+        $header = "=== DEBUG-PROTOKOLL ===\n";
+        $header .= "Zeitstempel wurden auf CEST normalisiert.\n";
+        $header .= "Quelle: Celery-Logs, Docker-Build-Output, Task-Ausführung\n\n";
+        
+        return $header . implode("\n", $formatted_lines);
+    }    
 
 }
