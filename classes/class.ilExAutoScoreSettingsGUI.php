@@ -262,28 +262,22 @@ class ilExAutoScoreSettingsGUI
                 $form->addItem($taskDuration);
             }
 
-            if (!empty($assTask->getInstantStatus())) {
-                $instantStatus = new ilNonEditableValueGUI($this->plugin->txt('instant_status'), 'exautoscore_instant_status', true);
-                $instantStatus->setValue('<span class="ilTag">' . htmlspecialchars($assTask->getInstantStatus()) . '</span>');
-                $form->addItem($instantStatus);
+            // VEREINFACHT: Status mit gleichem Styling wie User-Ansicht
+            $status = $assTask->getInstantStatus() ?: $assTask->getProtectedStatus();
+            if (!empty($status)) {
+                $statusField = new ilNonEditableValueGUI($this->plugin->txt('instant_status'), 'exautoscore_status', true);
+                // Verwende die gleiche getStyledStatusSymbol() Methode wie in der User-Ansicht
+                $statusField->setValue($this->parentGUI->getStyledStatusSymbol($status));
+                $form->addItem($statusField);
             }
 
-            if (!empty($assTask->getInstantMessage())) {
-                $instantMessage = new ilNonEditableValueGUI($this->plugin->txt('instant_message'), 'exautoscore_instant_message', true);
-                $instantMessage->setValue('<pre>' . htmlspecialchars($assTask->getInstantMessage()) . '</pre>');
-                $form->addItem($instantMessage);
-            }
-
-            if (!empty($assTask->getProtectedStatus())) {
-                $protectedStatus = new ilNonEditableValueGUI($this->plugin->txt('protected_status'), 'exautoscore_protected_status', true);
-                $protectedStatus->setValue('<span class="ilTag">' . htmlspecialchars($assTask->getProtectedStatus()) . '</span>');
-                $form->addItem($protectedStatus);
-            }
-
-            if (!empty($assTask->getProtectedFeedbackText())) {
-                $protectedFeedbackText = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_text'), 'exautoscore_protected_feedback_text', true);
-                $protectedFeedbackText->setValue(nl2br(ilUtil::secureString($assTask->getProtectedFeedbackText())));
-                $form->addItem($protectedFeedbackText);
+            // VEREINFACHT: Message mit gleichem Styling wie User-Ansicht
+            $message = $assTask->getInstantMessage() ?: $assTask->getProtectedFeedbackText();
+            if (!empty($message)) {
+                $messageField = new ilNonEditableValueGUI($this->plugin->txt('instant_message'), 'exautoscore_message', true);
+                // Verwende die gleiche formatInstantMessage() Methode wie in der User-Ansicht
+                $messageField->setValue($this->parentGUI->formatInstantMessage($message));
+                $form->addItem($messageField);
             }
 
             if (!empty($assTask->getProtectedFeedbackHtml())) {
@@ -293,7 +287,11 @@ class ilExAutoScoreSettingsGUI
                 $modal = ilModalGUI::getInstance();
                 $modal->setId($item_id);
                 $modal->setType(ilModalGUI::TYPE_LARGE);
-                $modal->setBody(ilUtil::stripScriptHTML($assTask->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()));
+                
+                $feedbackHtml = $assTask->getProtectedFeedbackHtml();
+                $cleanFeedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
+                                            
+                $modal->setBody(ilUtil::stripScriptHTML($cleanFeedbackHtml, $this->plugin->getAllowedTags()));
                 $modal->setHeading($this->plugin->txt('protected_feedback_html'));
                 
                 $button_html = sprintf(
@@ -301,7 +299,7 @@ class ilExAutoScoreSettingsGUI
                     $item_id,
                     $this->plugin->txt('show_extended_feedback')
                 );
-                
+                                
                 $protectedFeedbackHtml->setValue($modal->getHTML() . $button_html);
                 $form->addItem($protectedFeedbackHtml);
             }

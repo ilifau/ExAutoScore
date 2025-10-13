@@ -65,22 +65,138 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     public function setExercise(ilObjExercise $exercise): void
     {
         $this->exercise = $exercise;
-    }    
+    }
+
+    /**
+     * Get styled status display (supports both Unicode symbols and text)
+     * @param string $status
+     * @return string HTML with styled status
+     */
+    public function getStyledStatusSymbol(string $status): string
+    {
+        $trimmed = trim($status);
+        $color = '#999';
+        $symbol = $trimmed;
+        $title = $trimmed;
+        
+        // Unicode-Symbole (AuDoscore)
+        if ($trimmed === '✓' || $trimmed === "\u{2713}") {
+            $color = '#5cb85c';
+            $title = 'Passed';
+        } elseif ($trimmed === '☠' || $trimmed === "\u{2620}") {
+            $color = '#d9534f';
+            $title = 'Compile Error';
+        } elseif ($trimmed === '✗' || $trimmed === "\u{2718}") {
+            $color = '#d9534f';
+            $title = 'Forbidden Construct';
+        } elseif ($trimmed === '!' || $trimmed === "\u{21}") {
+            $color = '#f0ad4e';
+            $title = 'Test Failed';
+        } elseif ($trimmed === '⚠' || $trimmed === "\u{26A0}") {
+            $color = '#f0ad4e';
+            $title = 'Internal Error';
+        }
+        // Text-basierte Werte (Standard-Container)
+        else {
+            $lower = strtolower($trimmed);
+            
+            if ($lower === 'passed' || $lower === 'success' || $lower === 'ok') {
+                $color = '#5cb85c';
+                $symbol = '✓';
+                $title = 'Passed';
+            } elseif ($lower === 'failed' || $lower === 'error' || $lower === 'fail') {
+                $color = '#d9534f';
+                $symbol = '✗';
+                $title = 'Failed';
+            } elseif ($lower === 'warning' || $lower === 'partial') {
+                $color = '#f0ad4e';
+                $symbol = '⚠';
+                $title = 'Warning';
+            }
+        }
+        
+        return sprintf(
+            '<span style="color:%s;font-size:1.5em;font-weight:bold;" title="%s">%s</span>',
+            $color,
+            htmlspecialchars($title),
+            htmlspecialchars($symbol)
+        );
+    }
+
+    /**
+     * Format instant message with monospace styling
+     * @param string $message
+     * @return string HTML formatted message
+     */
+    public function formatInstantMessage(string $message): string
+    {
+        return '<pre style="font-family:\'Courier New\',Consolas,monospace;white-space:pre-wrap;margin:0;padding:8px;background:#f5f5f5;border-radius:3px;font-size:0.9em;">' 
+            . htmlspecialchars($message) 
+            . '</pre>';
+    }
+
+    /**
+     * Create extended feedback modal button
+     * @param ilExAutoScoreTask $task
+     * @param string $item_id_suffix
+     * @return string HTML for modal + button
+     */
+    protected function createFeedbackModal(ilExAutoScoreTask $task, string $item_id_suffix = ''): string
+    {
+        if (empty($task->getProtectedFeedbackHtml())) {
+            return '';
+        }
+
+        $item_id = "exautoscore_feedback_modal_" . $task->getId() . $item_id_suffix;
+
+        $modal = ilModalGUI::getInstance();
+        $modal->setId($item_id);
+        $modal->setType(ilModalGUI::TYPE_LARGE);
+
+        $feedbackHtml = $task->getProtectedFeedbackHtml();
+
+        // Stdout/Stderr für Studierende entfernen
+        if (!$this->plugin->canDefine()) {
+            $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
+        }
+
+        $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
+        $modal->setHeading($this->plugin->txt('protected_feedback_html'));
+
+        $button_html = sprintf(
+            '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\'); return false;">%s</button>',
+            $item_id,
+            $this->plugin->txt('show_extended_feedback')
+        );
+
+        return $modal->getHTML() . $button_html;
+    }
+
+    /**
+     * Check if extended feedback can be shown (based on deadline)
+     * @param ilExAssignment $ass
+     * @param ilExSubmission $sub
+     * @return bool
+     */
+    protected function canShowExtendedFeedbackByDeadline(ilExAssignment $ass, ilExSubmission $sub): bool
+    {
+        if ($this->plugin->canDefine()) {
+            return true;
+        }
+
+        $personal_deadline = $ass->getPersonalDeadline($this->user->getId());
+
+        if (!empty($personal_deadline)) {
+            return time() > (int)$personal_deadline;
+        }
+
+        return $sub->hasSubmitted();
+    }
 
     public function executeCommand(): void
     {
         global $DIC;
         
-        // DEBUG-Logging
-        $DIC->logger()->root()->error("ExAutoScore executeCommand ENTRY", [
-            'current_gui' => get_class($this),
-            'next_class' => $this->ctrl->getNextClass($this),
-            'cmd' => $this->ctrl->getCmd(),
-            'request_uri' => $_SERVER['REQUEST_URI'] ?? 'unknown'
-        ]);
-        
-        $DIC->logger()->root()->error("ExAutoScore DEBUG: current GUI = " . get_class($this));
- 
         $access = false;
 
         if (isset($this->submission)) {
@@ -111,12 +227,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $next_class = $this->ctrl->getNextClass($this);
         $cmd = $this->ctrl->getCmd('submissionScreen');
 
-        $DIC->logger()->root()->error('ExAutoScore executeCommand', [
-            'next_class' => $next_class, 
-            'cmd' => $cmd,
-            'gui_class' => get_class($this)
-        ]);
-
         switch ($next_class) {
             case 'ilexautoscoresettingsgui':
                 require_once(__DIR__ . '/class.ilExAutoScoreSettingsGUI.php');
@@ -142,6 +252,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             case '':
             default:
                 switch ($cmd) {
+                    case 'viewSubmission':
                     case 'submissionScreen':
                     case 'downloadProvidedFile':
                     case 'downloadSubmittedFile':
@@ -155,7 +266,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                         break;
 
                     default:
-                        $DIC->logger()->root()->warning('ExAutoScore: Unknown command: ' . $cmd);
                         $this->submissionScreen();
                 }
         }
@@ -247,6 +357,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
         $requiredFiles = ilExAutoScoreRequiredFile::getForAssignment($a_submission->getAssignment()->getId());
 
+        // Dateiliste (unverändert)
         $titles = [];
         $links = [];
         foreach ($a_submission->getFiles() as $file) {
@@ -258,12 +369,10 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $titles[] = $file['filetitle'];
             $links[] = '<a href="' . $link . '">' . $file['filetitle'] . '</a>';
         }
+        
         if (!empty($links)) {
             $a_info->addProperty($this->lng->txt("exc_files_returned"), implode(', ', $links));
-        }
-
-        elseif ($a_submission->canSubmit()) {
-
+        } elseif ($a_submission->canSubmit()) {
             $missing = [];
             foreach ($requiredFiles as $requiredFile) {
                 if (!in_array($requiredFile->getFilename(), $titles)) {
@@ -306,8 +415,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $a_info->addProperty('', $content);
         }
 
-        $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
-
+        // Zeiten und Status (unverändert)
         if (!empty($task->getReturnTime())) {
             $time = new ilDateTime($task->getReturnTime(), IL_CAL_DATETIME);
             $content = ilDatePresentation::formatDate($time);
@@ -315,57 +423,49 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $a_info->addProperty($this->plugin->txt("return_time"), $content);
 
             if (!empty($task->getReturnCode())) {
-                $a_info->addProperty($this->plugin->txt("return_code"), $task->getReturnCode());
+                $a_info->addProperty($this->plugin->txt("return_code"), (string) $task->getReturnCode());
             }
-
-            $contents = [];
-            if (!empty($task->getInstantStatus())) {
-                $contents[] = '<span class="ilTag">' . ilUtil::prepareFormOutput($task->getInstantStatus()) . '</span>';
-            }
-            if (!empty($task->getInstantMessage())) {
-                $contents[] = '<pre>' . ilUtil::prepareFormOutput($task->getInstantMessage()) . '</pre>';
-            }
-            if (!empty($contents)) {
-                $a_info->addProperty($this->plugin->txt("instant_message"), implode('<br />', $contents));
-            }
-
+            
         } elseif (!empty($task->getSubmitTime())) {
             $time = new ilDateTime($task->getSubmitTime(), IL_CAL_DATETIME);
             $a_info->addProperty($this->plugin->txt("submit_time"), ilDatePresentation::formatDate($time));
-            $a_info->addProperty($this->plugin->txt("submit_message"), $task->getSubmitMessage());
+            
+            if (!empty($task->getSubmitMessage())) {
+                $a_info->addProperty($this->plugin->txt("submit_message"), $task->getSubmitMessage());
+            }
+        }
+
+        // GEÄNDERT: Sofortiger Status und Meldung hinzugefügt
+        if (!empty($task->getInstantStatus())) {
+            $a_info->addProperty(
+                $this->plugin->txt("instant_status"), 
+                $this->getStyledStatusSymbol($task->getInstantStatus())
+            );
+        }
+
+        // NEU: Sofortige Meldung hinzugefügt
+        if (!empty($task->getInstantMessage())) {
+            $a_info->addProperty(
+                $this->plugin->txt("instant_message"), 
+                $this->formatInstantMessage($task->getInstantMessage())
+            );
         }
     }
 
     public function getOverviewAdditionalFeedback(ilInfoScreenGUI $a_info, ilExSubmission $a_submission): void
     {
         $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
+        if (!$task || empty($task->getProtectedFeedbackHtml())) {
+            return;
+        }
 
-        if (!empty($task->getProtectedFeedbackHtml())) {
-            $item_id = "exautoscore_feedback_html_" . $a_submission->getAssignment()->getId();
+        if (!$this->canShowExtendedFeedbackByDeadline($a_submission->getAssignment(), $a_submission)) {
+            return;
+        }
 
-            $modal = ilModalGUI::getInstance();
-            $modal->setId($item_id);
-            $modal->setType(ilModalGUI::TYPE_LARGE);
-            
-            // Feedback HTML holen
-            $feedbackHtml = $task->getProtectedFeedbackHtml();
-            
-            // Entferne stdout/stderr für Studierende (nicht für Admins/Tutoren)
-            if (!$this->plugin->canDefine()) {
-                // Entferne <details>...</details> Block mit stdout/stderr
-                $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
-            }
-            
-            $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
-            $modal->setHeading($this->plugin->txt('protected_feedback_html'));
-
-            $button_html = sprintf(
-                '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\');">%s</button>',
-                $item_id,
-                $this->plugin->txt('show_extended_feedback')
-            );
-
-            $a_info->addProperty('', $modal->getHTML() . $button_html);
+        $modalHtml = $this->createFeedbackModal($task);
+        if (!empty($modalHtml)) {
+            $a_info->addProperty('', $modalHtml);
         }
     }
 
@@ -373,7 +473,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     {
         $this->getOverviewAdditionalFeedback($a_info, $a_submission);
     }
-
 
     public function hasOwnOverviewGeneralFeedback() : bool { return true; }
 
@@ -406,7 +505,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     {
         global $DIC;
         
-        // WICHTIG: Assignment ID aus verschiedenen Quellen ermitteln
         $ass_id = null;
         
         if (isset($this->assignment)) {
@@ -418,12 +516,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
         
         if (empty($ass_id)) {
-            $DIC->logger()->root()->error('ExAutoScore: Cannot determine assignment ID in getSubmissionScreenLinkTarget', [
-                'has_assignment' => isset($this->assignment),
-                'has_submission' => isset($this->submission),
-                'get_ass_id' => $_GET['ass_id'] ?? 'not set'
-            ]);
-            // Fallback: versuche aus URL zu lesen
             throw new Exception('Assignment ID not available');
         }
         
@@ -437,26 +529,15 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     protected function submissionScreen()
     {
         global $DIC;
-        $DIC->logger()->root()->error('ExAutoScore submissionScreen CALLED');
 
         $this->handleSubmissionTabs($this->tabs);
 
         if (!isset($this->submission)) {
-            $DIC->logger()->root()->error('ExAutoScore: NO SUBMISSION OBJECT!');
             $this->tpl->setOnScreenMessage('failure', 'Interner Fehler: Keine Abgabe gefunden');
             return;
         }
 
-        $canSubmit = $this->submission->canSubmit();
-        $canAddFile = $this->submission->canAddFile();
-        
-        $DIC->logger()->root()->error('ExAutoScore: checking permissions', [
-            'canSubmit' => $canSubmit,
-            'canAddFile' => $canAddFile
-        ]);
-
-        if (!$canSubmit) {
-            $DIC->logger()->root()->error('ExAutoScore: canSubmit is FALSE');
+        if (!$this->submission->canSubmit()) {
             $this->tpl->setOnScreenMessage('info', $this->lng->txt("exercise_time_over"));
             return;
         }
@@ -470,13 +551,10 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         ));
         $DIC->toolbar()->addButtonInstance($button);
 
-        if (!$canAddFile) {
-            $DIC->logger()->root()->error('ExAutoScore: canAddFile is FALSE - EXITING METHOD');
+        if (!$this->submission->canAddFile()) {
             $this->tpl->setOnScreenMessage('info', 'Sie können derzeit keine Dateien hochladen.');
             return;
         }
-        
-        $DIC->logger()->root()->error('ExAutoScore: preparing form');
         
         $deadline = $this->assignment->getPersonalDeadline($this->user->getId());
         if ($deadline && time() > $deadline) {
@@ -486,29 +564,14 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $this->toolbar->addText($dl);
         }
 
-        $DIC->logger()->root()->error('ExAutoScore: calling initSubmissionForm');
         $form = $this->initSubmissionForm();
-        
-        $DIC->logger()->root()->error('ExAutoScore: getting form HTML');
-        $html = $form->getHTML();
-        
-        $DIC->logger()->root()->error('ExAutoScore: setting content', [
-            'html_length' => strlen($html)
-        ]);
-        
-        $this->tpl->setContent($html);
-        
-        $DIC->logger()->root()->error('ExAutoScore: printing template NOW');
+        $this->tpl->setContent($form->getHTML());
         $this->tpl->printToStdout();
-        
-        $DIC->logger()->root()->error('ExAutoScore: after printToStdout - calling exit');
         exit;
     }
 
     protected function confirmDeleteSubmission()
     {
-        global $DIC;
-        
         $this->handleSubmissionTabs($this->tabs);
 
         if (!$this->submission->canSubmit()) {
@@ -526,8 +589,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $gui->setCancel($this->lng->txt('cancel'), 'submissionScreen');
         
         $this->tpl->setContent($gui->getHTML());
-        
-        $DIC->logger()->root()->error('ExAutoScore confirmDelete: printing template NOW');
         $this->tpl->printToStdout();
         exit;
     }
@@ -567,6 +628,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         foreach ($requiredFiles as $file) {
             $fileUpload = new ilFileInputGUI($file->getFilename(), 'exautoscore_file_upload_' . $file->getId());
             $info = [];
+            
             if (!empty($file->getMaxSize())) {
                 $info[] = '<p>' . sprintf($this->plugin->txt('required_max_size_info'), ceil($file->getMaxSize() / 1000)) . '</p>';
             }
@@ -576,6 +638,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             if (!empty($file->getDescription())) {
                 $info[] = '<p>' . $file->getDescription() . '</p>';
             }
+            
             if (!isset($existing[$file->getFilename()])) {
                 $fileUpload->setRequired(true);
             } else {
@@ -585,6 +648,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                         ceil(filesize($existing[$file->getFilename()]['filename']) / 1000))
                     . '</strong>, <a href="' . $link . '">' . $this->lng->txt('download') . '</a>';
             }
+            
             $fileUpload->setInfo(implode('', $info));
             $form->addItem($fileUpload);
         }
@@ -596,24 +660,14 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     {
         global $DIC;
 
-        $DIC->logger()->root()->error('ExAutoScore uploadSubmission CALLED');
-        
-        if ($this->submission->getTeam()) {
-            $DIC->logger()->root()->error('ExAutoScore: Team exists, ID = ' . $this->submission->getTeam()->getId());
-        } else {
-            $DIC->logger()->root()->error('ExAutoScore: NO TEAM!');
-        }
-
         $this->handleSubmissionTabs($this->tabs);
 
         $requiredFiles = ilExAutoScoreRequiredFile::getForAssignment($this->assignment->getId());
-
         $form = $this->initSubmissionForm();
         $form->setValuesByPost();
 
         if (!$form->checkInput()) {
             $this->tpl->setContent($form->getHTML());
-            $DIC->logger()->root()->error('ExAutoScore: form validation failed, printing template');
             $this->tpl->printToStdout();
             exit;
         }
@@ -628,23 +682,11 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $results[$result->getName()] = $result;
         }
 
-        $DIC->logger()->root()->error('ExAutoScore: Uploaded files: ' . implode(', ', array_keys($results)));
-        
-        $expectedNames = [];
-        foreach ($requiredFiles as $required) {
-            $expectedNames[] = $required->getFilename();
-        }
-        $DIC->logger()->root()->error('ExAutoScore: Expected files: ' . implode(', ', $expectedNames));
-
+        // Validierung
         $errors = false;
         foreach ($requiredFiles as $required) {
-            /** @var ilFormPropertyGUI $item */
             $item = $form->getItemByPostVar('exautoscore_file_upload_' . $required->getId());
-
-            $uploadedFile = null;
-            if (isset($results[$required->getFilename()])) {
-                $uploadedFile = $results[$required->getFilename()];
-            }
+            $uploadedFile = $results[$required->getFilename()] ?? null;
 
             if ($uploadedFile === null) {
                 if ($item->getRequired()) {
@@ -672,11 +714,11 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         if ($errors) {
             $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('upload_error_file'));
             $this->tpl->setContent($form->getHTML());
-            $DIC->logger()->root()->error('ExAutoScore: upload errors, printing template');
             $this->tpl->printToStdout();
             exit;
         }
 
+        // Dateien sammeln
         $existing = [];
         foreach ($this->submission->getFiles() as $file) {
             $existing[$file["filetitle"]][] = $file['returned_id'];
@@ -685,7 +727,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $required = [];
         $new = [];
         $failed = null;
-        $uploaded_ids = []; // NEU: Sammle die IDs der neu hochgeladenen Dateien
+        $uploaded_ids = [];
 
         foreach ($requiredFiles as $requiredFile) {
             $required[$requiredFile->getFilename()] = true;
@@ -698,14 +740,10 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                     'size'     => $result->getSize(),
                     'tmp_name' => $result->getPath()
                 ];
-                
-                $DIC->logger()->root()->error('ExAutoScore: Uploading file with team_id = ' . 
-                    ($this->submission->getTeam() ? $this->submission->getTeam()->getId() : 'NULL'));
 
                 if ($this->submission->uploadFile($uploadData)) {
                     $new[] = $requiredFile;
                     
-                    // NEU: Hole die ID der gerade hochgeladenen Datei
                     $newFiles = $this->submission->getFiles();
                     foreach ($newFiles as $newFile) {
                         if ($newFile['filetitle'] == $result->getName()) {
@@ -730,7 +768,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
             $this->tpl->setOnScreenMessage('failure', sprintf($this->plugin->txt("submission_upload_error"), $failed->getFilename()));
             $this->tpl->setContent($form->getHTML());
-            $DIC->logger()->root()->error('ExAutoScore: file upload failed, printing template');
             $this->tpl->printToStdout();
             exit;
         }
@@ -738,13 +775,12 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         if (empty($new)) {
             $this->tpl->setOnScreenMessage('failure', $this->plugin->txt("submission_no_upload"));
             $this->tpl->setContent($form->getHTML());
-            $DIC->logger()->root()->error('ExAutoScore: no new files, printing template');
             $this->tpl->printToStdout();
             exit;
         }
 
+        // Cleanup und Team-ID setzen
         if (!empty($new)) {
-            // Lösche alte Versionen der neu hochgeladenen Dateien
             foreach ($new as $requiredFile) {
                 $filename = $requiredFile->getFilename();
                 if (isset($existing[$filename]) && is_array($existing[$filename])) {
@@ -752,14 +788,12 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 }
             }
             
-            // Lösche Dateien, die nicht mehr gefordert sind
             foreach ($existing as $filename => $returned_ids) {
                 if (!isset($required[$filename])) {
                     $this->submission->deleteSelectedFiles($returned_ids);
                 }
             }
 
-            // NEU: WICHTIGER FIX - Setze team_id für die neu hochgeladenen Dateien
             if ($this->submission->getTeam() && !empty($uploaded_ids)) {
                 $team_id = $this->submission->getTeam()->getId();
                 $db = $DIC->database();
@@ -769,7 +803,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                         ['team_id' => ['integer', $team_id]],
                         ['returned_id' => ['integer', $returned_id]]
                     );
-                    $DIC->logger()->root()->error('ExAutoScore: Updated team_id for returned_id ' . $returned_id . ' to ' . $team_id);
                 }
             }
 
@@ -784,11 +817,9 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
     protected function sendSubmission()
     {
-        global $DIC;
-        $DIC->logger()->root()->error('ExAutoScore sendSubmission CALLED');
-
         require_once (__DIR__ . '/class.ilExAutoScoreConnector.php');
         $connector = new ilExAutoScoreConnector();
+        
         if ($connector->sendSubmission($this->submission, $this->user)) {
             $this->tpl->setOnScreenMessage('success', $this->plugin->txt("submission_success"), true);
         } else {
@@ -796,9 +827,9 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
 
         $this->returnToParent();
-    }
+    }    
 
-    protected function downloadSubmittedFile()
+protected function downloadSubmittedFile()
     {
         global $DIC;
         
@@ -821,7 +852,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             } catch (Exception $e) {
                 $DIC->logger()->root()->error('ExAutoScore: Submitted file download failed - ' . $e->getMessage());
                 
-                // Im Debug-Modus: Detaillierte Fehlermeldung
                 $plugin = ilExAutoScorePlugin::getInstance();
                 if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
                     $error_msg = sprintf(
@@ -867,7 +897,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         } catch (Exception $e) {
             $DIC->logger()->root()->error('ExAutoScore: File download failed - ' . $e->getMessage());
             
-            // Im Debug-Modus: Detaillierte Fehlermeldung
             $plugin = ilExAutoScorePlugin::getInstance();
             if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
                 $error_msg = sprintf(
@@ -921,7 +950,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         } catch (Exception $e) {
             $DIC->logger()->root()->error('ExAutoScore: File download failed - ' . $e->getMessage());
             
-            // Im Debug-Modus: Detaillierte Fehlermeldung
             $plugin = ilExAutoScorePlugin::getInstance();
             if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
                 $error_msg = sprintf(
@@ -941,11 +969,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
     protected function handleSubmissionTabs(ilTabsGUI $tabs)
     {
-        global $DIC;
-        $DIC->logger()->root()->error('ExAutoScore handleSubmissionTabs CALLED');
-        
         $tabs->clearTargets();
-        $DIC->logger()->root()->error('ExAutoScore: tabs cleared');
         
         $tabs->setBackTarget(
             $this->lng->txt("back"),
@@ -954,8 +978,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 ''
             )
         );
-
-        $DIC->logger()->root()->error('ExAutoScore: back target set');
 
         $this->ctrl->setParameterByClass(get_class($this), 'ass_id', $this->assignment->getId());
         $tabs->addTab(
@@ -967,59 +989,35 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             )
         );
         
-        $DIC->logger()->root()->error('ExAutoScore: submission tab added');
-        
         $tabs->activateTab("submission");
-        
-        $DIC->logger()->root()->error('ExAutoScore: submission tab activated');
 
         if ($this->assignment->hasTeam()) {
-            $DIC->logger()->root()->error('ExAutoScore: has team, calling handleTabs');
             ilExSubmissionTeamGUI::handleTabs();
         }
-        
-        $DIC->logger()->root()->error('ExAutoScore handleSubmissionTabs FINISHED');
     }
 
-public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_actions): void
-{
-    global $DIC;
+    public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_actions): void
+    {
+        global $DIC;
 
-    $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
-    if (!empty($task->getProtectedFeedbackHtml())) {
+        $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
+        if (!empty($task->getProtectedFeedbackHtml())) {
 
-        $factory = $DIC->ui()->factory();
-        $renderer = $DIC->ui()->renderer();
+            $factory = $DIC->ui()->factory();
+            $renderer = $DIC->ui()->renderer();
 
-        // Feedback HTML vorbereiten (ohne stdout/stderr für Studierende)
-        $feedbackHtml = $task->getProtectedFeedbackHtml();
-        if (!$this->plugin->canDefine()) {
-            $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
+            $page = $factory->modal()->lightboxTextPage(
+                ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()),
+                $this->plugin->txt('protected_feedback_html')
+            );
+            $modal = $factory->modal()->lightbox([$page]);
+
+            $this->tpl->addLightbox($renderer->render($modal), 'exautoscore_lightbox_' . $task->getId());
+
+            $a_actions[] = $factory->button()->shy($this->plugin->txt("protected_feedback_html"), '')
+                ->withOnClick($modal->getShowSignal());
         }
-
-        $page = $factory->modal()->lightboxTextPage(
-            ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()),
-            $this->plugin->txt('protected_feedback_html')
-        );
-        $modal = $factory->modal()->lightbox([$page]);
-
-        // Modal dem Template hinzufügen (ähnlich wie früher addLightbox)
-        $modal_id = 'exautoscore_modal_' . $task->getId();
-        $DIC->ui()->mainTemplate()->addOnLoadCode(
-            "document.body.insertAdjacentHTML('beforeend', " . 
-            json_encode($renderer->render($modal)) . 
-            ");"
-        );
-
-        // Nur den Button als UI-Component in Actions
-        $button = $factory->button()->shy(
-            $this->plugin->txt("protected_feedback_html"), 
-            ''
-        )->withOnClick($modal->getShowSignal());
-
-        $a_actions[] = $button;  // Hier NUR das Button-Objekt, kein String!
     }
-}
 
     protected function returnToParent() {
         $this->ctrl->returnToParent($this);
@@ -1030,8 +1028,6 @@ public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_a
     ): void {
         global $DIC;
         
-        $DIC->logger()->root()->error('ExAutoScore buildSubmissionPropertiesAndActions CALLED');
-        
         $lng  = $DIC->language();
         $ctrl = $DIC->ctrl();
         $f    = $DIC->ui()->factory();
@@ -1039,17 +1035,10 @@ public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_a
         $sub  = $this->getSubmission();
         
         if (!$sub) {
-            $DIC->logger()->root()->error('ExAutoScore: NO SUBMISSION in buildSubmissionPropertiesAndActions');
             return;
         }
         
-        $DIC->logger()->root()->error('ExAutoScore: Submission ID = ' . $sub->getAssignment()->getId());
-        
-        // WICHTIG: Prüfe ob Team-Aufgabe und ob Team noch nicht erstellt
         if ($sub->getAssignment()->hasTeam() && $sub->hasNoTeamYet()) {
-            $DIC->logger()->root()->error('ExAutoScore: hasNoTeamYet - showing team creation button');
-            
-            // Zeige "Team erstellen" Button
             $ctrl->setParameterByClass(ilExSubmissionTeamGUI::class, 'ass_id', $sub->getAssignment()->getId());
             $url = $ctrl->getLinkTargetByClass(
                 [ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, ilExSubmissionTeamGUI::class],
@@ -1066,56 +1055,63 @@ public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_a
             ? ilExAssTypeAutoScoreTeamGUI::class
             : ilExAssTypeAutoScoreUserGUI::class;
         
-        $DIC->logger()->root()->error('ExAutoScore: Using GUI class = ' . $gui_class);
-        
-        if ($sub->canSubmit()) {
-            $title = ($sub->getFiles() ? $lng->txt('exc_edit_submission') : $lng->txt('exc_hand_in'));
-            
-            $ctrl->setParameterByClass($gui_class, 'ass_id', $sub->getAssignment()->getId());
-            $ctrl->setParameterByClass(ilExSubmissionGUI::class, 'ass_id', $sub->getAssignment()->getId());
-            
+        $ass       = $sub->getAssignment();
+        $files_cnt = count($sub->getFiles());
+        $can_submit = $sub->canSubmit();
+
+        if ($can_submit) {
+            $ctrl->setParameterByClass($gui_class, 'ass_id', $ass->getId());
+            $ctrl->setParameterByClass(ilExSubmissionGUI::class, 'ass_id', $ass->getId());
+
             $url = $ctrl->getLinkTargetByClass(
                 [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, $gui_class ],
-                '');              
-            
-            $DIC->logger()->root()->error('ExAutoScore: Setting main action with URL = ' . $url);
-            
+                ''
+            );
+
+            $title = ($files_cnt ? $lng->txt('exc_edit_submission') : $lng->txt('exc_hand_in'));
             $builder->setMainAction($builder::SEC_SUBMISSION, $f->button()->primary($title, $url));
             $builder->addView('submission', $lng->txt('exc_submission'), $url);
+
         } else {
-            if (count($sub->getFiles()) > 0) {
-                $ctrl->setParameterByClass($gui_class, 'ass_id', $sub->getAssignment()->getId());
-                $ctrl->setParameterByClass(ilExSubmissionGUI::class, 'ass_id', $sub->getAssignment()->getId());
-                
-                $url = $ctrl->getLinkTargetByClass(
-                    [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, $gui_class ],
-                    'submissionScreen'
+            if ($files_cnt > 0) {
+                $ctrl->setParameterByClass($gui_class, 'ass_id', $ass->getId());
+                $ctrl->setParameterByClass(ilExSubmissionGUI::class, 'ass_id', $ass->getId());
+
+                $url_self = $ctrl->getLinkTargetByClass(
+                    [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, strtolower(get_class($this)) ],
+                    'viewSubmission'
                 );
-                $builder->addAction($builder::SEC_SUBMISSION, $f->link()->standard($lng->txt('already_delivered_files'), $url));
-                $builder->addView('submission', $lng->txt('exc_submission'), $url);
+
+                $builder->addAction($builder::SEC_SUBMISSION, $f->link()->standard($lng->txt('already_delivered_files'), $url_self));
+                $builder->addView('submission', $lng->txt('exc_submission'), $url_self);
             }
         }
         
         require_once __DIR__ . '/models/class.ilExAutoScoreTask.php';
         $task = \ilExAutoScoreTask::getSubmissionTask($sub);
         
-        $DIC->logger()->root()->error('ExAutoScore: Task loaded, ID = ' . ($task ? $task->getId() : 'NULL'));
-        
         if ($task && $task->getReturnPoints() !== null) {
-            $DIC->logger()->root()->error('ExAutoScore: Adding return_points = ' . $task->getReturnPoints());
             $builder->addProperty($builder::SEC_SUBMISSION, $this->plugin->txt('return_points'), (string) $task->getReturnPoints());
-        } else {
-            $DIC->logger()->root()->error('ExAutoScore: NO return_points available');
         }
         
         if ($task && $task->getInstantStatus()) {
-            $DIC->logger()->root()->error('ExAutoScore: Adding instant_status = ' . $task->getInstantStatus());
-            $builder->addProperty($builder::SEC_SUBMISSION, $this->plugin->txt('instant_status'), $task->getInstantStatus());
+            $builder->addProperty(
+                $builder::SEC_SUBMISSION, 
+                $this->plugin->txt('instant_status'), 
+                $this->getStyledStatusSymbol($task->getInstantStatus())
+            );
         }
+
+        // Nach dem instant_status Block hinzufügen:
+        if ($task && $task->getInstantMessage()) {
+            $builder->addProperty(
+                $builder::SEC_SUBMISSION, 
+                $this->plugin->txt('instant_message'), 
+                $this->formatInstantMessage($task->getInstantMessage())
+            );
+        }        
         
-        if ($task && $task->getProtectedFeedbackHtml()) {
-            $DIC->logger()->root()->error('ExAutoScore: Adding feedback modal');
-            
+        if ($task && $task->getProtectedFeedbackHtml() && $this->canShowExtendedFeedbackByDeadline($ass, $sub)) {
             try {
                 $item_id = "exautoscore_feedback_modal_" . $task->getId();
                 
@@ -1123,12 +1119,9 @@ public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_a
                 $modal->setId($item_id);
                 $modal->setType(ilModalGUI::TYPE_LARGE);
                 
-                // Feedback HTML holen
                 $feedbackHtml = $task->getProtectedFeedbackHtml();
                 
-                // Entferne stdout/stderr für Studierende (nicht für Admins/Tutoren)
                 if (!$this->plugin->canDefine()) {
-                    // Entferne <details>...</details> Block mit stdout/stderr
                     $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
                 }
                 
@@ -1151,13 +1144,47 @@ public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_a
                     $combined_html
                 );
                 
-                $DIC->logger()->root()->error('ExAutoScore: Feedback button added successfully');
-                
             } catch (Exception $e) {
                 $DIC->logger()->root()->error('ExAutoScore: Error adding feedback: ' . $e->getMessage());
             }
         }
-        
-        $DIC->logger()->root()->error('ExAutoScore buildSubmissionPropertiesAndActions FINISHED');
     }
-}
+
+    // 2. Vereinfache viewSubmission() - nur Dateiliste, keine Auswertung:
+
+    protected function viewSubmission()
+    {
+        global $DIC;
+
+        $this->handleSubmissionTabs($this->tabs);
+
+        if (!isset($this->submission) || !$this->submission->canView()) {
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
+            $this->returnToParent();
+            return;
+        }
+
+        $files = $this->submission->getFiles();
+
+        // NUR DATEILISTE - KEINE AUSWERTUNG
+        $files_html = '';
+        if ($files && count($files)) {
+            $files_html .= '<div class="ilBox"><h3>' . $this->lng->txt('exc_files_returned') . '</h3><ul>';
+            foreach ($files as $file) {
+                $this->ctrl->setParameterByClass(get_class($this), 'delivered', $file['returned_id']);
+                $dl = $this->ctrl->getLinkTargetByClass(
+                    [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, get_class($this) ],
+                    'downloadSubmittedFile'
+                );
+                $files_html .= '<li><a href="' . $dl . '">' . htmlspecialchars($file['filetitle']) . '</a></li>';
+            }
+            $files_html .= '</ul></div>';
+        } else {
+            $files_html .= '<div class="ilBox"><em>' . $this->lng->txt('no_items') . '</em></div>';
+        }
+
+        $this->tpl->setContent($files_html);
+        $this->tpl->printToStdout();
+        exit;
+    }
+}    
