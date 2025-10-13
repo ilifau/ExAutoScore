@@ -155,10 +155,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
         $feedbackHtml = $task->getProtectedFeedbackHtml();
 
-        // Stdout/Stderr für Studierende entfernen
-        if (!$this->plugin->canDefine()) {
-            $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
-        }
+        $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
 
         $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
         $modal->setHeading($this->plugin->txt('protected_feedback_html'));
@@ -850,7 +847,7 @@ protected function downloadSubmittedFile()
                 $this->submission->downloadFiles($delivered_id);
                 exit;
             } catch (Exception $e) {
-                $DIC->logger()->root()->error('ExAutoScore: Submitted file download failed - ' . $e->getMessage());
+                #$DIC->logger()->root()->error('ExAutoScore: Submitted file download failed - ' . $e->getMessage());
                 
                 $plugin = ilExAutoScorePlugin::getInstance();
                 if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
@@ -895,7 +892,7 @@ protected function downloadSubmittedFile()
         try {
             $file->downloadFile();
         } catch (Exception $e) {
-            $DIC->logger()->root()->error('ExAutoScore: File download failed - ' . $e->getMessage());
+            #$DIC->logger()->root()->error('ExAutoScore: File download failed - ' . $e->getMessage());
             
             $plugin = ilExAutoScorePlugin::getInstance();
             if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
@@ -948,7 +945,7 @@ protected function downloadSubmittedFile()
         try {
             $file->downloadFile();
         } catch (Exception $e) {
-            $DIC->logger()->root()->error('ExAutoScore: File download failed - ' . $e->getMessage());
+            #$DIC->logger()->root()->error('ExAutoScore: File download failed - ' . $e->getMessage());
             
             $plugin = ilExAutoScorePlugin::getInstance();
             if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
@@ -1121,9 +1118,7 @@ protected function downloadSubmittedFile()
                 
                 $feedbackHtml = $task->getProtectedFeedbackHtml();
                 
-                if (!$this->plugin->canDefine()) {
-                    $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
-                }
+                $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
                 
                 $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
                 $modal->setHeading($this->plugin->txt('protected_feedback_html'));
@@ -1145,7 +1140,7 @@ protected function downloadSubmittedFile()
                 );
                 
             } catch (Exception $e) {
-                $DIC->logger()->root()->error('ExAutoScore: Error adding feedback: ' . $e->getMessage());
+                #$DIC->logger()->root()->error('ExAutoScore: Error adding feedback: ' . $e->getMessage());
             }
         }
     }

@@ -207,29 +207,30 @@ class ilExAutoScoreConnector
         global $DIC;
 
         // KOMPLETT-LOG des Requests für Debugging
-        $DIC->logger()->root()->error('ExAutoScore receiveResult FULL DEBUG: ' . print_r([
+        /*$DIC->logger()->root()->error('ExAutoScore receiveResult FULL DEBUG: ' . print_r([
             'content_type' => $_SERVER['CONTENT_TYPE'] ?? 'not set',
             'content_length' => $_SERVER['CONTENT_LENGTH'] ?? 'not set',
             'files_count' => count($_FILES),
             'files_keys' => array_keys($_FILES),
             'post_keys' => array_keys($_POST),
         ], true));
+        */
 
         $files = \GuzzleHttp\Psr7\ServerRequest::normalizeFiles($DIC->http()->request()->getUploadedFiles());
         $result = null;
 
-        $DIC->logger()->root()->error('ExAutoScore: Normalized files count = ' . count($files));
+        #$DIC->logger()->root()->error('ExAutoScore: Normalized files count = ' . count($files));
 
         // ZUERST: Prüfe ob result.json als File hochgeladen wurde (Standard für Multipart)
         foreach ($files as $file) {
             $filename = $file->getClientFilename();
-            $DIC->logger()->root()->error('ExAutoScore: Found uploaded file: ' . $filename);
+            #$DIC->logger()->root()->error('ExAutoScore: Found uploaded file: ' . $filename);
             
             if ($filename === 'result.json') {
                 $filePath = $file->getStream()->getMetadata('uri');
                 $fileContent = file_get_contents($filePath);
                 $result = json_decode($fileContent, true);
-                $DIC->logger()->root()->error('ExAutoScore: Loaded result.json from uploaded file (' . strlen($fileContent) . ' bytes)');
+                #$DIC->logger()->root()->error('ExAutoScore: Loaded result.json from uploaded file (' . strlen($fileContent) . ' bytes)');
                 break;
             }
         }
@@ -237,24 +238,24 @@ class ilExAutoScoreConnector
         // FALLBACK: Versuche Body als JSON (für Nicht-Multipart Requests)
         if (empty($result)) {
             $content = $DIC->http()->request()->getBody()->getContents();
-            $DIC->logger()->root()->error('ExAutoScore: Body content length = ' . strlen($content));
+            #$DIC->logger()->root()->error('ExAutoScore: Body content length = ' . strlen($content));
             
             if (!empty($content)) {
                 $result = json_decode($content, true);
                 if ($result !== null) {
-                    $DIC->logger()->root()->error('ExAutoScore: Loaded result from request body');
+                    #$DIC->logger()->root()->error('ExAutoScore: Loaded result from request body');
                 } else {
-                    $DIC->logger()->root()->error('ExAutoScore: JSON decode failed: ' . json_last_error_msg());
+                    #$DIC->logger()->root()->error('ExAutoScore: JSON decode failed: ' . json_last_error_msg());
                 }
             }
         }
 
         if (empty($result)) {
-            $DIC->logger()->root()->error('ExAutoScore: ERROR - No result data found!');
+            #$DIC->logger()->root()->error('ExAutoScore: ERROR - No result data found!');
             return;
         }
         
-        $DIC->logger()->root()->error('ExAutoScore receiveResult data: ' . print_r($result, true));
+        #$DIC->logger()->root()->error('ExAutoScore receiveResult data: ' . print_r($result, true));
 
         // UUID extrahieren
         if (isset($result['assignment_uuid'])) {
@@ -267,11 +268,11 @@ class ilExAutoScoreConnector
         $task = ilExAutoScoreTask::getByUuid($this->result_uuid);
         
         if (!isset($task)) {
-            $DIC->logger()->root()->error('ExAutoScore: ERROR - Task not found for UUID: ' . $this->result_uuid);
+            ##$DIC->logger()->root()->error('ExAutoScore: ERROR - Task not found for UUID: ' . $this->result_uuid);
             return;
         }
         
-        $DIC->logger()->root()->error('ExAutoScore: Task found, ID = ' . $task->getId());
+        ##$DIC->logger()->root()->error('ExAutoScore: Task found, ID = ' . $task->getId());
 
         $returnTime = new ilDateTime(time(), IL_CAL_UNIX);
         $task->setReturnTime($returnTime->get(IL_CAL_DATETIME));
@@ -288,12 +289,12 @@ class ilExAutoScoreConnector
         // Debug-Logs speichern wenn vorhanden
         if (isset($result['debug_logs'])) {
             $task->setDebugLogs($result['debug_logs']);
-            $DIC->logger()->root()->error('ExAutoScore: Saved debug logs (' . strlen($result['debug_logs']) . ' bytes)');
+            #$DIC->logger()->root()->error('ExAutoScore: Saved debug logs (' . strlen($result['debug_logs']) . ' bytes)');
         } else {
-            $DIC->logger()->root()->error('ExAutoScore: No debug_logs in result');
+            #$DIC->logger()->root()->error('ExAutoScore: No debug_logs in result');
         }
         
-        $DIC->logger()->root()->error('ExAutoScore: Saving task with points = ' . ($task->getReturnPoints() ?? 'NULL'));
+        #$DIC->logger()->root()->error('ExAutoScore: Saving task with points = ' . ($task->getReturnPoints() ?? 'NULL'));
         
         $task->save();
         $task->updateMemberStatus();
@@ -314,7 +315,7 @@ class ilExAutoScoreConnector
             $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
         }
         
-        $DIC->logger()->root()->error('ExAutoScore receiveResult: FINISHED successfully');
+        #$DIC->logger()->root()->error('ExAutoScore receiveResult: FINISHED successfully');
     }
 
     /**
@@ -375,7 +376,7 @@ class ilExAutoScoreConnector
      */
     public function getResultMessage(): ?string {
         global $DIC;
-        $DIC->logger()->root()->error($this->result_message);
+        #$DIC->logger()->root()->error($this->result_message);
         return $this->result_message;
     }
 
@@ -418,7 +419,7 @@ class ilExAutoScoreConnector
             
             // Detailliertes Debug-Logging
             global $DIC;
-            $DIC->logger()->root()->error('ExAutoScore cURL Debug: ' . print_r([
+            /*$DIC->logger()->root()->error('ExAutoScore cURL Debug: ' . print_r([
                 'url' => $url,
                 'http_code' => $http_code,
                 'curl_errno' => $curl_errno,
@@ -431,7 +432,7 @@ class ilExAutoScoreConnector
                     }
                     return $v;
                 }, $post)
-            ], true));
+            ], true));*/
 
             curl_close($curl);
             
@@ -501,9 +502,9 @@ class ilExAutoScoreConnector
             // Debug-Logs extrahieren
             if (isset($decoded_result['debug_logs'])) {
                 $this->debug_logs = $decoded_result['debug_logs'];
-                $DIC->logger()->root()->error('ExAutoScore: Extracted debug_logs from response (' . strlen($this->debug_logs) . ' bytes)');
+                #$DIC->logger()->root()->error('ExAutoScore: Extracted debug_logs from response (' . strlen($this->debug_logs) . ' bytes)');
             } else {
-                $DIC->logger()->root()->error('ExAutoScore: No debug_logs in response');
+                #$DIC->logger()->root()->error('ExAutoScore: No debug_logs in response');
             }
             
             $success = isset($decoded_result['success']) ? (bool) $decoded_result['success'] : false;
