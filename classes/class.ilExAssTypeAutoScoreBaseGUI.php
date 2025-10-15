@@ -1003,16 +1003,33 @@ protected function downloadSubmittedFile()
             $factory = $DIC->ui()->factory();
             $renderer = $DIC->ui()->renderer();
 
+            // Feedback HTML vorbereiten (ohne stdout/stderr für Studierende)
+            $feedbackHtml = $task->getProtectedFeedbackHtml();
+            if (!$this->plugin->canDefine()) {
+                $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
+            }
+
+            // Modal erstellen
             $page = $factory->modal()->lightboxTextPage(
-                ilUtil::stripScriptHTML($task->getProtectedFeedbackHtml(), $this->plugin->getAllowedTags()),
+                ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()),
                 $this->plugin->txt('protected_feedback_html')
             );
             $modal = $factory->modal()->lightbox([$page]);
 
-            $this->tpl->addLightbox($renderer->render($modal), 'exautoscore_lightbox_' . $task->getId());
+            // Modal-HTML ins DOM einfügen (per JavaScript)
+            $DIC->ui()->mainTemplate()->addOnLoadCode(
+                "document.body.insertAdjacentHTML('beforeend', " . 
+                json_encode($renderer->render($modal)) . 
+                ");"
+            );
 
-            $a_actions[] = $factory->button()->shy($this->plugin->txt("protected_feedback_html"), '')
-                ->withOnClick($modal->getShowSignal());
+            // Nur den Button als UI-Component in Actions
+            $button = $factory->button()->shy(
+                $this->plugin->txt("protected_feedback_html"), 
+                ''
+            )->withOnClick($modal->getShowSignal());
+
+            $a_actions[] = $button;  // Hier NUR das Button-Objekt, kein String!
         }
     }
 
