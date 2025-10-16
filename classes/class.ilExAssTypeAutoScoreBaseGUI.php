@@ -744,7 +744,23 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                     $newFiles = $this->submission->getFiles();
                     foreach ($newFiles as $newFile) {
                         if ($newFile['filetitle'] == $result->getName()) {
-                            $uploaded_ids[] = $newFile['returned_id'];
+                            $returned_id = $newFile['returned_id'];
+                            $uploaded_ids[] = $returned_id;
+                            
+                            // FIX: Konvertiere absoluten Pfad in relativen Pfad wie Standard-ILIAS
+                            $db = $DIC->database();
+                            $absolute_path = $newFile['filename'];
+                            
+                            // Entferne CLIENT_DATA_DIR Prefix um relativen Pfad zu erhalten
+                            $relative_path = str_replace(CLIENT_DATA_DIR . '/', '', $absolute_path);
+                            
+                            $db->update('exc_returned',
+                                ['filename' => ['text', $relative_path]],
+                                ['returned_id' => ['integer', $returned_id]]
+                            );
+                            
+                            $DIC->logger()->root()->error('ExAutoScore: Fixed filename path for returned_id=' . $returned_id . ', relative_path=' . $relative_path);
+                            
                             break;
                         }
                     }
