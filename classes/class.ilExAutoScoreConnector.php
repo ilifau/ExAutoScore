@@ -45,6 +45,8 @@ class ilExAutoScoreConnector
         $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($assignment->getId());
         $scoreTask = ilExAutoScoreTask::getExampleTask($assignment->getId());
 
+        $scoreTask->setDebugLogs(null);
+
         $url = $this->config->get('service_assignment_url');
         $timeout = (int) $this->config->get('service_timeout');
 
@@ -266,7 +268,58 @@ class ilExAutoScoreConnector
         }
 
         $task = ilExAutoScoreTask::getByUuid($this->result_uuid);
+
+// Fallback: Build-Fehler ohne task_uuid -> schreibe Debug in alle Tasks des Assignments
+if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result['assignment_uuid'])) {
+    $db = $DIC->database();
+
+    // 1) Assignment-ID via assignment_uuid ermitteln
+    $set = $db->queryF(
+        "SELECT id FROM exautoscore_assignment WHERE uuid = %s",
+        ['text'],
+        [(string)$result['assignment_uuid']]
+    );
+    $row = $db->fetchAssoc($set);
+
+    if ($row && !empty($row['id'])) {
+        $ass_id = (int)$row['id'];
+
+        // 2) Alle Tasks des Assignments holen
+        $set2 = $db->queryF(
+            "SELECT id FROM exautoscore_task WHERE assignment_id = %s",
+            ['integer'],
+            [$ass_id]
+        );
+
+        // 3) Debug/Status in JEDEM Task ablegen (damit GUI/Modal es anzeigt)
+        $now = (new ilDateTime(time(), IL_CAL_UNIX))->get(IL_CAL_DATETIME);
+        while ($trow = $db->fetchAssoc($set2)) {
+            $t = new ilExAutoScoreTask((int)$trow['id']); // dein vorhandener ActiveRecord-Konstruktor
+
+            if (isset($result['debug_logs'])) {
+                $t->setDebugLogs($result['debug_logs']);
+            }
+            if (!empty($result['protected_feedback_html'])) {
+                $t->setProtectedFeedbackHtml($result['protected_feedback_html']);
+            }
+            if (isset($result['protected_status'])) {
+                $t->setProtectedStatus($result['protected_status']);
+            }
+
+            $t->setInstantStatus($result['instant_status'] ?? 'failed');
+            $t->setInstantMessage($result['instant_message'] ?? 'Build-Fehler');
+            $t->setReturnTime($now);
+            $t->save();
+        }
+
+        // Wir haben die Debug-Infos verteilt -> OK antworten und den regulären Pfad verlassen
+        http_response_code(200);
+        echo 'OK';
+        return;
+    }
+}
         
+
         if (!isset($task)) {
             ##$DIC->logger()->root()->error('ExAutoScore: ERROR - Task not found for UUID: ' . $this->result_uuid);
             return;

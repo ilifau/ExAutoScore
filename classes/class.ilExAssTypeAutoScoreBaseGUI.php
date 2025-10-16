@@ -1003,11 +1003,10 @@ protected function downloadSubmittedFile()
             $factory = $DIC->ui()->factory();
             $renderer = $DIC->ui()->renderer();
 
-            // Feedback HTML vorbereiten (ohne stdout/stderr für Studierende)
+            // Feedback HTML vorbereiten
+            // WICHTIG: stdout/stderr IMMER entfernen (gehört ins Debug-Protokoll)
             $feedbackHtml = $task->getProtectedFeedbackHtml();
-            if (!$this->plugin->canDefine()) {
-                $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
-            }
+            $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
 
             // Modal erstellen
             $page = $factory->modal()->lightboxTextPage(
@@ -1023,13 +1022,13 @@ protected function downloadSubmittedFile()
                 ");"
             );
 
-            // Nur den Button als UI-Component in Actions
+            // Button als UI-Component
             $button = $factory->button()->shy(
                 $this->plugin->txt("protected_feedback_html"), 
                 ''
             )->withOnClick($modal->getShowSignal());
 
-            $a_actions[] = $button;  // Hier NUR das Button-Objekt, kein String!
+            $a_actions[] = $button;
         }
     }
 
@@ -1064,6 +1063,25 @@ protected function downloadSubmittedFile()
             
             return;
         }
+
+        // Prüfe ob Docker-Build fehlgeschlagen ist und verstecke submit-buttons
+        $exampleTask = ilExAutoScoreTask::getExampleTask($sub->getAssignment()->getId());
+        $hasDebugError = !empty($exampleTask->getDebugLogs());
+
+        if ($hasDebugError) {   
+            
+            if ($this->plugin->canDefine()) {
+                $ctrl->setParameterByClass(strtolower(get_class($this)), 'ass_id', $sub->getAssignment()->getId());
+                $url = $ctrl->getLinkTargetByClass(
+                    [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, strtolower(get_class($this)) ],
+                    'submissionScreen');
+                $builder->addView('submission', $this->plugin->txt('view_details'), $url);
+            }
+            
+            return;
+        }  
+        
+        // ./
         
         $gui_class = $sub->getAssignment()->getAssignmentType()->usesTeams()
             ? ilExAssTypeAutoScoreTeamGUI::class

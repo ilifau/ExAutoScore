@@ -317,7 +317,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
         
         // DEBUG
         global $DIC;
-        $DIC->logger()->root()->error('ExAutoScore File Path Debug: ' . print_r([
+        /*$DIC->logger()->root()->error('ExAutoScore File Path Debug: ' . print_r([
             'file_id' => $this->getId(),
             'filename' => $this->getFilename(),
             'current_path' => $current_path,
@@ -325,6 +325,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
             'storage_dir' => $this->getStorageDirectoryPath(),
             'dir_exists' => is_dir($this->getStorageDirectoryPath())
         ], true));
+        */
         
         if (is_file($current_path)) {
             return $current_path;
