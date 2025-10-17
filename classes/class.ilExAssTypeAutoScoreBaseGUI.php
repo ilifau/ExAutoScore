@@ -797,7 +797,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                                 ['returned_id' => ['integer', $returned_id]]
                             );
                             
-                            $DIC->logger()->root()->error('ExAutoScore: Fixed filename path for returned_id=' . $returned_id . ', relative_path=' . $relative_path);
+                            #$DIC->logger()->root()->error('ExAutoScore: Fixed filename path for returned_id=' . $returned_id . ', relative_path=' . $relative_path);
                             
                             break;
                         }
@@ -1202,11 +1202,11 @@ protected function downloadSubmittedFile()
                     $ms->update();
 
                     // optionales Log
-                    $DIC->logger()->root()->warning(sprintf(
+                    /*$DIC->logger()->root()->warning(sprintf(
                         'ExAutoScore: pre-deadline scrub cleared core result (ass=%d usr=%d)',
                         $ass->getId(),
                         $uid
-                    ));
+                    ));*/
                 }
             }
         } catch (Throwable $e) {
