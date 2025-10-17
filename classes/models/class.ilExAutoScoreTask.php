@@ -709,55 +709,112 @@ class ilExAutoScoreTask extends ActiveRecord
     }
 
 
-    /**
-     * Update the assignment status of the related exercise members (user or team)
-     * this must be done if the submission data changes
-     */
-    public function updateMemberStatus($a_user_ids = [])
-    {
-        require_once (__DIR__ . '/class.ilExAutoScoreAssignment.php');
-        $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($this->getAssignmentId());
+/**
+ * Update the assignment status of the related exercise members (user or team)
+ * this must be done if the submission data changes
+ *
+ * @param int[] $a_user_ids  optional explicit user ids
+ * @param bool  $force       bypass deadline guard (e.g. clear on delete)
+ */
+public function updateMemberStatus($a_user_ids = [], bool $force = false)
+{
+    global $DIC;
 
-        if (empty($this->getReturnTime())) {
+    $DIC->logger()->root()->dump([
+        'ExAutoScore updateMemberStatus called',
+        'assignment_id'   => $this->getAssignmentId(),
+        'user_ids_param'  => $a_user_ids,
+        'task_user_id'    => $this->getUserId(),
+        'task_team_id'    => $this->getTeamId(),
+        'return_time'     => $this->getReturnTime(),
+        'return_points'   => $this->getReturnPoints(),
+        'force'           => $force,
+        'backtrace'       => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5)
+    ]);
+
+    require_once __DIR__ . '/class.ilExAutoScoreAssignment.php';
+    $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($this->getAssignmentId());
+
+    // Status/Mark
+    if (empty($this->getReturnTime())) {
+        $status = 'notgraded';
+        $mark   = null;
+    } else {
+        if (empty($scoreAss->getMinPoints())) {
             $status = 'notgraded';
-            $mark = null;
+        } elseif ($this->getReturnPoints() >= $scoreAss->getMinPoints()) {
+            $status = 'passed';
+        } else {
+            $status = 'failed';
         }
-        else {
-            if (empty($scoreAss->getMinPoints())) {
-                $status = 'notgraded';
+        $mark = $this->getReturnPoints();
+    }
+
+    // betroffene Nutzer
+    if (!empty($a_user_ids)) {
+        $user_ids = $a_user_ids;
+    } elseif (!empty($this->getUserId())) {
+        $user_ids = [$this->getUserId()];
+    } elseif (!empty($this->getTeamId())) {
+        $team = new ilExAssignmentTeam($this->getTeamId());
+        $user_ids = $team->getMembers();
+    } else {
+        $user_ids = [];
+    }
+
+    $ass    = new ilExAssignment($this->getAssignmentId());
+    $plugin = ilExAutoScorePlugin::getInstance();
+
+    foreach ($user_ids as $user_id) {
+
+        // Deadline-Guard (nicht für Tutoren / nicht bei force)
+        if (!$force && !$plugin->canDefine()) {
+            $personal_deadline  = (int) $ass->getPersonalDeadline($user_id);
+            $general_deadline   = (int) ($ass->getDeadline() ?? 0);
+            $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
+
+            if ($effective_deadline > 0 && time() < $effective_deadline) {
+                $DIC->logger()->root()->warning(sprintf(
+                    'ExAutoScore:updateMemberStatus skip user=%d ass=%d (now<deadline %d<%d)',
+                    $user_id, $ass->getId(), time(), $effective_deadline
+                ));
+                continue;
             }
-            elseif ($this->getReturnPoints() >= $scoreAss->getMinPoints()) {
-                $status = 'passed';
-            }
-            else {
-                $status = 'failed';
-            }
-            $mark = $this->getReturnPoints();
         }
 
-        if (!empty($a_user_ids)) {
-            $user_ids = $a_user_ids;
-        }
-        elseif (!empty($this->getUserId())) {
-            $user_ids = [$this->getUserId()];
-        }
-        elseif (!empty($this->getTeamId())) {
-            $team = new ilExAssignmentTeam($this->getTeamId());
-            $user_ids = $team->getMembers();
-        }
-        else {
-            $user_ids = [];
+        // Kommentar (Plaintext-Fallback aus HTML)
+        $comment = (string) ($this->getProtectedFeedbackText() ?? '');
+        if ($comment === '' && method_exists($this, 'getProtectedFeedbackHtml')) {
+            $html = (string) $this->getProtectedFeedbackHtml();
+            if ($html !== '') {
+                $comment = trim(strip_tags($html));
+                if (function_exists('mb_substr')) {
+                    $comment = mb_substr($comment, 0, 65000);
+                } else {
+                    $comment = substr($comment, 0, 65000);
+                }
+            }
         }
 
-        foreach ($user_ids as $user_id) {
-            $memberStatus = new ilExAssignmentMemberStatus($this->getAssignmentId(), $user_id);
-            $memberStatus->setReturned($this->getSubmitSuccess() ?? false);
-            $memberStatus->setComment($this->getProtectedFeedbackText() ?? '');
+        // Core schreiben (ILIAS 9: nur diese Felder verwenden)
+        $memberStatus = new ilExAssignmentMemberStatus($ass->getId(), $user_id);
+
+        if ($force) {
+            if (method_exists($memberStatus, 'setComment')) { $memberStatus->setComment(''); }
+            $memberStatus->setStatus('notgraded');
+            $memberStatus->setMark('');
+            $memberStatus->setReturned(false);
+        } else {
+            if (method_exists($memberStatus, 'setComment')) { $memberStatus->setComment($comment); }
             $memberStatus->setStatus($status);
             $memberStatus->setMark($mark !== null ? (string) $mark : '');
-            $memberStatus->update();
+            $memberStatus->setReturned($this->getSubmitSuccess() ?? false);
         }
+
+        $memberStatus->update();
     }
+}
+
     
     /**
      * Reset the status of users (e.g. ex team members)

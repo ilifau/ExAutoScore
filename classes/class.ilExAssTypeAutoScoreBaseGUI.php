@@ -124,6 +124,38 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     }
 
     /**
+     * Bewertungsbereich anzeigen?
+     * - Admins/Tutor:innen: immer
+     * - Teilnehmende: erst NACH persönlicher Deadline ODER (falls nicht vorhanden) allgemeiner Deadline
+     * - Wenn gar keine Deadline gesetzt: nicht anzeigen
+     */
+    protected function canShowAssessmentNow(ilExAssignment $ass, ilExSubmission $sub): bool
+    {
+        // Admin/Korrektur -> sofort
+        if ($this->plugin->canDefine()) {
+            return true;
+        }
+
+        $usr_id = (int) $this->user->getId();
+
+        // persönliche Deadline bevorzugen
+        $personal_deadline = (int) $ass->getPersonalDeadline($usr_id);
+
+        // allgemeine Deadline als Fallback
+        $general_deadline = (int) ($ass->getDeadline() ?? 0);
+
+        $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
+
+        if ($effective_deadline <= 0) {
+            // keine Frist -> nichts anzeigen
+            return false;
+        }
+
+        return time() >= $effective_deadline;
+    }
+
+
+    /**
      * Format instant message with monospace styling
      * @param string $message
      * @return string HTML formatted message
@@ -599,7 +631,13 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $task = ilExAutoScoreTask::getSubmissionTask($this->submission);
             $task->clearSubmissionData();
             $task->save();
-            $task->updateMemberStatus();
+
+            // NEU: betroffene Nutzer bestimmen (Team oder Einzel)
+            $uids = $this->submission->getTeam()
+                ? $this->submission->getTeam()->getMembers()
+                : [$this->submission->getUserId()];            
+
+            $task->updateMemberStatus($uids, true);
         }
 
         $this->tpl->setOnScreenMessage('success', $this->plugin->txt('submission_deleted'), true);
@@ -1137,61 +1175,116 @@ protected function downloadSubmittedFile()
         
         require_once __DIR__ . '/models/class.ilExAutoScoreTask.php';
         $task = \ilExAutoScoreTask::getSubmissionTask($sub);
-        
-        if ($task && $task->getReturnPoints() !== null) {
-            $builder->addProperty($builder::SEC_SUBMISSION, $this->plugin->txt('return_points'), (string) $task->getReturnPoints());
+
+        // --- Pre-deadline SCRUB: Wenn keine Abgabe vorhanden, Core-Bewertung hart leeren ---
+        try {
+            $hide           = !$this->canShowAssessmentNow($ass, $sub);
+            $is_tutor       = $this->plugin->canDefine();
+            $has_files      = (count($sub->getFiles()) > 0);
+            $submit_success = ($task && $task->getSubmitSuccess() === true);
+
+            if ($hide && !$is_tutor && !$has_files && !$submit_success) {
+                // Betroffene Nutzer (Team oder Einzel)
+                $affected_user_ids = [$this->user->getId()];
+                if ($ass->hasTeam()) {
+                    $team = $sub->getTeam();
+                    if ($team) {
+                        $affected_user_ids = $team->getMembers();
+                    }
+                }
+
+                foreach ($affected_user_ids as $uid) {
+                    $ms = new ilExAssignmentMemberStatus($ass->getId(), $uid);
+                    if (method_exists($ms, 'setComment')) { $ms->setComment(''); }
+                    $ms->setStatus('notgraded');
+                    $ms->setMark('');
+                    $ms->setReturned(false);
+                    $ms->update();
+
+                    // optionales Log
+                    $DIC->logger()->root()->warning(sprintf(
+                        'ExAutoScore: pre-deadline scrub cleared core result (ass=%d usr=%d)',
+                        $ass->getId(),
+                        $uid
+                    ));
+                }
+            }
+        } catch (Throwable $e) {
+            $DIC->logger()->root()->error('ExAutoScore pre-deadline scrub failed: ' . $e->getMessage());
         }
-        
+        // --- /SCRUB ---
+
+        // --- Auto-Publish der Core-Bewertung NACH Deadline (wenn Ergebnis vorhanden & Abgabe existiert) ---
+        try {
+            if ($task && $this->canShowAssessmentNow($ass, $sub) && !$this->plugin->canDefine()) {
+                $has_publishable_result =
+                    ($task->getReturnPoints() !== null) ||
+                    !empty($task->getProtectedFeedbackText()) ||
+                    !empty($task->getProtectedFeedbackHtml()) ||
+                    !empty($task->getReturnTime());
+
+                $still_has_submission = (count($sub->getFiles()) > 0) || ($task->getSubmitSuccess() === true);
+
+                if ($has_publishable_result && $still_has_submission) {
+                    $task->updateMemberStatus([$this->user->getId()]);
+                }
+            }
+        } catch (Throwable $e) {
+            $DIC->logger()->root()->error('ExAutoScore auto-publish after deadline failed: ' . $e->getMessage());
+        }
+        // --- /Auto-Publish ---
+
+        // Sofort-Infos IMMER in "Einreichung" sichtbar
         if ($task && $task->getInstantStatus()) {
             $builder->addProperty(
-                $builder::SEC_SUBMISSION, 
-                $this->plugin->txt('instant_status'), 
+                $builder::SEC_SUBMISSION,
+                $this->plugin->txt('instant_status'),
                 $this->getStyledStatusSymbol($task->getInstantStatus())
             );
         }
-
-        // Nach dem instant_status Block hinzufügen:
         if ($task && $task->getInstantMessage()) {
             $builder->addProperty(
-                $builder::SEC_SUBMISSION, 
-                $this->plugin->txt('instant_message'), 
+                $builder::SEC_SUBMISSION,
+                $this->plugin->txt('instant_message'),
                 $this->formatInstantMessage($task->getInstantMessage())
             );
-        }        
-        
-        if ($task && $task->getProtectedFeedbackHtml() && $this->canShowExtendedFeedbackByDeadline($ass, $sub)) {
-            try {
-                $item_id = "exautoscore_feedback_modal_" . $task->getId();
-                
-                $modal = ilModalGUI::getInstance();
-                $modal->setId($item_id);
-                $modal->setType(ilModalGUI::TYPE_LARGE);
-                
-                $feedbackHtml = $task->getProtectedFeedbackHtml();
-                
-                $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
-                
-                $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
-                $modal->setHeading($this->plugin->txt('protected_feedback_html'));
-                
-                $modal_html = $modal->getHTML();
-                
-                $button_html = sprintf(
-                    '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\'); return false;">%s</button>',
-                    $item_id,
-                    $this->plugin->txt('show_extended_feedback')
-                );
-                
-                $combined_html = $modal_html . $button_html;
-                
+        }
+
+        // Bewertungssektion NUR nach wirksamer Deadline
+        if ($task && $this->canShowAssessmentNow($ass, $sub)) {
+            if ($task->getReturnPoints() !== null) {
                 $builder->addProperty(
-                    $builder::SEC_SUBMISSION, 
-                    '',
-                    $combined_html
+                    $builder::SEC_SUBMISSION,
+                    $this->plugin->txt('return_points'),
+                    (string) $task->getReturnPoints()
                 );
-                
-            } catch (Exception $e) {
-                #$DIC->logger()->root()->error('ExAutoScore: Error adding feedback: ' . $e->getMessage());
+            }
+
+            // Erweiterte Rückmeldung (Modal)
+            if ($task->getProtectedFeedbackHtml() && $this->canShowExtendedFeedbackByDeadline($ass, $sub)) {
+                try {
+                    $item_id = "exautoscore_feedback_modal_" . $task->getId();
+
+                    $modal = ilModalGUI::getInstance();
+                    $modal->setId($item_id);
+                    $modal->setType(ilModalGUI::TYPE_LARGE);
+
+                    $feedbackHtml = $task->getProtectedFeedbackHtml();
+                    $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
+                    $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
+                    $modal->setHeading($this->plugin->txt('protected_feedback_html'));
+
+                    $modal_html = $modal->getHTML();
+                    $button_html = sprintf(
+                        '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\'); return false;">%s</button>',
+                        $item_id,
+                        $this->plugin->txt('show_extended_feedback')
+                    );
+
+                    $builder->addProperty($builder::SEC_SUBMISSION, '', $modal_html . $button_html);
+                } catch (Exception $e) {
+                    // optional logging
+                }
             }
         }
     }
