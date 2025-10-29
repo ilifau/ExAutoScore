@@ -353,6 +353,25 @@ class ilExAutoScoreSettingsGUI
 
     public function sendAssignment()
     {
+        // Validierung: Prüfe ob Dockerfile vorhanden ist
+        $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
+        if (empty($assCont->getHash())) {
+            $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('warning_no_dockerfile'), true);
+            $this->ctrl->redirect($this, 'showSettings');
+            return;
+        }
+
+        // Validierung: Prüfe ob required/example files vorhanden sind
+        $required = array_merge(
+            ilExAutoScoreProvidedFile::getAssignmentSubmitFiles($this->assignment->getId()),
+            ilExAutoScoreRequiredFile::getForAssignment($this->assignment->getId())
+        );
+        if (empty($required)) {
+            $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('warning_no_example_files'), true);
+            $this->ctrl->redirect($this, 'showSettings');
+            return;
+        }
+
         $connector = new ilExAutoScoreConnector();
         if ($connector->sendAssignment($this->assignment)) {
             $this->tpl->setOnScreenMessage('success', sprintf($this->plugin->txt('assignment_send_success'), $connector->getResultMessage())
@@ -368,6 +387,25 @@ class ilExAutoScoreSettingsGUI
 
     public function sendExampleTask()
     {
+        // Validierung: Prüfe ob Dockerfile vorhanden ist
+        $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
+        if (empty($assCont->getHash())) {
+            $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('warning_no_dockerfile'), true);
+            $this->ctrl->redirect($this, 'showSettings');
+            return;
+        }
+
+        // Validierung: Prüfe ob required/example files vorhanden sind
+        $required = array_merge(
+            ilExAutoScoreProvidedFile::getAssignmentSubmitFiles($this->assignment->getId()),
+            ilExAutoScoreRequiredFile::getForAssignment($this->assignment->getId())
+        );
+        if (empty($required)) {
+            $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('warning_no_example_files'), true);
+            $this->ctrl->redirect($this, 'showSettings');
+            return;
+        }
+
         global $DIC;
         $connector = new ilExAutoScoreConnector();
         if ($connector->sendExampleTask($this->assignment, $DIC->user())) {
@@ -427,14 +465,32 @@ class ilExAutoScoreSettingsGUI
 
     public function setToolbar(): void
     {
+        // Prüfe ob Dockerfile und Example Files vorhanden sind
+        $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
+        $hasDockerfile = !empty($assCont->getHash());
+
+        $required = array_merge(
+            ilExAutoScoreProvidedFile::getAssignmentSubmitFiles($this->assignment->getId()),
+            ilExAutoScoreRequiredFile::getForAssignment($this->assignment->getId())
+        );
+        $hasExampleFiles = !empty($required);
+
+        $canSendAssignment = $hasDockerfile && $hasExampleFiles;
+
         $button = ilLinkButton::getInstance();
         $button->setCaption($this->plugin->txt('send_assignment'), false);
         $button->setUrl($this->ctrl->getLinkTarget($this, 'sendAssignment'));
+        if (!$canSendAssignment) {
+            $button->setDisabled(true);
+        }
         $this->toolbar->addButtonInstance($button);
 
         $button = ilLinkButton::getInstance();
         $button->setCaption($this->plugin->txt('send_example_task'), false);
         $button->setUrl($this->ctrl->getLinkTarget($this, 'sendExampleTask'));
+        if (!$canSendAssignment) {
+            $button->setDisabled(true);
+        }
         $this->toolbar->addButtonInstance($button);
 
         $this->toolbar->addSeparator();

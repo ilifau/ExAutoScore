@@ -106,6 +106,8 @@ min_points#:#Points to Pass
 min_points_info#:#If the grading service returns at least this number of points, the submission status is set to "Passed", otherwise to "Failed".
 example_files#:#Sample Solution Files
 info_existing_tasks#:#Note: Submissions already exist.
+warning_no_dockerfile#:#ERROR: No Dockerfile has been uploaded! Please upload a Dockerfile before setting up the grading.
+warning_no_example_files#:#ERROR: No required/example files have been defined! Please define sample solution files in the "Required Files" tab before setting up the grading.
 correction_settings_saved#:#The grading settings have been saved.
 correction_settings_saved_with_update#:#The grading settings have been saved and the results updated.
 please_send_assignment#:#Please set up the grading!

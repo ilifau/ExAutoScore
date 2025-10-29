@@ -1118,12 +1118,17 @@ protected function downloadSubmittedFile()
             return;
         }
 
-        // Prüfe ob Docker-Build fehlgeschlagen ist und verstecke submit-buttons
+        // Prüfe ob Korrektur eingerichtet wurde
+        $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($sub->getAssignment()->getId());
+        $correctionSetup = !empty($scoreAss->getUuid());
+
+        // Prüfe ob Docker-Build fehlgeschlagen ist
         $exampleTask = ilExAutoScoreTask::getExampleTask($sub->getAssignment()->getId());
         $hasDebugError = !empty($exampleTask->getDebugLogs());
 
-        if ($hasDebugError) {   
-            
+        // Wenn Korrektur nicht eingerichtet ist ODER Build fehlgeschlagen: verstecke submit-buttons
+        if (!$correctionSetup || $hasDebugError) {
+
             if ($this->plugin->canDefine()) {
                 $ctrl->setParameterByClass(strtolower(get_class($this)), 'ass_id', $sub->getAssignment()->getId());
                 $url = $ctrl->getLinkTargetByClass(
@@ -1131,7 +1136,7 @@ protected function downloadSubmittedFile()
                     'submissionScreen');
                 $builder->addView('submission', $this->plugin->txt('view_details'), $url);
             }
-            
+
             return;
         }  
         
