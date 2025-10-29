@@ -106,7 +106,11 @@ class ilExAutoScoreParam
                 $this->value = (integer) $value;
                 break;
             case self::TYPE_ROLES:
-                $this->value = (string) $value;
+                if (is_array($value)) {
+                    $this->value = implode(',', $value);
+                } else {
+                    $this->value = (string) $value;
+                }
                 break;
             case self::TYPE_SELECT:
                 $this->value = $value;
