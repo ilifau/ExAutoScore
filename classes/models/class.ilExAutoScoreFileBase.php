@@ -314,24 +314,13 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
 
         // 1. Aktueller Pfad
         $current_path = $this->getStorageDirectoryPath() . '/' . $this->getStorageFilename();
-        
-        // DEBUG
-        global $DIC;
-        /*$DIC->logger()->root()->error('ExAutoScore File Path Debug: ' . print_r([
-            'file_id' => $this->getId(),
-            'filename' => $this->getFilename(),
-            'current_path' => $current_path,
-            'current_exists' => is_file($current_path),
-            'storage_dir' => $this->getStorageDirectoryPath(),
-            'dir_exists' => is_dir($this->getStorageDirectoryPath())
-        ], true));
-        */
-        
+
         if (is_file($current_path)) {
             return $current_path;
         }
 
         // 2. Legacy-Pfade
+        global $DIC;
         $legacy_tried = [];
         foreach ($this->getLegacyPaths() as $legacy_path) {
             $legacy_tried[] = $legacy_path . ' => ' . (is_file($legacy_path) ? 'EXISTS' : 'missing');

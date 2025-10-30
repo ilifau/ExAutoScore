@@ -127,7 +127,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      * Bewertungsbereich anzeigen?
      * - Admins/Tutor:innen: immer
      * - Teilnehmende: erst NACH persönlicher Deadline ODER (falls nicht vorhanden) allgemeiner Deadline
-     * - Wenn gar keine Deadline gesetzt: nicht anzeigen
+     * - Wenn gar keine Deadline gesetzt: sofort anzeigen (kein zeitlicher Schutz nötig)
      */
     protected function canShowAssessmentNow(ilExAssignment $ass, ilExSubmission $sub): bool
     {
@@ -147,13 +147,41 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
 
         if ($effective_deadline <= 0) {
-            // keine Frist -> nichts anzeigen
-            return false;
+            // keine Frist -> sofort anzeigen
+            return true;
         }
 
         return time() >= $effective_deadline;
     }
 
+    /**
+     * Bewertungsbereich für einen spezifischen User anzeigen?
+     * - Admins/Tutor:innen: immer
+     * - Teilnehmende: erst NACH persönlicher Deadline ODER (falls nicht vorhanden) allgemeiner Deadline
+     * - Wenn gar keine Deadline gesetzt: sofort anzeigen (kein zeitlicher Schutz nötig)
+     */
+    protected function canShowAssessmentNowForUser(ilExAssignment $ass, int $user_id): bool
+    {
+        // Admin/Korrektur -> sofort
+        if ($this->plugin->canDefine()) {
+            return true;
+        }
+
+        // persönliche Deadline bevorzugen
+        $personal_deadline = (int) $ass->getPersonalDeadline($user_id);
+
+        // allgemeine Deadline als Fallback
+        $general_deadline = (int) ($ass->getDeadline() ?? 0);
+
+        $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
+
+        if ($effective_deadline <= 0) {
+            // keine Frist -> sofort anzeigen
+            return true;
+        }
+
+        return time() >= $effective_deadline;
+    }
 
     /**
      * Format instant message with monospace styling
@@ -632,11 +660,8 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $task->clearSubmissionData();
             $task->save();
 
-            // NEU: betroffene Nutzer bestimmen (Team oder Einzel)
-            $uids = $this->submission->getTeam()
-                ? $this->submission->getTeam()->getMembers()
-                : [$this->submission->getUserId()];            
-
+            // Betroffene User ermitteln und Status auf "notgraded" zurücksetzen
+            $uids = $task->getAffectedUserIds();
             $task->updateMemberStatus($uids, true);
         }
 
@@ -796,9 +821,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                                 ['filename' => ['text', $relative_path]],
                                 ['returned_id' => ['integer', $returned_id]]
                             );
-                            
-                            #$DIC->logger()->root()->error('ExAutoScore: Fixed filename path for returned_id=' . $returned_id . ', relative_path=' . $relative_path);
-                            
+
                             break;
                         }
                     }
@@ -901,8 +924,6 @@ protected function downloadSubmittedFile()
                 $this->submission->downloadFiles($delivered_id);
                 exit;
             } catch (Exception $e) {
-                #$DIC->logger()->root()->error('ExAutoScore: Submitted file download failed - ' . $e->getMessage());
-                
                 $plugin = ilExAutoScorePlugin::getInstance();
                 if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
                     $error_msg = sprintf(
@@ -925,7 +946,7 @@ protected function downloadSubmittedFile()
     protected function downloadProvidedFile()
     {
         global $DIC;
-        
+
         $file = ilExAutoScoreProvidedFile::findOrGetInstance($_REQUEST['file_id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
             $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
@@ -946,8 +967,6 @@ protected function downloadSubmittedFile()
         try {
             $file->downloadFile();
         } catch (Exception $e) {
-            #$DIC->logger()->root()->error('ExAutoScore: File download failed - ' . $e->getMessage());
-            
             $plugin = ilExAutoScorePlugin::getInstance();
             if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
                 $error_msg = sprintf(
@@ -968,7 +987,7 @@ protected function downloadSubmittedFile()
     protected function downloadExampleFile()
     {
         global $DIC;
-        
+
         $file = ilExAutoScoreRequiredFile::findOrGetInstance($_REQUEST['file_id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
             $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
@@ -999,8 +1018,6 @@ protected function downloadSubmittedFile()
         try {
             $file->downloadFile();
         } catch (Exception $e) {
-            #$DIC->logger()->root()->error('ExAutoScore: File download failed - ' . $e->getMessage());
-            
             $plugin = ilExAutoScorePlugin::getInstance();
             if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
                 $error_msg = sprintf(
@@ -1205,13 +1222,6 @@ protected function downloadSubmittedFile()
                     $ms->setMark('');
                     $ms->setReturned(false);
                     $ms->update();
-
-                    // optionales Log
-                    /*$DIC->logger()->root()->warning(sprintf(
-                        'ExAutoScore: pre-deadline scrub cleared core result (ass=%d usr=%d)',
-                        $ass->getId(),
-                        $uid
-                    ));*/
                 }
             }
         } catch (Throwable $e) {
@@ -1221,22 +1231,31 @@ protected function downloadSubmittedFile()
 
         // --- Auto-Publish der Core-Bewertung NACH Deadline (wenn Ergebnis vorhanden & Abgabe existiert) ---
         try {
-            if ($task && $this->canShowAssessmentNow($ass, $sub)) {
-                $has_publishable_result =
-                    ($task->getReturnPoints() !== null) ||
-                    !empty($task->getProtectedFeedbackText()) ||
-                    !empty($task->getProtectedFeedbackHtml()) ||
-                    !empty($task->getReturnTime());
+            if ($task) {
+                // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
+                $affected_users = $task->getAffectedUserIds();
 
-                $still_has_submission = (count($sub->getFiles()) > 0) || ($task->getSubmitSuccess() === true);
-
-                if ($has_publishable_result && $still_has_submission) {
-                    // FIX: Bei Teams alle Mitglieder bewerten, nicht nur den aktuellen User
-                    $affected_users = [$this->user->getId()];
-                    if ($ass->hasTeam() && $sub->getTeam()) {
-                        $affected_users = $sub->getTeam()->getMembers();
+                // Prüfe ob ALLE betroffenen User die Deadline erreicht haben
+                $all_deadlines_reached = true;
+                foreach ($affected_users as $uid) {
+                    if (!$this->canShowAssessmentNowForUser($ass, $uid)) {
+                        $all_deadlines_reached = false;
+                        break;
                     }
-                    $task->updateMemberStatus($affected_users);
+                }
+
+                if ($all_deadlines_reached) {
+                    $has_publishable_result =
+                        ($task->getReturnPoints() !== null) ||
+                        !empty($task->getProtectedFeedbackText()) ||
+                        !empty($task->getProtectedFeedbackHtml()) ||
+                        !empty($task->getReturnTime());
+
+                    $still_has_submission = (count($sub->getFiles()) > 0) || ($task->getSubmitSuccess() === true);
+
+                    if ($has_publishable_result && $still_has_submission) {
+                        $task->updateMemberStatus($affected_users);
+                    }
                 }
             }
         } catch (Throwable $e) {

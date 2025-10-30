@@ -193,7 +193,10 @@ class ilExAutoScoreConnector
         }
         
         $scoreTask->save();
-        $scoreTask->updateMemberStatus();
+
+        // HINWEIS: updateMemberStatus() wird NICHT hier aufgerufen, da wir noch keine
+        // Korrektur-Ergebnisse haben. Die Bewertung wird erst in receiveResult() geschrieben,
+        // wenn die Deadline erreicht ist.
 
         if (!$success) {
             $this->notifyFailure($assignment, $scoreTask, self::NOTIFY_SEND_FAILURE);
@@ -208,31 +211,17 @@ class ilExAutoScoreConnector
     {
         global $DIC;
 
-        // KOMPLETT-LOG des Requests für Debugging
-        /*$DIC->logger()->root()->error('ExAutoScore receiveResult FULL DEBUG: ' . print_r([
-            'content_type' => $_SERVER['CONTENT_TYPE'] ?? 'not set',
-            'content_length' => $_SERVER['CONTENT_LENGTH'] ?? 'not set',
-            'files_count' => count($_FILES),
-            'files_keys' => array_keys($_FILES),
-            'post_keys' => array_keys($_POST),
-        ], true));
-        */
-
         $files = \GuzzleHttp\Psr7\ServerRequest::normalizeFiles($DIC->http()->request()->getUploadedFiles());
         $result = null;
-
-        #$DIC->logger()->root()->error('ExAutoScore: Normalized files count = ' . count($files));
 
         // ZUERST: Prüfe ob result.json als File hochgeladen wurde (Standard für Multipart)
         foreach ($files as $file) {
             $filename = $file->getClientFilename();
-            #$DIC->logger()->root()->error('ExAutoScore: Found uploaded file: ' . $filename);
-            
+
             if ($filename === 'result.json') {
                 $filePath = $file->getStream()->getMetadata('uri');
                 $fileContent = file_get_contents($filePath);
                 $result = json_decode($fileContent, true);
-                #$DIC->logger()->root()->error('ExAutoScore: Loaded result.json from uploaded file (' . strlen($fileContent) . ' bytes)');
                 break;
             }
         }
@@ -240,24 +229,15 @@ class ilExAutoScoreConnector
         // FALLBACK: Versuche Body als JSON (für Nicht-Multipart Requests)
         if (empty($result)) {
             $content = $DIC->http()->request()->getBody()->getContents();
-            #$DIC->logger()->root()->error('ExAutoScore: Body content length = ' . strlen($content));
-            
+
             if (!empty($content)) {
                 $result = json_decode($content, true);
-                if ($result !== null) {
-                    #$DIC->logger()->root()->error('ExAutoScore: Loaded result from request body');
-                } else {
-                    #$DIC->logger()->root()->error('ExAutoScore: JSON decode failed: ' . json_last_error_msg());
-                }
             }
         }
 
         if (empty($result)) {
-            #$DIC->logger()->root()->error('ExAutoScore: ERROR - No result data found!');
             return;
         }
-        
-        #$DIC->logger()->root()->error('ExAutoScore receiveResult data: ' . print_r($result, true));
 
         // UUID extrahieren
         if (isset($result['assignment_uuid'])) {
@@ -321,15 +301,12 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         
 
         if (!isset($task)) {
-            ##$DIC->logger()->root()->error('ExAutoScore: ERROR - Task not found for UUID: ' . $this->result_uuid);
             return;
         }
-        
-        ##$DIC->logger()->root()->error('ExAutoScore: Task found, ID = ' . $task->getId());
 
         $returnTime = new ilDateTime(time(), IL_CAL_UNIX);
         $task->setReturnTime($returnTime->get(IL_CAL_DATETIME));
-        
+
         $task->setReturncode(isset($result['task_returncode']) ? (int) $result['task_returncode'] : null);
         $task->setReturnPoints(isset($result['points']) ? (float) $result['points'] : null);
         $task->setTaskDuration(isset($result['task_time']) ? (float) $result['task_time'] : null);
@@ -338,19 +315,49 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         $task->setProtectedStatus(isset($result['protected_status']) ? $result['protected_status'] : null);
         $task->setProtectedFeedbackText(isset($result['protected_feedback_text']) ? $result['protected_feedback_text'] : null);
         $task->setProtectedFeedbackHtml(isset($result['protected_feedback_html']) ? $result['protected_feedback_html'] : null);
-        
+
         // Debug-Logs speichern wenn vorhanden
         if (isset($result['debug_logs'])) {
             $task->setDebugLogs($result['debug_logs']);
-            #$DIC->logger()->root()->error('ExAutoScore: Saved debug logs (' . strlen($result['debug_logs']) . ' bytes)');
-        } else {
-            #$DIC->logger()->root()->error('ExAutoScore: No debug_logs in result');
         }
-        
-        #$DIC->logger()->root()->error('ExAutoScore: Saving task with points = ' . ($task->getReturnPoints() ?? 'NULL'));
-        
+
         $task->save();
-        $task->updateMemberStatus();
+
+        // Prüfe ob Deadline bereits erreicht ist und schreibe ggf. sofort
+        try {
+            $assignment = new ilExAssignment($task->getAssignmentId());
+
+            // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
+            $affected_users = $task->getAffectedUserIds();
+
+            // Prüfe ob ALLE Deadlines erreicht sind (oder keine Deadline gesetzt ist)
+            $all_deadlines_reached = true;
+            $has_any_deadline = false;
+            $now = time();
+
+            foreach ($affected_users as $uid) {
+                $personal_deadline = (int) $assignment->getPersonalDeadline($uid);
+                $general_deadline = (int) ($assignment->getDeadline() ?? 0);
+                $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
+
+                if ($effective_deadline > 0) {
+                    $has_any_deadline = true;
+                    if ($now < $effective_deadline) {
+                        $all_deadlines_reached = false;
+                        break;
+                    }
+                }
+            }
+
+            // Bewertung schreiben wenn:
+            // - Keine Deadline gesetzt ist (sofort sichtbar) ODER
+            // - Alle Deadlines erreicht sind
+            if ($all_deadlines_reached && !empty($affected_users)) {
+                $task->updateMemberStatus($affected_users);
+            }
+        } catch (Throwable $e) {
+            $DIC->logger()->root()->error('ExAutoScore: Deadline check in receiveResult failed: ' . $e->getMessage());
+        }
 
         $this->saveFeedbackFiles($task, $files);
 
@@ -367,8 +374,6 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             $assignment = new ilExAssignment($task->getAssignmentId());
             $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
         }
-        
-        #$DIC->logger()->root()->error('ExAutoScore receiveResult: FINISHED successfully');
     }
 
     /**
@@ -380,17 +385,19 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     {
         $assignment = new ilExAssignment($task->getAssignmentId());
 
-        if (!empty($task->getUserId())) {
-            $user_id = $task->getUserId();
-            $team = null;
-        }
-        elseif (!empty($task->getTeamId())) {
-            $team = new ilExAssignmentTeam($task->getTeamId());
-            $members = $team->getMembers();
-            $user_id = array_pop($members);
-        }
-        else {
+        // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
+        $affected_users = $task->getAffectedUserIds();
+        if (empty($affected_users)) {
             return;
+        }
+
+        // Für Feedback-Dateien: nimm einen beliebigen User (bei Teams ist es egal welcher)
+        $user_id = $affected_users[0];
+
+        // Team-Objekt nur bei Team-Aufgaben
+        $team = null;
+        if (!empty($task->getTeamId())) {
+            $team = new ilExAssignmentTeam($task->getTeamId());
         }
 
         $submission = new ilExSubmission($assignment, $user_id, $team);
@@ -428,8 +435,6 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
      * @return string|null
      */
     public function getResultMessage(): ?string {
-        global $DIC;
-        #$DIC->logger()->root()->error($this->result_message);
         return $this->result_message;
     }
 
@@ -469,23 +474,6 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
             $curl_error = curl_error($curl);
             $curl_errno = curl_errno($curl);
-            
-            // Detailliertes Debug-Logging
-            global $DIC;
-            /*$DIC->logger()->root()->error('ExAutoScore cURL Debug: ' . print_r([
-                'url' => $url,
-                'http_code' => $http_code,
-                'curl_errno' => $curl_errno,
-                'curl_error' => $curl_error,
-                'response_length' => strlen($result),
-                'response_preview' => substr($result, 0, 500),
-                'post_params' => array_map(function($v) {
-                    if ($v instanceof CURLFile) {
-                        return 'CURLFile: ' . $v->getFilename();
-                    }
-                    return $v;
-                }, $post)
-            ], true));*/
 
             curl_close($curl);
             
@@ -576,9 +564,6 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             // Debug-Logs extrahieren
             if (isset($decoded_result['debug_logs'])) {
                 $this->debug_logs = $decoded_result['debug_logs'];
-                #$DIC->logger()->root()->error('ExAutoScore: Extracted debug_logs from response (' . strlen($this->debug_logs) . ' bytes)');
-            } else {
-                #$DIC->logger()->root()->error('ExAutoScore: No debug_logs in response');
             }
             
             $success = isset($decoded_result['success']) ? (bool) $decoded_result['success'] : false;
@@ -729,16 +714,19 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         $info[$lng->txt('exc')] = ilObject::_lookupTitle($assignment->getExerciseId());
         $info[$lng->txt('exc_assignment')] = $assignment->getTitle();
 
-        if (!empty($scoreTask->getUserId())) {
-            $info[$lng->txt('user')] = ilObjUser::_lookupFullname($scoreTask->getUserId());
-        }
-        if (!empty($scoreTask->getTeamId())) {
-            $team = new ilExAssignmentTeam($scoreTask->getTeamId());
+        // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
+        $affected_users = $scoreTask->getAffectedUserIds();
+        if (!empty($affected_users)) {
             $names = [];
-            foreach ($team->getMembers() as $user_id) {
+            foreach ($affected_users as $user_id) {
                 $names[] = ilObjUser::_lookupFullname($user_id);
             }
-            $info[$lng->txt('exc_team')] = '(' . $team->getId() . ') ' . implode(', ', $names) . "\n";
+
+            if (!empty($scoreTask->getTeamId())) {
+                $info[$lng->txt('exc_team')] = '(' . $scoreTask->getTeamId() . ') ' . implode(', ', $names);
+            } else {
+                $info[$lng->txt('user')] = $names[0];
+            }
         }
 
         if (!empty($scoreTask->getSubmitTime())) {

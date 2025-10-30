@@ -709,6 +709,21 @@ class ilExAutoScoreTask extends ActiveRecord
     }
 
 
+    /**
+     * Get affected user IDs (single user or all team members)
+     * @return int[]
+     */
+    public function getAffectedUserIds(): array
+    {
+        if (!empty($this->getUserId())) {
+            return [$this->getUserId()];
+        } elseif (!empty($this->getTeamId())) {
+            $team = new ilExAssignmentTeam($this->getTeamId());
+            return $team->getMembers();
+        }
+        return [];
+    }
+
 /**
  * Update the assignment status of the related exercise members (user or team)
  * this must be done if the submission data changes
@@ -719,18 +734,6 @@ class ilExAutoScoreTask extends ActiveRecord
 public function updateMemberStatus($a_user_ids = [], bool $force = false)
 {
     global $DIC;
-
-    $DIC->logger()->root()->dump([
-        'ExAutoScore updateMemberStatus called',
-        'assignment_id'   => $this->getAssignmentId(),
-        'user_ids_param'  => $a_user_ids,
-        'task_user_id'    => $this->getUserId(),
-        'task_team_id'    => $this->getTeamId(),
-        'return_time'     => $this->getReturnTime(),
-        'return_points'   => $this->getReturnPoints(),
-        'force'           => $force,
-        'backtrace'       => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5)
-    ]);
 
     require_once __DIR__ . '/class.ilExAutoScoreAssignment.php';
     $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($this->getAssignmentId());
@@ -750,16 +753,11 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
         $mark = $this->getReturnPoints();
     }
 
-    // betroffene Nutzer
+    // betroffene Nutzer (verwende Parameter oder ermittle aus Task)
     if (!empty($a_user_ids)) {
         $user_ids = $a_user_ids;
-    } elseif (!empty($this->getUserId())) {
-        $user_ids = [$this->getUserId()];
-    } elseif (!empty($this->getTeamId())) {
-        $team = new ilExAssignmentTeam($this->getTeamId());
-        $user_ids = $team->getMembers();
     } else {
-        $user_ids = [];
+        $user_ids = $this->getAffectedUserIds();
     }
 
     $ass    = new ilExAssignment($this->getAssignmentId());
@@ -774,10 +772,6 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
             $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
 
             if ($effective_deadline > 0 && time() < $effective_deadline) {
-                $DIC->logger()->root()->warning(sprintf(
-                    'ExAutoScore:updateMemberStatus skip user=%d ass=%d (now<deadline %d<%d)',
-                    $user_id, $ass->getId(), time(), $effective_deadline
-                ));
                 continue;
             }
         }
@@ -838,17 +832,19 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
     {
         $assignment = new ilExAssignment($this->getAssignmentId());
 
-        if (!empty($this->getUserId())) {
-            $user_id = $this->getUserId();
-            $team = null;
-        }
-        elseif (!empty($this->getTeamId())) {
-            $team = new ilExAssignmentTeam($this->getTeamId());
-            $members = $team->getMembers();
-            $user_id = array_pop($members);
-        }
-        else {
+        // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
+        $affected_users = $this->getAffectedUserIds();
+        if (empty($affected_users)) {
             return;
+        }
+
+        // Für Feedback-Dateien: nimm einen beliebigen User (bei Teams ist es egal welcher)
+        $user_id = $affected_users[0];
+
+        // Team-Objekt nur bei Team-Aufgaben
+        $team = null;
+        if (!empty($this->getTeamId())) {
+            $team = new ilExAssignmentTeam($this->getTeamId());
         }
 
         $submission = new ilExSubmission($assignment, $user_id, $team);

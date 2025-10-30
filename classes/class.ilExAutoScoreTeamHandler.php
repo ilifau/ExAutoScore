@@ -58,7 +58,6 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
     public function handleTeamCreated(ilExAssignmentTeam $team)
     {
         global $DIC;
-$DIC->logger()->root()->error('ExAutoScore TeamHandler: handleTeamCreated CALLED');
         if (empty($members = $team->getMembers())) {
             return;
         }
@@ -96,10 +95,7 @@ $DIC->logger()->root()->error('ExAutoScore TeamHandler: handleTeamCreated CALLED
      */
     public function handleTeamAddedUsers(ilExAssignmentTeam $team, $added_users = [])
     {
-
         global $DIC;
-        $DIC->logger()->root()->error('ExAutoScore TeamHandler: handleTeamAddedUsers CALLED');
-        $DIC->logger()->root()->error('ExAutoScore TeamHandler: added_users = ' . implode(', ', $added_users));        
 
         if ($this->is_management) {
             // team is extended by exercise admin
@@ -211,10 +207,7 @@ $DIC->logger()->root()->error('ExAutoScore TeamHandler: handleTeamCreated CALLED
      */
     public function handleTeamRemovedUsers(ilExAssignmentTeam $team, $removed_users = [])
     {
-    global $DIC;
-    $DIC->logger()->root()->error('ExAutoScore TeamHandler: handleTeamRemovedUsers CALLED');
-    $DIC->logger()->root()->error('ExAutoScore TeamHandler: removed_users = ' . implode(', ', $removed_users));
- 
+        global $DIC;
 
         $team_members = $team->getMembers();
         $team_user = null;                  // team user that should get copies of the removed submissions
