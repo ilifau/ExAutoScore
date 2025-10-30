@@ -491,7 +491,28 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             
             if ($curl_errno !== 0) {
                 $this->result_uuid = null;
-                $this->result_message = 'cURL Error #' . $curl_errno . ': ' . $curl_error;
+
+                // Spezifische Hinweise für häufige cURL Fehler
+                $hint = '';
+                switch ($curl_errno) {
+                    case 6: // CURLE_COULDNT_RESOLVE_HOST
+                        $hint = ' → Mögliche Ursachen: DNS-Problem, falsche URL, keine Internetverbindung';
+                        break;
+                    case 7: // CURLE_COULDNT_CONNECT
+                        $hint = ' → Mögliche Ursachen: Server ist nicht erreichbar, Firewall blockiert Verbindung, Server ist offline';
+                        break;
+                    case 28: // CURLE_OPERATION_TIMEDOUT
+                        $hint = ' → Mögliche Ursachen: Server antwortet nicht rechtzeitig, Netzwerk zu langsam, Timeout zu kurz konfiguriert';
+                        break;
+                    case 35: // CURLE_SSL_CONNECT_ERROR
+                        $hint = ' → Mögliche Ursachen: SSL/TLS Fehler, Zertifikatsproblem';
+                        break;
+                    case 56: // CURLE_RECV_ERROR
+                        $hint = ' → Mögliche Ursachen: Verbindung wurde während der Übertragung unterbrochen';
+                        break;
+                }
+
+                $this->result_message = 'cURL Error #' . $curl_errno . ': ' . $curl_error . $hint;
                 return false;
             }
             

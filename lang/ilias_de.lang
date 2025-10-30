@@ -101,6 +101,8 @@ example_files#:#Musterlösungs-Dateien
 info_existing_tasks#:#Hinweis: Es sind bereits Abgaben vorhanden.
 warning_no_dockerfile#:#FEHLER: Es wurde kein Dockerfile hochgeladen! Bitte laden Sie ein Dockerfile hoch, bevor Sie die Korrektur einrichten.
 warning_no_example_files#:#FEHLER: Es wurden keine Required/Example Files definiert! Bitte definieren Sie Musterlösungs-Dateien auf dem Reiter "Erforderliche Dateien", bevor Sie die Korrektur einrichten.
+warning_service_unreachable#:#WARNUNG: Der letzte Versuch, die Korrektur einzurichten, ist fehlgeschlagen. Der Korrektur-Server ist möglicherweise nicht erreichbar.
+error_details#:#Fehlerdetails
 correction_settings_saved#:#Die Korrektur-Einstellungen wurden gespeichert.
 correction_settings_saved_with_update#:#Die Korrektur-Einstellungen wurden gespeichert und die Ergebnisse aktualisiert.
 please_send_assignment#:#Bitte richten Sie die Korrektur ein!

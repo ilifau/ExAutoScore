@@ -1221,7 +1221,7 @@ protected function downloadSubmittedFile()
 
         // --- Auto-Publish der Core-Bewertung NACH Deadline (wenn Ergebnis vorhanden & Abgabe existiert) ---
         try {
-            if ($task && $this->canShowAssessmentNow($ass, $sub) && !$this->plugin->canDefine()) {
+            if ($task && $this->canShowAssessmentNow($ass, $sub)) {
                 $has_publishable_result =
                     ($task->getReturnPoints() !== null) ||
                     !empty($task->getProtectedFeedbackText()) ||
@@ -1231,7 +1231,12 @@ protected function downloadSubmittedFile()
                 $still_has_submission = (count($sub->getFiles()) > 0) || ($task->getSubmitSuccess() === true);
 
                 if ($has_publishable_result && $still_has_submission) {
-                    $task->updateMemberStatus([$this->user->getId()]);
+                    // FIX: Bei Teams alle Mitglieder bewerten, nicht nur den aktuellen User
+                    $affected_users = [$this->user->getId()];
+                    if ($ass->hasTeam() && $sub->getTeam()) {
+                        $affected_users = $sub->getTeam()->getMembers();
+                    }
+                    $task->updateMemberStatus($affected_users);
                 }
             }
         } catch (Throwable $e) {

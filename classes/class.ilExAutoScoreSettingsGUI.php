@@ -73,6 +73,16 @@ class ilExAutoScoreSettingsGUI
             $this->tpl->setOnScreenMessage('info', $this->plugin->txt('info_existing_tasks'));
         }
 
+        // Zeige Warnung wenn letzter sendAssignment Versuch fehlgeschlagen ist
+        $exampleTask = ilExAutoScoreTask::getExampleTask($this->assignment->getId());
+        if (!empty($exampleTask->getSubmitTime()) && !$exampleTask->getSubmitSuccess()) {
+            $errorMsg = $this->plugin->txt('warning_service_unreachable');
+            if (!empty($exampleTask->getSubmitMessage())) {
+                $errorMsg .= '<br><strong>' . $this->plugin->txt('error_details') . ':</strong> ' . nl2br(htmlspecialchars($exampleTask->getSubmitMessage()));
+            }
+            $this->tpl->setOnScreenMessage('failure', $errorMsg);
+        }
+
         $form = $this->initSettingsForm();
         $this->tpl->setContent($form->getHTML());
     }
