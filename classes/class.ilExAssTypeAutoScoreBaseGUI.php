@@ -658,6 +658,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $this->submission->deleteAllFiles();
             $task = ilExAutoScoreTask::getSubmissionTask($this->submission);
             $task->clearSubmissionData();
+            $task->deleteFeedbackFiles(); // Feedback-Dateien auch löschen
             $task->save();
 
             // Betroffene User ermitteln und Status auf "notgraded" zurücksetzen
@@ -1198,14 +1199,13 @@ protected function downloadSubmittedFile()
         require_once __DIR__ . '/models/class.ilExAutoScoreTask.php';
         $task = \ilExAutoScoreTask::getSubmissionTask($sub);
 
-        // --- Pre-deadline SCRUB: Wenn keine Abgabe vorhanden, Core-Bewertung hart leeren ---
+        // --- Pre-deadline SCRUB: Core-Bewertung vor Deadline IMMER leeren (außer für Tutoren) ---
         try {
-            $hide           = !$this->canShowAssessmentNow($ass, $sub);
-            $is_tutor       = $this->plugin->canDefine();
-            $has_files      = (count($sub->getFiles()) > 0);
-            $submit_success = ($task && $task->getSubmitSuccess() === true);
+            $hide     = !$this->canShowAssessmentNow($ass, $sub);
+            $is_tutor = $this->plugin->canDefine();
 
-            if ($hide && !$is_tutor && !$has_files && !$submit_success) {
+            // Wenn Student und vor Deadline -> Bewertung aus ILIAS Core löschen
+            if ($hide && !$is_tutor) {
                 // Betroffene Nutzer (Team oder Einzel)
                 $affected_user_ids = [$this->user->getId()];
                 if ($ass->hasTeam()) {
@@ -1222,6 +1222,12 @@ protected function downloadSubmittedFile()
                     $ms->setMark('');
                     $ms->setReturned(false);
                     $ms->update();
+                }
+
+                // Auch Feedback-Dateien löschen wenn Deadline verlängert wurde
+                // (verhindert dass "Evaluation by Tutor" Sektion vor neuer Deadline erscheint)
+                if ($task) {
+                    $task->deleteFeedbackFiles();
                 }
             }
         } catch (Throwable $e) {
@@ -1310,7 +1316,8 @@ protected function downloadSubmittedFile()
                         $this->plugin->txt('show_extended_feedback')
                     );
 
-                    $builder->addProperty($builder::SEC_SUBMISSION, '', $modal_html . $button_html);
+                    // Button in TUTOR_EVAL statt SUBMISSION => erscheint unten bei der Bewertung
+                    $builder->addProperty($builder::SEC_TUTOR_EVAL, '', $modal_html . $button_html);
                 } catch (Exception $e) {
                     // optional logging
                 }

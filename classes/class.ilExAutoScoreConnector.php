@@ -383,11 +383,35 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
      */
     protected function saveFeedbackFiles($task, $files)
     {
+        global $DIC;
+
         $assignment = new ilExAssignment($task->getAssignmentId());
 
         // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
         $affected_users = $task->getAffectedUserIds();
         if (empty($affected_users)) {
+            return;
+        }
+
+        // Prüfe ob Deadline erreicht ist - Feedback-Dateien nur NACH Deadline speichern
+        $all_deadlines_reached = true;
+        $now = time();
+
+        foreach ($affected_users as $uid) {
+            $personal_deadline = (int) $assignment->getPersonalDeadline($uid);
+            $general_deadline = (int) ($assignment->getDeadline() ?? 0);
+            $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
+
+            if ($effective_deadline > 0) {
+                if ($now < $effective_deadline) {
+                    $all_deadlines_reached = false;
+                    break;
+                }
+            }
+        }
+
+        // Wenn Deadline nicht erreicht -> Feedback-Dateien NICHT speichern
+        if (!$all_deadlines_reached) {
             return;
         }
 
@@ -411,9 +435,8 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         $fstorage->deleteDirectory($fb_path);
         $fb_path = $fstorage->getFeedbackPath($feedback_id);
 
-        if(!empty($task->getProtectedFeedbackHtml())) {
-            file_put_contents($fb_path . "/feedback.html", $task->getProtectedFeedbackHtml());
-        }
+        // HINWEIS: feedback.html wird NICHT mehr gespeichert, da das HTML über
+        // den "Erweitertes Feedback" Modal-Button angezeigt wird (nach Deadline).
 
         foreach ($files as $file) {
             // Überspringe result.json - das wurde bereits verarbeitet
