@@ -180,4 +180,101 @@ class BasicFunctionalityTest extends TestCase
             'receiveResult should have deadline check logic'
         );
     }
+
+    /**
+     * Test that saveFeedbackFiles has deadline check (prevents feedback before deadline)
+     */
+    public function testSaveFeedbackFilesHasDeadlineCheck()
+    {
+        $file = __DIR__ . '/../../classes/class.ilExAutoScoreConnector.php';
+        $content = file_get_contents($file);
+
+        $this->assertStringContainsString(
+            'protected function saveFeedbackFiles(',
+            $content,
+            'Connector should have saveFeedbackFiles() method'
+        );
+
+        $this->assertStringContainsString(
+            'all_deadlines_reached',
+            $content,
+            'saveFeedbackFiles() should check deadline before saving files'
+        );
+    }
+
+    /**
+     * Test that feedback.html is NOT created anymore (shown via modal instead)
+     */
+    public function testFeedbackHtmlNotCreated()
+    {
+        $file = __DIR__ . '/../../classes/class.ilExAutoScoreConnector.php';
+        $content = file_get_contents($file);
+
+        // Should have comment explaining why feedback.html is not created
+        $this->assertStringContainsString(
+            'HINWEIS: feedback.html wird NICHT mehr gespeichert',
+            $content,
+            'Should document that feedback.html is not created anymore'
+        );
+    }
+
+    /**
+     * Test that Task has deleteFeedbackFiles method
+     */
+    public function testTaskHasDeleteFeedbackFilesMethod()
+    {
+        $file = __DIR__ . '/../../classes/models/class.ilExAutoScoreTask.php';
+        $content = file_get_contents($file);
+
+        $this->assertStringContainsString(
+            'public function deleteFeedbackFiles(',
+            $content,
+            'Task should have deleteFeedbackFiles() method'
+        );
+    }
+
+    /**
+     * Test that SCRUB logic calls deleteFeedbackFiles (deadline extension fix)
+     */
+    public function testScrubLogicDeletesFeedbackFiles()
+    {
+        $file = __DIR__ . '/../../classes/class.ilExAssTypeAutoScoreBaseGUI.php';
+        $content = file_get_contents($file);
+
+        // Check for SCRUB section
+        $this->assertStringContainsString(
+            'Pre-deadline SCRUB',
+            $content,
+            'BaseGUI should have SCRUB logic'
+        );
+
+        // Check that it calls deleteFeedbackFiles
+        $this->assertStringContainsString(
+            'deleteFeedbackFiles()',
+            $content,
+            'SCRUB logic should delete feedback files when hiding assessments'
+        );
+    }
+
+    /**
+     * Test that "Erweitertes Feedback" button is in SEC_TUTOR_EVAL section
+     */
+    public function testFeedbackButtonInTutorEvalSection()
+    {
+        $file = __DIR__ . '/../../classes/class.ilExAssTypeAutoScoreBaseGUI.php';
+        $content = file_get_contents($file);
+
+        // Should use SEC_TUTOR_EVAL for the button
+        $this->assertStringContainsString(
+            'SEC_TUTOR_EVAL',
+            $content,
+            'Feedback button should be in SEC_TUTOR_EVAL section'
+        );
+
+        $this->assertStringContainsString(
+            'show_extended_feedback',
+            $content,
+            'Should have extended feedback button (show_extended_feedback)'
+        );
+    }
 }
