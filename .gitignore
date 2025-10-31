@@ -8,6 +8,9 @@
 # AI context information (not for version control)
 ki_infos/
 
+# PHPUnit cache
+.phpunit.result.cache
+
 # Don't ignore .gitkeep and .htaccess files
 # these are used to commit empty directories
 !.gitkeep
