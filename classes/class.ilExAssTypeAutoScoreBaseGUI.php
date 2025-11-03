@@ -1200,6 +1200,7 @@ protected function downloadSubmittedFile()
         $task = \ilExAutoScoreTask::getSubmissionTask($sub);
 
         // --- Pre-deadline SCRUB: Core-Bewertung vor Deadline IMMER leeren (außer für Tutoren) ---
+        $did_scrub = false;
         try {
             $hide     = !$this->canShowAssessmentNow($ass, $sub);
             $is_tutor = $this->plugin->canDefine();
@@ -1215,27 +1216,44 @@ protected function downloadSubmittedFile()
                     }
                 }
 
-                foreach ($affected_user_ids as $uid) {
-                    $ms = new ilExAssignmentMemberStatus($ass->getId(), $uid);
-                    if (method_exists($ms, 'setComment')) { $ms->setComment(''); }
-                    $ms->setStatus('notgraded');
-                    $ms->setMark('');
-                    $ms->setReturned(false);
-                    $ms->update();
-                }
+                // Check if SCRUB is needed (status is not already "notgraded")
+                $first_user = $affected_user_ids[0] ?? null;
+                if ($first_user) {
+                    $current_status = $ass->getMemberStatus($first_user);
+                    if ($current_status->getStatus() !== 'notgraded' || !empty($current_status->getMark())) {
+                        foreach ($affected_user_ids as $uid) {
+                            $ms = new ilExAssignmentMemberStatus($ass->getId(), $uid);
+                            if (method_exists($ms, 'setComment')) { $ms->setComment(''); }
+                            $ms->setStatus('notgraded');
+                            $ms->setMark('');
+                            $ms->setReturned(false);
+                            $ms->update();
+                        }
 
-                // Auch Feedback-Dateien löschen wenn Deadline verlängert wurde
-                // (verhindert dass "Evaluation by Tutor" Sektion vor neuer Deadline erscheint)
-                if ($task) {
-                    $task->deleteFeedbackFiles();
+                        // Auch Feedback-Dateien löschen wenn Deadline verlängert wurde
+                        // (verhindert dass "Evaluation by Tutor" Sektion vor neuer Deadline erscheint)
+                        if ($task) {
+                            $task->deleteFeedbackFiles();
+                        }
+
+                        $did_scrub = true;
+                    }
                 }
             }
         } catch (Throwable $e) {
             $DIC->logger()->root()->error('ExAutoScore pre-deadline scrub failed: ' . $e->getMessage());
         }
+
+        // CRITICAL: If we just scrubbed data, redirect to get a fresh page load
+        // This ensures the UI shows the cleaned state immediately
+        if ($did_scrub) {
+            $current_class = $DIC->ctrl()->getCmdClass();
+            $DIC->ctrl()->redirectByClass($current_class, $DIC->ctrl()->getCmd());
+        }
         // --- /SCRUB ---
 
         // --- Auto-Publish der Core-Bewertung NACH Deadline (wenn Ergebnis vorhanden & Abgabe existiert) ---
+        $did_publish = false;
         try {
             if ($task) {
                 // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
@@ -1260,12 +1278,30 @@ protected function downloadSubmittedFile()
                     $still_has_submission = (count($sub->getFiles()) > 0) || ($task->getSubmitSuccess() === true);
 
                     if ($has_publishable_result && $still_has_submission) {
-                        $task->updateMemberStatus($affected_users);
+                        // Check if we need to publish (status is still "notgraded")
+                        $first_user = $affected_users[0] ?? null;
+                        if ($first_user) {
+                            $current_status = $ass->getMemberStatus($first_user);
+                            if ($current_status->getStatus() === 'notgraded' || empty($current_status->getMark())) {
+                                $task->updateMemberStatus($affected_users);
+                                $did_publish = true;
+                            }
+                        }
                     }
                 }
             }
         } catch (Throwable $e) {
             $DIC->logger()->root()->error('ExAutoScore auto-publish after deadline failed: ' . $e->getMessage());
+        }
+
+        // CRITICAL: If we just published results, redirect to get a fresh page load
+        // This is the same pattern used by standard assignment types (File, Text)
+        // Without redirect, the cached state from build() would still show old data
+        if ($did_publish) {
+            // Redirect to current controller to force fresh page load with new data
+            // Use getCmdClass() to get the active controller, then redirect to it
+            $current_class = $DIC->ctrl()->getCmdClass();
+            $DIC->ctrl()->redirectByClass($current_class, $DIC->ctrl()->getCmd());
         }
         // --- /Auto-Publish ---
 
