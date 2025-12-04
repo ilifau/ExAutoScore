@@ -1220,7 +1220,8 @@ protected function downloadSubmittedFile()
                 $first_user = $affected_user_ids[0] ?? null;
                 if ($first_user) {
                     $current_status = $ass->getMemberStatus($first_user);
-                    if ($current_status->getStatus() !== 'notgraded' || !empty($current_status->getMark())) {
+                    // Note: Use strict comparison against empty string, not empty(), because mark can be "0"
+                    if ($current_status->getStatus() !== 'notgraded' || $current_status->getMark() !== '') {
                         foreach ($affected_user_ids as $uid) {
                             $ms = new ilExAssignmentMemberStatus($ass->getId(), $uid);
                             if (method_exists($ms, 'setComment')) { $ms->setComment(''); }
@@ -1282,7 +1283,8 @@ protected function downloadSubmittedFile()
                         $first_user = $affected_users[0] ?? null;
                         if ($first_user) {
                             $current_status = $ass->getMemberStatus($first_user);
-                            if ($current_status->getStatus() === 'notgraded' || empty($current_status->getMark())) {
+                            // Note: Use strict comparison against empty string, not empty(), because mark can be "0"
+                            if ($current_status->getStatus() === 'notgraded' || $current_status->getMark() === '') {
                                 $task->updateMemberStatus($affected_users);
                                 $did_publish = true;
                             }
