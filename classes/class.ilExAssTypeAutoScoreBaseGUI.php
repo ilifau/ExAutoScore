@@ -503,26 +503,60 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         // NEU: Sofortige Meldung hinzugefügt
         if (!empty($task->getInstantMessage())) {
             $a_info->addProperty(
-                $this->plugin->txt("instant_message"), 
+                $this->plugin->txt("instant_message"),
                 $this->formatInstantMessage($task->getInstantMessage())
             );
+        }
+
+        if ($this->canShowAssessmentNow($a_submission->getAssignment(), $a_submission)) {
+            if (!empty($requiredFiles)) {
+                $a_info->addSection($this->lng->txt('exc_global_feedback_file'));
+                foreach ($requiredFiles as $file) {
+                    $this->ctrl->setParameterByClass(strtolower(get_class($this)), 'file_id', $file->getId());
+                    $link = $this->ctrl->getLinkTargetByClass(
+                        [ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, strtolower(get_class($this))],
+                        'downloadExampleFile'
+                    );
+
+                    $a_info->addProperty(
+                        $file->getFilename(),
+                        $this->lng->txt('download'),
+                        $link
+                    );
+                }
+            }
         }
     }
 
     public function getOverviewAdditionalFeedback(ilInfoScreenGUI $a_info, ilExSubmission $a_submission): void
     {
+        $showFeedback = $this->canShowExtendedFeedbackByDeadline($a_submission->getAssignment(), $a_submission);
+
+        // Extended feedback HTML (Modal)
         $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
-        if (!$task || empty($task->getProtectedFeedbackHtml())) {
-            return;
+        if ($showFeedback && $task && !empty($task->getProtectedFeedbackHtml())) {
+            $modalHtml = $this->createFeedbackModal($task);
+            if (!empty($modalHtml)) {
+                $a_info->addProperty('', $modalHtml);
+            }
         }
 
-        if (!$this->canShowExtendedFeedbackByDeadline($a_submission->getAssignment(), $a_submission)) {
-            return;
-        }
+        $requiredFiles = ilExAutoScoreRequiredFile::getForAssignment($a_submission->getAssignment()->getId());
+        if ($showFeedback && !empty($requiredFiles)) {
+            $a_info->addSection($this->lng->txt('exc_global_feedback_file'));
+            foreach ($requiredFiles as $file) {
+                $this->ctrl->setParameterByClass(strtolower(get_class($this)), 'file_id', $file->getId());
+                $link = $this->ctrl->getLinkTargetByClass(
+                    [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, strtolower(get_class($this)) ],
+                    'downloadExampleFile'
+                );
 
-        $modalHtml = $this->createFeedbackModal($task);
-        if (!empty($modalHtml)) {
-            $a_info->addProperty('', $modalHtml);
+                $a_info->addProperty(
+                    $file->getFilename(),
+                    $this->lng->txt('download'),
+                    $link
+                );
+            }
         }
     }
 
@@ -535,24 +569,18 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
     public function getOverviewGeneralFeedback(ilInfoScreenGUI $a_info, ilExAssignment $a_assignment): void
     {
-        $this->ctrl->setParameterByClass(ilExSubmissionGUI::class, "ass_id", $a_assignment->getId());
-
         $files = ilExAutoScoreRequiredFile::getForAssignment($a_assignment->getId());
-        $content = [];
         foreach ($files as $file) {
             $this->ctrl->setParameterByClass(strtolower(get_class($this)), 'file_id', $file->getId());
             $link = $this->ctrl->getLinkTargetByClass(
                 [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, strtolower(get_class($this)) ],
                 'downloadExampleFile'
             );
-            $entry = '<a href="' . $link . '">' . $file->getFilename() . '</a>';
-            if (!empty($file->getDescription())) {
-                $entry .= '<br>' . $file->getDescription();
-            }
-            $content[] = $entry;
-        }
-        if (!empty($content)) {
-            $a_info->addProperty($this->plugin->txt('example_files'), implode('<p>', $content));
+            $a_info->addProperty(
+                $file->getFilename(),
+                $this->lng->txt('download'),
+                $link
+            );
         }
     }
 
@@ -1359,6 +1387,26 @@ protected function downloadSubmittedFile()
                 } catch (Exception $e) {
                     // optional logging
                 }
+            }
+
+            $requiredFiles = ilExAutoScoreRequiredFile::getForAssignment($ass->getId());
+            if (!empty($requiredFiles)) {
+                $fileLinks = [];
+                foreach ($requiredFiles as $file) {
+                    $this->ctrl->setParameterByClass(strtolower(get_class($this)), 'file_id', $file->getId());
+                    $link = $this->ctrl->getLinkTargetByClass(
+                        [ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, strtolower(get_class($this))],
+                        'downloadExampleFile'
+                    );
+
+                    $fileLinks[] = '<a href="' . $link . '">' . htmlspecialchars($file->getFilename()) . '</a>';
+                }
+
+                $builder->addProperty(
+                    $builder::SEC_TUTOR_EVAL,
+                    $this->lng->txt('exc_global_feedback_file'),
+                    implode('<br>', $fileLinks)
+                );
             }
         }
     }
