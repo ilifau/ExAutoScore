@@ -38,6 +38,21 @@ class ilExAutoScoreConnector
     }
 
     /**
+     * Get the ILIAS root logger for [ExAutoScore]-prefixed observability logs.
+     *
+     * Logs go to the standard ILIAS log target so they end up in data/<client>/log
+     * (or wherever ILIAS is configured to write). Use the [ExAutoScore] prefix in
+     * messages so they can be grepped/filtered. Pass structured data via the
+     * Monolog context array (second argument) instead of stuffing it into the
+     * message — that keeps logs machine-parseable.
+     */
+    protected function logger(): \ilLogger
+    {
+        global $DIC;
+        return $DIC->logger()->root();
+    }
+
+    /**
      * @param ilExAssignment $assignment
      */
     public function sendAssignment($assignment)
@@ -170,7 +185,7 @@ class ilExAutoScoreConnector
         $post = [];
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
-        
+
         // Debug-Modus mitschicken
         $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
         $post['debug_mode'] = $debugEnabled ? 'true' : 'false';
@@ -179,20 +194,41 @@ class ilExAutoScoreConnector
 
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
 
-        $success =  $this->callService($url, $post, $timeout);
+        $success = $this->callService($url, $post, $timeout);
 
         $scoreTask->clearSubmissionData();
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
         $scoreTask->setUuid($this->getResultUuid());
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
-        
+
         // Debug-Logs auch hier speichern!
         if ($debugEnabled && $this->debug_logs) {
             $scoreTask->setDebugLogs($this->debug_logs);
         }
-        
+
         $scoreTask->save();
+
+        // Single line per submission. Only logs the outcome — start logs would
+        // double the volume without adding diagnostic value (the outcome line
+        // already carries assignment_id + user/team).
+        if ($success) {
+            $this->logger()->info('[ExAutoScore] send ok', [
+                'ass'  => $assignment->getId(),
+                'usr'  => $user->getId(),
+                'team' => $scoreTask->getTeamId(),
+                'uuid' => $scoreTask->getUuid(),
+            ]);
+        } else {
+            // submit_message in DB has the raw error; this central log makes it
+            // correlatable with the receiveResult() side and survives task overwrites.
+            $this->logger()->warning('[ExAutoScore] send failed', [
+                'ass'  => $assignment->getId(),
+                'usr'  => $user->getId(),
+                'team' => $scoreTask->getTeamId(),
+                'msg'  => $this->getResultMessage(),
+            ]);
+        }
 
         // HINWEIS: updateMemberStatus() wird NICHT hier aufgerufen, da wir noch keine
         // Korrektur-Ergebnisse haben. Die Bewertung wird erst in receiveResult() geschrieben,
@@ -214,6 +250,11 @@ class ilExAutoScoreConnector
         $files = \GuzzleHttp\Psr7\ServerRequest::normalizeFiles($DIC->http()->request()->getUploadedFiles());
         $result = null;
 
+        $upload_filenames = [];
+        foreach ($files as $f) {
+            $upload_filenames[] = $f->getClientFilename();
+        }
+
         // ZUERST: Prüfe ob result.json als File hochgeladen wurde (Standard für Multipart)
         foreach ($files as $file) {
             $filename = $file->getClientFilename();
@@ -227,8 +268,12 @@ class ilExAutoScoreConnector
         }
 
         // FALLBACK: Versuche Body als JSON (für Nicht-Multipart Requests)
+        $body_size = null;
+        $body_preview = null;
         if (empty($result)) {
             $content = $DIC->http()->request()->getBody()->getContents();
+            $body_size = strlen($content);
+            $body_preview = $body_size > 0 ? substr($content, 0, 500) : null;
 
             if (!empty($content)) {
                 $result = json_decode($content, true);
@@ -236,6 +281,14 @@ class ilExAutoScoreConnector
         }
 
         if (empty($result)) {
+            // Either no JSON file uploaded AND no body, or JSON failed to decode.
+            // Without this log, the result is silently dropped and impossible to trace.
+            $this->logger()->warning('[ExAutoScore] receiveResult got empty/undecodable payload', [
+                'uploaded_files' => $upload_filenames,
+                'body_size'      => $body_size,
+                'body_preview'   => $body_preview,
+                'json_error'     => json_last_error_msg(),
+            ]);
             return;
         }
 
@@ -273,6 +326,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
 
         // 3) Debug/Status in JEDEM Task ablegen (damit GUI/Modal es anzeigt)
         $now = (new ilDateTime(time(), IL_CAL_UNIX))->get(IL_CAL_DATETIME);
+        $touched = 0;
         while ($trow = $db->fetchAssoc($set2)) {
             $t = new ilExAutoScoreTask((int)$trow['id']); // dein vorhandener ActiveRecord-Konstruktor
 
@@ -290,7 +344,14 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             $t->setInstantMessage($result['instant_message'] ?? 'Build-Fehler');
             $t->setReturnTime($now);
             $t->save();
+            $touched++;
         }
+
+        $this->logger()->info('[ExAutoScore] receive build-fallback', [
+            'ass'            => $ass_id,
+            'assignment_uuid' => (string) $result['assignment_uuid'],
+            'tasks_updated'  => $touched,
+        ]);
 
         // Wir haben die Debug-Infos verteilt -> OK antworten und den regulären Pfad verlassen
         http_response_code(200);
@@ -298,9 +359,17 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         return;
     }
 }
-        
+
 
         if (!isset($task)) {
+            // KEY for Issue 1 diagnosis: a result POST arrived but no task matches its uuid.
+            // Used to be a silent return — every lost callback was invisible.
+            $this->logger()->warning('[ExAutoScore] receive task-not-found', [
+                'task_uuid'       => $this->result_uuid,
+                'assignment_uuid' => $result['assignment_uuid'] ?? null,
+                'phase'           => $result['phase'] ?? null,
+                'has_points'      => isset($result['points']),
+            ]);
             return;
         }
 
@@ -374,6 +443,21 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             $assignment = new ilExAssignment($task->getAssignmentId());
             $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
         }
+
+        // Single line per successful callback. Tells us at a glance whether the
+        // result actually carried verifiable content (points + feedback sizes)
+        // — useful when "Studi sieht kein Feedback" needs correlation to a callback.
+        $this->logger()->info('[ExAutoScore] receive ok', [
+            'ass'        => $task->getAssignmentId(),
+            'task'       => $task->getId(),
+            'usr'        => $task->getUserId(),
+            'team'       => $task->getTeamId(),
+            'points'     => $task->getReturnPoints(),
+            'rc'         => $task->getReturnCode(),
+            'html_size'  => strlen((string) $task->getProtectedFeedbackHtml()),
+            'text_size'  => strlen((string) $task->getProtectedFeedbackText()),
+            'published'  => ($all_deadlines_reached ?? false) && !empty($affected_users ?? null),
+        ]);
     }
 
     /**
