@@ -360,3 +360,19 @@ if (!$ilDB->tableColumnExists('exautoscore_task', 'debug_logs'))
     $ilDB->addTableColumn("exautoscore_task", 'debug_logs', $attributes);
 }
 ?>
+
+<#11>
+<?php
+// Add hide_sample_solution flag to assignment table.
+// When set, the sample solution (required files) is never shown in the
+// exercise overview / submission feedback, regardless of deadline.
+if (!$ilDB->tableColumnExists('exautoscore_assignment', 'hide_sample_solution'))
+{
+    $attributes = array(
+        'type' => 'integer',
+        'length' => 1,
+        'default' => 0
+    );
+    $ilDB->addTableColumn("exautoscore_assignment", 'hide_sample_solution', $attributes);
+}
+?>

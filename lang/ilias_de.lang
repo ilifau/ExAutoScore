@@ -140,3 +140,5 @@ show_debug_logs#:#Debug-Protokoll anzeigen
 debug_logs_info#:#Hier werden technische Details zur Ausführung der Korrektur angezeigt, einschließlich Celery-Logs, Docker-Build-Output und Task-Ausführungsdetails. Diese Informationen helfen bei der Fehlersuche.
 file_not_found#:#Die Datei wurde nicht gefunden oder existiert nicht mehr.
 file_not_found_debug#:#Die Datei "%s" (ID: %s) wurde nicht gefunden. Fehler: %s. Prüfen Sie das ILIAS-Log für detaillierte Debug-Informationen.
+hide_sample_solution#:#Musterlösung in der Übersicht ausblenden
+hide_sample_solution_info#:#Wenn aktiviert, werden die Musterlösungs-Dateien in der Übungs-Übersicht und im Abgabe-Feedback niemals angezeigt — unabhängig von der Abgabefrist.

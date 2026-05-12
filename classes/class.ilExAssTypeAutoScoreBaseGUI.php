@@ -369,6 +369,21 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     public function importFormToAssignment(ilExAssignment $ass, ilPropertyFormGUI $form): void {}
     public function getFormValuesArray(ilExAssignment $ass): array { return []; }
 
+    /**
+     * Whether the sample solution (required files) may be shown in the
+     * exercise overview / submission feedback for this assignment.
+     *
+     * This is the hard kill-switch the lecturer can flip in the ExAutoScore
+     * assignment settings tab — it does NOT depend on the deadline. Time-based
+     * gating (canShowAssessmentNow / canShowExtendedFeedbackByDeadline) still
+     * applies on top of this.
+     */
+    protected function shouldShowSampleSolution(ilExAssignment $ass): bool
+    {
+        $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($ass->getId());
+        return !$scoreAss->getHideSampleSolution();
+    }
+
     public function getOverviewContent(ilInfoScreenGUI $a_info, ilExSubmission $a_submission): void
     {
         // getOverviewSubmission() used instead
@@ -545,7 +560,8 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             );
         }
 
-        if ($this->canShowAssessmentNow($a_submission->getAssignment(), $a_submission)) {
+        if ($this->shouldShowSampleSolution($a_submission->getAssignment())
+            && $this->canShowAssessmentNow($a_submission->getAssignment(), $a_submission)) {
             if (!empty($requiredFiles)) {
                 $a_info->addSection($this->lng->txt('exc_global_feedback_file'));
                 foreach ($requiredFiles as $file) {
@@ -579,7 +595,8 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
 
         $requiredFiles = ilExAutoScoreRequiredFile::getForAssignment($a_submission->getAssignment()->getId());
-        if ($showFeedback && !empty($requiredFiles)) {
+        if ($showFeedback && !empty($requiredFiles)
+            && $this->shouldShowSampleSolution($a_submission->getAssignment())) {
             $a_info->addSection($this->lng->txt('exc_global_feedback_file'));
             foreach ($requiredFiles as $file) {
                 $this->ctrl->setParameterByClass(strtolower(get_class($this)), 'file_id', $file->getId());
@@ -606,6 +623,9 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
     public function getOverviewGeneralFeedback(ilInfoScreenGUI $a_info, ilExAssignment $a_assignment): void
     {
+        if (!$this->shouldShowSampleSolution($a_assignment)) {
+            return;
+        }
         $files = ilExAutoScoreRequiredFile::getForAssignment($a_assignment->getId());
         foreach ($files as $file) {
             $this->ctrl->setParameterByClass(strtolower(get_class($this)), 'file_id', $file->getId());
@@ -1437,7 +1457,7 @@ protected function downloadSubmittedFile()
             }
 
             $requiredFiles = ilExAutoScoreRequiredFile::getForAssignment($ass->getId());
-            if (!empty($requiredFiles)) {
+            if (!empty($requiredFiles) && $this->shouldShowSampleSolution($ass)) {
                 $fileLinks = [];
                 foreach ($requiredFiles as $file) {
                     $this->ctrl->setParameterByClass(strtolower(get_class($this)), 'file_id', $file->getId());

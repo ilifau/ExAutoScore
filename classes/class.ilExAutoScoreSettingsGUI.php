@@ -127,7 +127,10 @@ class ilExAutoScoreSettingsGUI
             $assAuto->setCommand((string) $params['exautoscore_docker_command']);
             $assAuto->setMinPoints((float) $params['exautoscore_min_points']);
             $assAuto->setFailureMails((string) $params['exautoscore_failure_mails']);
-            
+            $assAuto->setHideSampleSolution(
+                isset($params['exautoscore_hide_sample_solution']) && (bool) $params['exautoscore_hide_sample_solution']
+            );
+
             // NEU: Debug-Modus speichern (nur für Admins)
             if ($this->plugin->hasAdminAccess()) {
                 $assAuto->setDebugMode(isset($params['exautoscore_debug_mode']) && (bool) $params['exautoscore_debug_mode']);
@@ -208,6 +211,16 @@ class ilExAutoScoreSettingsGUI
         $failureMails->setInfo($this->plugin->txt('failure_mails_info'));
         $failureMails->setValue($assAuto->getFailureMails());
         $form->addItem($failureMails);
+
+        // Hard kill-switch: never show the sample solution in the overview,
+        // independent of the deadline. Time-based gating still applies on top.
+        $hideSampleSolution = new ilCheckboxInputGUI(
+            $this->plugin->txt('hide_sample_solution'),
+            'exautoscore_hide_sample_solution'
+        );
+        $hideSampleSolution->setInfo($this->plugin->txt('hide_sample_solution_info'));
+        $hideSampleSolution->setChecked($assAuto->getHideSampleSolution());
+        $form->addItem($hideSampleSolution);
 
         // NEU: Debug-Modus (nur für Admins sichtbar/editierbar)
         if ($this->plugin->hasAdminAccess() && $this->plugin->getConfig()->get('enable_debug_logs')) {

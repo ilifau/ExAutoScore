@@ -85,6 +85,18 @@ class ilExAutoScoreAssignment extends ActiveRecord
     protected ?bool $debug_mode = null;
 
     /**
+     * If true, the sample solution (required files) is never shown in the
+     * exercise overview / submission feedback — regardless of deadline.
+     *
+     * @var bool
+     * @con_has_field  true
+     * @con_fieldtype  integer
+     * @con_length     1
+     * @con_is_notnull false
+     */
+    protected ?bool $hide_sample_solution = null;
+
+    /**
      * Wrapper to declare the return type
      * @param  mixed $primary_key
      * @param array $add_constructor_args
@@ -231,7 +243,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
     public function getDebugMode(): bool
     {
         return (bool) $this->debug_mode;
-    }    
+    }
 
     /**
      * @param bool $debug_mode
@@ -239,5 +251,21 @@ class ilExAutoScoreAssignment extends ActiveRecord
     public function setDebugMode(bool $debug_mode): void
     {
         $this->debug_mode = $debug_mode;
-    }    
+    }
+
+    /**
+     * @return bool true if the sample solution must never be shown in the overview
+     */
+    public function getHideSampleSolution(): bool
+    {
+        return (bool) $this->hide_sample_solution;
+    }
+
+    /**
+     * @param bool $hide_sample_solution
+     */
+    public function setHideSampleSolution(bool $hide_sample_solution): void
+    {
+        $this->hide_sample_solution = $hide_sample_solution;
+    }
 }
