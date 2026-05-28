@@ -376,3 +376,27 @@ if (!$ilDB->tableColumnExists('exautoscore_assignment', 'hide_sample_solution'))
     $ilDB->addTableColumn("exautoscore_assignment", 'hide_sample_solution', $attributes);
 }
 ?>
+
+<#12>
+<?php
+// Track which correction result has already been auto-published to the ILIAS
+// member status. The auto-publish in buildSubmissionPropertiesAndActions()
+// must write each correction result exactly once — otherwise it re-asserts the
+// auto-correction verdict on every page view and overwrites feedback a tutor
+// uploaded afterwards (e.g. via status.csv).
+if (!$ilDB->tableColumnExists('exautoscore_task', 'published_return_time'))
+{
+    $ilDB->addTableColumn("exautoscore_task", 'published_return_time', array(
+        'type' => 'timestamp'
+    ));
+
+    // Backfill: treat every existing result as already published so that
+    // deploying this fix does NOT clobber existing tutor corrections one last
+    // time on the next page view. Trade-off: auto-points of pre-existing, not
+    // yet published submissions won't auto-appear; recoverable via re-correction
+    // ("Alle Abgaben korrigieren") or manual grading.
+    $ilDB->manipulate(
+        "UPDATE exautoscore_task SET published_return_time = return_time WHERE return_time IS NOT NULL"
+    );
+}
+?>

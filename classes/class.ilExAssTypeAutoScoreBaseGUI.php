@@ -250,43 +250,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         return $sub->hasSubmitted();
     }
 
-    /**
-     * Compute the target ILIAS member status (status + mark) that
-     * ilExAutoScoreTask::updateMemberStatus() would write for the given task.
-     *
-     * Used to make the auto-publish guard idempotent: if the current member status
-     * already equals the target, calling updateMemberStatus() would be a no-op and
-     * we must not trigger a redirect (otherwise the page redirects to itself forever).
-     *
-     * Mirrors the logic of ilExAutoScoreTask::updateMemberStatus() (without writing).
-     *
-     * @return array{status: string, mark: string}
-     */
-    protected function computeTargetMemberStatus(
-        ilExAutoScoreTask $task,
-        ilExAutoScoreAssignment $scoreAss
-    ): array {
-        if (empty($task->getReturnTime())) {
-            return ['status' => 'notgraded', 'mark' => ''];
-        }
-
-        $points = $task->getReturnPoints();
-        $min    = $scoreAss->getMinPoints();
-
-        if (empty($min)) {
-            $status = 'notgraded';
-        } elseif ($points !== null && $points >= $min) {
-            $status = 'passed';
-        } else {
-            $status = 'failed';
-        }
-
-        return [
-            'status' => $status,
-            'mark'   => $points !== null ? (string) $points : '',
-        ];
-    }
-
     public function executeCommand(): void
     {
         global $DIC;
@@ -1364,25 +1327,23 @@ protected function downloadSubmittedFile()
                     $still_has_submission = (count($sub->getFiles()) > 0) || ($task->getSubmitSuccess() === true);
 
                     if ($has_publishable_result && $still_has_submission) {
-                        // Idempotency check: only publish (and redirect) if updateMemberStatus
-                        // would actually change something. The previous guard
-                        // (status==='notgraded' || mark==='') re-fired on every render when
-                        // updateMemberStatus could not move the state away from notgraded/empty
-                        // (e.g. min_points unset, or no return_points despite feedback HTML),
-                        // causing a too_many_redirects loop for admins on their own submission.
-                        $first_user = $affected_users[0] ?? null;
-                        if ($first_user) {
-                            require_once __DIR__ . '/models/class.ilExAutoScoreAssignment.php';
-                            $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($ass->getId());
-
-                            $target = $this->computeTargetMemberStatus($task, $scoreAss);
-                            $current = $ass->getMemberStatus($first_user);
-
-                            if ($current->getStatus() !== $target['status']
-                                || $current->getMark() !== $target['mark']) {
-                                $task->updateMemberStatus($affected_users);
-                                $did_publish = true;
-                            }
+                        // Publish each correction result EXACTLY ONCE.
+                        //
+                        // We track which result (by its return_time) was already
+                        // pushed into the ILIAS member status. Re-asserting the
+                        // auto-correction verdict on every render would:
+                        //   (a) loop+redirect forever when the verdict can't move
+                        //       the status away from notgraded/empty, and
+                        //   (b) overwrite feedback a tutor uploaded afterwards
+                        //       (e.g. via status.csv) — reported 2026-05-xx.
+                        //
+                        // Only a NEW correction (new return_time, set after a
+                        // re-submission via clearSubmissionData()) publishes again.
+                        if ($task->getReturnTime() !== $task->getPublishedReturnTime()) {
+                            $task->updateMemberStatus($affected_users);
+                            $task->setPublishedReturnTime($task->getReturnTime());
+                            $task->save();
+                            $did_publish = true;
                         }
                     }
                 }

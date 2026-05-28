@@ -423,6 +423,10 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             // - Alle Deadlines erreicht sind
             if ($all_deadlines_reached && !empty($affected_users)) {
                 $task->updateMemberStatus($affected_users);
+                // Mark this result as published so the GUI auto-publish does
+                // not re-write it later and clobber a tutor's correction.
+                $task->setPublishedReturnTime($task->getReturnTime());
+                $task->save();
             }
         } catch (Throwable $e) {
             $DIC->logger()->root()->error('ExAutoScore: Deadline check in receiveResult failed: ' . $e->getMessage());

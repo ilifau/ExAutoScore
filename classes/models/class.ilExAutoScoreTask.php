@@ -205,6 +205,18 @@ class ilExAutoScoreTask extends ActiveRecord
     protected ?string $debug_logs = null;
 
     /**
+     * Timestamp of the correction result (return_time) that has already been
+     * auto-published to the ILIAS member status. Used to publish each result
+     * exactly once and never overwrite later tutor corrections.
+     *
+     * @var string
+     * @con_has_field  true
+     * @con_fieldtype  timestamp
+     * @con_is_notnull false
+     */
+    protected ?string $published_return_time = null;
+
+    /**
      * Wrapper to declare the return type
      * @return static
      */
@@ -434,6 +446,8 @@ class ilExAutoScoreTask extends ActiveRecord
         $this->setProtectedStatus(null);
         $this->setProtectedFeedbackText(null);
         $this->setProtectedFeedbackHtml(null);
+        // New result will need to be auto-published again.
+        $this->setPublishedReturnTime(null);
     }
 
     /**
@@ -871,5 +885,21 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
     public function setDebugLogs(?string $debug_logs): void
     {
         $this->debug_logs = $debug_logs;
-    }    
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getPublishedReturnTime(): ?string
+    {
+        return $this->published_return_time;
+    }
+
+    /**
+     * @param string|null $published_return_time
+     */
+    public function setPublishedReturnTime(?string $published_return_time): void
+    {
+        $this->published_return_time = $published_return_time;
+    }
 }
