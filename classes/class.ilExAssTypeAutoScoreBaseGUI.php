@@ -250,6 +250,68 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         return $sub->hasSubmitted();
     }
 
+    /**
+     * Publish the auto-correction grade into the ILIAS member status ("Note")
+     * exactly once per correction result — and never over a value a tutor set.
+     *
+     * Shared by both trigger sides:
+     *  - the student opening their own submission (buildSubmissionPropertiesAndActions)
+     *  - a tutor opening "Abgaben und Noten" (modifySubmissionTableActions, per row)
+     *
+     * Rules (all must hold):
+     *  - the affected user's (student's) deadline has passed — viewer-independent,
+     *    so a tutor's view does not publish pre-deadline,
+     *  - a usable result exists (return_time set),
+     *  - this result was not published yet (published_return_time marker),
+     *  - the note is still EMPTY (notgraded + no mark) — so we never overwrite a
+     *    grade a tutor entered (e.g. via status.csv) or a previous auto-grade.
+     *
+     * @return bool true if a grade was actually written (caller may redirect)
+     */
+    protected function publishAutoNoteIfDue(ilExAssignment $ass, ?ilExAutoScoreTask $task): bool
+    {
+        if (!$task) {
+            return false;
+        }
+
+        $affected = $task->getAffectedUserIds();
+        if (empty($affected)) {
+            return false;
+        }
+
+        // Result must exist and not have been published yet.
+        if (empty($task->getReturnTime())) {
+            return false;
+        }
+        if ($task->getReturnTime() === $task->getPublishedReturnTime()) {
+            return false;
+        }
+
+        // Every affected user's deadline must have passed (direct check — NOT
+        // canShowAssessmentNowForUser(), which bypasses the deadline for tutors).
+        $now = time();
+        foreach ($affected as $uid) {
+            $personal_deadline  = (int) $ass->getPersonalDeadline($uid);
+            $general_deadline   = (int) ($ass->getDeadline() ?? 0);
+            $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
+            if ($effective_deadline > 0 && $now < $effective_deadline) {
+                return false;
+            }
+        }
+
+        // Only fill an EMPTY note — leave any existing value (tutor or earlier
+        // auto-grade) untouched.
+        $current = $ass->getMemberStatus($affected[0]);
+        if ($current->getStatus() !== 'notgraded' || $current->getMark() !== '') {
+            return false;
+        }
+
+        $task->updateMemberStatus($affected);
+        $task->setPublishedReturnTime($task->getReturnTime());
+        $task->save();
+        return true;
+    }
+
     public function executeCommand(): void
     {
         global $DIC;
@@ -1113,11 +1175,38 @@ protected function downloadSubmittedFile()
         }
     }
 
+    /** @var bool one-shot guard so the "please reload" banner is injected only once */
+    protected static bool $autoNoteReloadHintShown = false;
+
     public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_actions): void
     {
         global $DIC;
 
         $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
+
+        // Automatism: when a tutor opens "Abgaben und Noten", fill still-empty
+        // notes with the auto-correction grade (once per result, never over a
+        // tutor value). This hook is called per participant row, so opening the
+        // page publishes all pending notes. No redirect here (table context) —
+        // the freshly written notes show on the next render, hence the banner.
+        try {
+            $ass = $a_submission->getAssignment();
+            if ($this->publishAutoNoteIfDue($ass, $task) && !self::$autoNoteReloadHintShown) {
+                self::$autoNoteReloadHintShown = true;
+                $hint = json_encode(
+                    '<div class="alert alert-info" role="alert" style="margin:10px 0">'
+                    . htmlspecialchars($this->plugin->txt('autonote_reload_hint'))
+                    . '</div>'
+                );
+                $DIC->ui()->mainTemplate()->addOnLoadCode(
+                    "var c=document.querySelector('#il_center_col, #mainscrolldiv, .il_Center, body');"
+                    . "if(c){c.insertAdjacentHTML('afterbegin', $hint);}"
+                );
+            }
+        } catch (Throwable $e) {
+            $DIC->logger()->root()->error('ExAutoScore note auto-publish (management) failed: ' . $e->getMessage());
+        }
+
         if (!empty($task->getProtectedFeedbackHtml())) {
 
             $factory = $DIC->ui()->factory();
@@ -1301,53 +1390,12 @@ protected function downloadSubmittedFile()
         }
         // --- /SCRUB ---
 
-        // --- Auto-Publish der Core-Bewertung NACH Deadline (wenn Ergebnis vorhanden & Abgabe existiert) ---
+        // --- Auto-Publish der Core-Bewertung NACH Deadline (wenn Ergebnis vorhanden) ---
+        // Gemeinsame Regel mit der Management-Seite, siehe publishAutoNoteIfDue():
+        // genau einmal pro Ergebnis, nur in eine leere Note, nie über Tutor-Werte.
         $did_publish = false;
         try {
-            if ($task) {
-                // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
-                $affected_users = $task->getAffectedUserIds();
-
-                // Prüfe ob ALLE betroffenen User die Deadline erreicht haben
-                $all_deadlines_reached = true;
-                foreach ($affected_users as $uid) {
-                    if (!$this->canShowAssessmentNowForUser($ass, $uid)) {
-                        $all_deadlines_reached = false;
-                        break;
-                    }
-                }
-
-                if ($all_deadlines_reached) {
-                    $has_publishable_result =
-                        ($task->getReturnPoints() !== null) ||
-                        !empty($task->getProtectedFeedbackText()) ||
-                        !empty($task->getProtectedFeedbackHtml()) ||
-                        !empty($task->getReturnTime());
-
-                    $still_has_submission = (count($sub->getFiles()) > 0) || ($task->getSubmitSuccess() === true);
-
-                    if ($has_publishable_result && $still_has_submission) {
-                        // Publish each correction result EXACTLY ONCE.
-                        //
-                        // We track which result (by its return_time) was already
-                        // pushed into the ILIAS member status. Re-asserting the
-                        // auto-correction verdict on every render would:
-                        //   (a) loop+redirect forever when the verdict can't move
-                        //       the status away from notgraded/empty, and
-                        //   (b) overwrite feedback a tutor uploaded afterwards
-                        //       (e.g. via status.csv) — reported 2026-05-xx.
-                        //
-                        // Only a NEW correction (new return_time, set after a
-                        // re-submission via clearSubmissionData()) publishes again.
-                        if ($task->getReturnTime() !== $task->getPublishedReturnTime()) {
-                            $task->updateMemberStatus($affected_users);
-                            $task->setPublishedReturnTime($task->getReturnTime());
-                            $task->save();
-                            $did_publish = true;
-                        }
-                    }
-                }
-            }
+            $did_publish = $this->publishAutoNoteIfDue($ass, $task);
         } catch (Throwable $e) {
             $DIC->logger()->root()->error('ExAutoScore auto-publish after deadline failed: ' . $e->getMessage());
         }

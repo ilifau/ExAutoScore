@@ -70,14 +70,16 @@ class PublishOnceMarkerTest extends TestCase
         );
     }
 
-    public function testDbUpdateBackfillsExistingResults(): void
+    public function testDbUpdateHasNoBackfill(): void
     {
-        // Existing results must be marked as already published so deploying the
-        // fix does not clobber existing tutor corrections one last time.
-        $this->assertMatchesRegularExpression(
-            '/UPDATE exautoscore_task SET published_return_time = return_time WHERE return_time IS NOT NULL/s',
+        // The backfill was removed (2026-05-28): the "only fill empty note" rule
+        // in publishAutoNoteIfDue() protects existing tutor corrections, so
+        // marking existing results as published is unnecessary — and it would
+        // wrongly block the automatism from filling pre-existing empty notes.
+        $this->assertStringNotContainsString(
+            'UPDATE exautoscore_task SET published_return_time = return_time',
             $this->dbUpdate,
-            'dbupdate must backfill published_return_time = return_time for existing results'
+            'dbupdate must NOT backfill the marker (empty-note guard protects instead)'
         );
     }
 
@@ -118,10 +120,24 @@ class PublishOnceMarkerTest extends TestCase
 
     public function testAutoPublishUsesMarker(): void
     {
-        $this->assertMatchesRegularExpression(
-            '/if \(\$task->getReturnTime\(\) !== \$task->getPublishedReturnTime\(\)\)\s*\{\s*\$task->updateMemberStatus\(\$affected_users\);\s*\$task->setPublishedReturnTime\(\$task->getReturnTime\(\)\);\s*\$task->save\(\);\s*\$did_publish = true;/s',
+        // Since 2026-05 the marker logic lives in the shared helper
+        // publishAutoNoteIfDue() (see AutoNoteToGradesTest). The student-side
+        // auto-publish delegates to it. Here we only assert the marker is still
+        // the gate: skip when already published, set it after publishing.
+        $this->assertStringContainsString(
+            'if ($task->getReturnTime() === $task->getPublishedReturnTime()) {',
             $this->baseGui,
-            'Auto-publish must publish only when return_time != published_return_time and then set the marker'
+            'Marker must gate publishing (skip when already published)'
+        );
+        $this->assertStringContainsString(
+            '$task->setPublishedReturnTime($task->getReturnTime());',
+            $this->baseGui,
+            'Marker must be set after publishing'
+        );
+        $this->assertStringContainsString(
+            '$did_publish = $this->publishAutoNoteIfDue($ass, $task);',
+            $this->baseGui,
+            'Student-side must delegate to the shared helper'
         );
     }
 

@@ -109,7 +109,7 @@ please_send_assignment#:#Bitte richten Sie die Korrektur ein!
 please_send_assignment_and_tasks#:#Bitte richten Sie die Korrektur ein und korrigieren Sie alle Abgaben!
 please_send_tasks#:#Bitte korrigieren Sie alle Abgaben!
 send_all_tasks#:#Alle Abgaben korrigieren
-confirm_send_all_tasks#:#Möchten Sie alle Abgaben an den Korrekturservice senden?
+confirm_send_all_tasks#:#Möchten Sie alle Abgaben erneut an den Korrekturservice senden? Achtung: Die vorhandenen Noten dieser Übungseinheit (auch manuell gesetzte) werden dabei zurückgesetzt und nach erfolgter Neukorrektur durch die automatischen Noten ersetzt.
 send#:#Senden
 all_tasks_sent#:#Alle Abgaben wurden an den Korrekturservice gesandt.
 tar_command#:#Pack-Kommando
@@ -142,3 +142,4 @@ file_not_found#:#Die Datei wurde nicht gefunden oder existiert nicht mehr.
 file_not_found_debug#:#Die Datei "%s" (ID: %s) wurde nicht gefunden. Fehler: %s. Prüfen Sie das ILIAS-Log für detaillierte Debug-Informationen.
 hide_sample_solution#:#Musterlösung in der Übersicht ausblenden
 hide_sample_solution_info#:#Wenn aktiviert, werden die Musterlösungs-Dateien in der Übungs-Übersicht und im Abgabe-Feedback niemals angezeigt — unabhängig von der Abgabefrist.
+autonote_reload_hint#:#Es wurden automatische Korrektur-Noten in die Bewertung übernommen. Bitte laden Sie die Seite einmal neu, damit alle Noten angezeigt werden.

@@ -116,7 +116,7 @@ please_send_assignment#:#Please set up the grading!
 please_send_assignment_and_tasks#:#Please set up the grading and grade all submissions!
 please_send_tasks#:#Please grade all submissions!
 send_all_tasks#:#Grade All Submissions
-confirm_send_all_tasks#:#Do you want to send all submissions to the grading service?
+confirm_send_all_tasks#:#Do you want to re-send all submissions to the grading service? Note: the existing grades of this assignment (including manually set ones) will be reset and replaced by the automatic grades after re-correction.
 send#:#Send
 all_tasks_sent#:#All submissions have been sent to the grading service.
 tar_command#:#Pack Command
@@ -142,3 +142,4 @@ file_not_found#:#The file was not found or no longer exists.
 file_not_found_debug#:#The file "%s" (ID: %s) was not found. Error: %s. Check the ILIAS log for detailed debug information.
 hide_sample_solution#:#Hide sample solution in overview
 hide_sample_solution_info#:#When enabled, the sample solution files are never shown in the exercise overview or submission feedback — regardless of the submission deadline.
+autonote_reload_hint#:#Automatic correction grades were added to the assessment. Please reload the page once so all grades are shown.

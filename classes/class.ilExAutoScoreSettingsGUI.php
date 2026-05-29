@@ -477,6 +477,14 @@ class ilExAutoScoreSettingsGUI
 
        foreach ($submissions as $submission) {
            if ($submission->hasSubmitted()) {
+               // Full redo: reset the ILIAS member status (status/mark/comment)
+               // BEFORE re-sending, so the fresh auto-grade flows back into an
+               // empty note. force=true clears regardless of deadline. This also
+               // resets the published-marker (via clearSubmissionData in
+               // sendSubmission), so the new result will be auto-published again.
+               $task = ilExAutoScoreTask::getSubmissionTask($submission);
+               $task->updateMemberStatus([], true);
+
                $connector->sendSubmission($submission, $DIC->user());
            }
        }
