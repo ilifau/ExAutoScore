@@ -270,46 +270,10 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
      */
     protected function publishAutoNoteIfDue(ilExAssignment $ass, ?ilExAutoScoreTask $task): bool
     {
-        if (!$task) {
-            return false;
-        }
-
-        $affected = $task->getAffectedUserIds();
-        if (empty($affected)) {
-            return false;
-        }
-
-        // Result must exist and not have been published yet.
-        if (empty($task->getReturnTime())) {
-            return false;
-        }
-        if ($task->getReturnTime() === $task->getPublishedReturnTime()) {
-            return false;
-        }
-
-        // Every affected user's deadline must have passed (direct check — NOT
-        // canShowAssessmentNowForUser(), which bypasses the deadline for tutors).
-        $now = time();
-        foreach ($affected as $uid) {
-            $personal_deadline  = (int) $ass->getPersonalDeadline($uid);
-            $general_deadline   = (int) ($ass->getDeadline() ?? 0);
-            $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
-            if ($effective_deadline > 0 && $now < $effective_deadline) {
-                return false;
-            }
-        }
-
-        // Only fill an EMPTY note — leave any existing value (tutor or earlier
-        // auto-grade) untouched.
-        $current = $ass->getMemberStatus($affected[0]);
-        if ($current->getStatus() !== 'notgraded' || $current->getMark() !== '') {
-            return false;
-        }
-
-        $task->updateMemberStatus($affected);
-        $task->setPublishedReturnTime($task->getReturnTime());
-        $task->save();
-        return true;
+        // Single source of truth lives in the model so the GUI, the management
+        // table and the async service callback (receiveResult) all behave
+        // identically. See ilExAutoScoreTask::publishToMemberStatusIfDue().
+        return $task ? $task->publishToMemberStatusIfDue($ass) : false;
     }
 
     public function executeCommand(): void
@@ -1175,8 +1139,8 @@ protected function downloadSubmittedFile()
         }
     }
 
-    /** @var bool one-shot guard so the "please reload" banner is injected only once */
-    protected static bool $autoNoteReloadHintShown = false;
+    /** @var int[] assignment ids whose auto-notes were already bulk-published in this request */
+    protected static array $autoNoteBulkDone = [];
 
     public function modifySubmissionTableActions(ilExSubmission $a_submission, &$a_actions): void
     {
@@ -1185,23 +1149,36 @@ protected function downloadSubmittedFile()
         $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
 
         // Automatism: when a tutor opens "Abgaben und Noten", fill still-empty
-        // notes with the auto-correction grade (once per result, never over a
-        // tutor value). This hook is called per participant row, so opening the
-        // page publishes all pending notes. No redirect here (table context) —
-        // the freshly written notes show on the next render, hence the banner.
+        // notes with the auto-correction grade. This hook fires per rendered
+        // row — but pagination/filters would then miss rows. So on the FIRST
+        // call for an assignment we publish ALL of its tasks in one bulk pass
+        // (covers every submission regardless of which rows are shown), guarded
+        // per assignment so it runs only once per request. publishToMemberStatusIfDue()
+        // is idempotent (marker + empty-note + deadline + non-null points), so a
+        // tutor grade is never overwritten. No redirect here (table context) —
+        // freshly written notes show on the next render, hence the banner.
         try {
             $ass = $a_submission->getAssignment();
-            if ($this->publishAutoNoteIfDue($ass, $task) && !self::$autoNoteReloadHintShown) {
-                self::$autoNoteReloadHintShown = true;
-                $hint = json_encode(
-                    '<div class="alert alert-info" role="alert" style="margin:10px 0">'
-                    . htmlspecialchars($this->plugin->txt('autonote_reload_hint'))
-                    . '</div>'
-                );
-                $DIC->ui()->mainTemplate()->addOnLoadCode(
-                    "var c=document.querySelector('#il_center_col, #mainscrolldiv, .il_Center, body');"
-                    . "if(c){c.insertAdjacentHTML('afterbegin', $hint);}"
-                );
+            $ass_id = (int) $ass->getId();
+            if (!in_array($ass_id, self::$autoNoteBulkDone, true)) {
+                self::$autoNoteBulkDone[] = $ass_id;
+                $published_any = false;
+                foreach (ilExAutoScoreTask::getForAssignment($ass_id) as $t) {
+                    if ($t->publishToMemberStatusIfDue($ass)) {
+                        $published_any = true;
+                    }
+                }
+                if ($published_any) {
+                    $hint = json_encode(
+                        '<div class="alert alert-info" role="alert" style="margin:10px 0">'
+                        . htmlspecialchars($this->plugin->txt('autonote_reload_hint'))
+                        . '</div>'
+                    );
+                    $DIC->ui()->mainTemplate()->addOnLoadCode(
+                        "var c=document.querySelector('#il_center_col, #mainscrolldiv, .il_Center, body');"
+                        . "if(c){c.insertAdjacentHTML('afterbegin', $hint);}"
+                    );
+                }
             }
         } catch (Throwable $e) {
             $DIC->logger()->root()->error('ExAutoScore note auto-publish (management) failed: ' . $e->getMessage());

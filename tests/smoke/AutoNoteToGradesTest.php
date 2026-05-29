@@ -23,114 +23,131 @@ class AutoNoteToGradesTest extends TestCase
     private $baseGui;
     /** @var string */
     private $settingsGui;
+    /** @var string */
+    private $taskModel;
+    /** @var string */
+    private $connector;
 
     protected function setUp(): void
     {
         $base = __DIR__ . '/../../classes/class.ilExAssTypeAutoScoreBaseGUI.php';
         $set  = __DIR__ . '/../../classes/class.ilExAutoScoreSettingsGUI.php';
-        $this->assertFileExists($base);
-        $this->assertFileExists($set);
+        $task = __DIR__ . '/../../classes/models/class.ilExAutoScoreTask.php';
+        $conn = __DIR__ . '/../../classes/class.ilExAutoScoreConnector.php';
+        foreach ([$base, $set, $task, $conn] as $f) {
+            $this->assertFileExists($f);
+        }
         $this->baseGui     = file_get_contents($base);
         $this->settingsGui = file_get_contents($set);
+        $this->taskModel   = file_get_contents($task);
+        $this->connector   = file_get_contents($conn);
     }
 
     // -------------------------------------------------------------------
-    // Shared helper
+    // Single source of truth: ilExAutoScoreTask::publishToMemberStatusIfDue()
     // -------------------------------------------------------------------
 
-    public function testHelperExists(): void
+    public function testModelMethodExists(): void
     {
         $this->assertStringContainsString(
-            'protected function publishAutoNoteIfDue(ilExAssignment $ass, ?ilExAutoScoreTask $task): bool',
-            $this->baseGui,
-            'Shared helper publishAutoNoteIfDue() must exist'
+            'public function publishToMemberStatusIfDue(ilExAssignment $ass): bool',
+            $this->taskModel,
+            'The shared publish rule must live in the Task model'
         );
     }
 
-    public function testHelperRequiresUnpublishedResult(): void
+    public function testModelRequiresScoredUnpublishedResult(): void
     {
-        // return_time must exist and differ from published_return_time (marker).
+        // Must have return_time AND non-null points (no auto-fail on build/no-score),
+        // and must not be published yet (marker).
         $this->assertStringContainsString(
-            'if (empty($task->getReturnTime())) {',
-            $this->baseGui
+            'if (empty($this->getReturnTime()) || $this->getReturnPoints() === null) {',
+            $this->taskModel,
+            'Must require a non-null score (return_points) — fix B'
         );
         $this->assertStringContainsString(
-            'if ($task->getReturnTime() === $task->getPublishedReturnTime()) {',
-            $this->baseGui,
-            'Helper must skip when the result was already published (marker)'
+            'if ($this->getReturnTime() === $this->getPublishedReturnTime()) {',
+            $this->taskModel,
+            'Must skip when already published (marker)'
         );
     }
 
-    public function testHelperChecksAffectedUserDeadlineDirectly(): void
+    public function testModelChecksEveryAffectedUserDeadlineAndEmptyNote(): void
     {
-        // Viewer-independent deadline check (NOT canShowAssessmentNowForUser).
+        // ONE loop over all affected users: deadline must have passed AND each
+        // member's note must be empty (fix C — not just affected[0]).
         $this->assertMatchesRegularExpression(
-            '/foreach \(\$affected as \$uid\) \{.*?\$ass->getPersonalDeadline\(\$uid\).*?\$now < \$effective_deadline.*?return false;/s',
-            $this->baseGui,
-            'Helper must check each affected user\'s real deadline'
+            '/foreach \(\$affected as \$uid\) \{.*?\$ass->getPersonalDeadline\(\$uid\).*?\$now < \$effective_deadline.*?return false;.*?\$ms = \$ass->getMemberStatus\(\$uid\);.*?\$ms->getStatus\(\) !== \'notgraded\' \|\| \$ms->getMark\(\) !== \'\'.*?return false;/s',
+            $this->taskModel,
+            'Must check deadline AND empty note for EVERY affected user'
         );
     }
 
-    public function testHelperOnlyFillsEmptyNote(): void
+    public function testModelWritesThenMarksThenSaves(): void
     {
         $this->assertMatchesRegularExpression(
-            '/if \(\$current->getStatus\(\) !== \'notgraded\' \|\| \$current->getMark\(\) !== \'\'\) \{\s*return false;/s',
-            $this->baseGui,
-            'Helper must leave a non-empty note (tutor/earlier auto) untouched'
-        );
-    }
-
-    public function testHelperSetsMarkerAfterPublish(): void
-    {
-        $this->assertMatchesRegularExpression(
-            '/\$task->updateMemberStatus\(\$affected\);\s*\$task->setPublishedReturnTime\(\$task->getReturnTime\(\)\);\s*\$task->save\(\);\s*return true;/s',
-            $this->baseGui,
-            'Helper must write the grade, set the marker, save, and report success'
+            '/\$this->updateMemberStatus\(\$affected\);\s*\$this->setPublishedReturnTime\(\$this->getReturnTime\(\)\);\s*\$this->save\(\);\s*return true;/s',
+            $this->taskModel,
+            'On publish: write grade, set marker, save, report success'
         );
     }
 
     // -------------------------------------------------------------------
-    // Both sides use the shared helper
+    // All three call sites delegate to the model method
     // -------------------------------------------------------------------
+
+    public function testGuiHelperDelegatesToModel(): void
+    {
+        $this->assertStringContainsString(
+            'return $task ? $task->publishToMemberStatusIfDue($ass) : false;',
+            $this->baseGui,
+            'GUI helper must delegate to the model method'
+        );
+    }
 
     public function testStudentSideUsesHelper(): void
     {
         $this->assertStringContainsString(
             '$did_publish = $this->publishAutoNoteIfDue($ass, $task);',
             $this->baseGui,
-            'Student-side auto-publish must delegate to the shared helper'
-        );
-        // The old inline idempotency/marker block must be gone from the student side.
-        $this->assertStringNotContainsString(
-            'if ($task->getReturnTime() !== $task->getPublishedReturnTime()) {',
-            $this->baseGui,
-            'The old inline marker block must be replaced by the helper'
+            'Student-side auto-publish must call the helper'
         );
     }
 
-    public function testManagementSideUsesHelperAndBanner(): void
+    public function testReceiveResultUsesModelMethod(): void
     {
-        // modifySubmissionTableActions publishes per row and injects a one-shot
-        // "please reload" banner.
-        $this->assertMatchesRegularExpression(
-            '/modifySubmissionTableActions\([^)]*\): void\s*\{.*?publishAutoNoteIfDue\(\$ass, \$task\)/s',
-            $this->baseGui,
-            'modifySubmissionTableActions must call the shared helper'
-        );
+        // The connector path must use the SAME rule (fix A: no more unguarded
+        // updateMemberStatus that could clobber a tutor grade).
         $this->assertStringContainsString(
-            'autoNoteReloadHintShown',
+            '$task->publishToMemberStatusIfDue($assignment);',
+            $this->connector,
+            'receiveResult must publish through the shared model method'
+        );
+    }
+
+    public function testManagementSideBulkPublishesAllTasks(): void
+    {
+        // Fix D: on the first row for an assignment, publish ALL of its tasks
+        // (not just rendered rows), guarded once per request, then the banner.
+        $this->assertStringContainsString(
+            'self::$autoNoteBulkDone',
             $this->baseGui,
-            'A one-shot guard for the reload banner must exist'
+            'Management side must guard the bulk pass per assignment'
+        );
+        $this->assertMatchesRegularExpression(
+            '/foreach \(ilExAutoScoreTask::getForAssignment\(\$ass_id\) as \$t\) \{\s*if \(\$t->publishToMemberStatusIfDue\(\$ass\)\)/s',
+            $this->baseGui,
+            'Management side must bulk-publish all assignment tasks'
         );
         $this->assertStringContainsString(
             "\$this->plugin->txt('autonote_reload_hint')",
             $this->baseGui,
-            'The reload banner must use the autonote_reload_hint lang string'
+            'Reload banner must use the autonote_reload_hint lang string'
         );
         $this->assertStringContainsString(
             'addOnLoadCode',
             $this->baseGui,
-            'The banner is injected via addOnLoadCode (consistent with existing pattern)'
+            'Banner injected via addOnLoadCode'
         );
     }
 

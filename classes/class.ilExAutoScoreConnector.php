@@ -392,44 +392,15 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
 
         $task->save();
 
-        // Prüfe ob Deadline bereits erreicht ist und schreibe ggf. sofort
+        // If the deadline has already passed when the result arrives, publish
+        // it directly — through the SAME shared rule as the GUI triggers, so a
+        // tutor grade entered before this (delayed) callback is never
+        // overwritten and no-score/build-error results are not auto-failed.
         try {
             $assignment = new ilExAssignment($task->getAssignmentId());
-
-            // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
-            $affected_users = $task->getAffectedUserIds();
-
-            // Prüfe ob ALLE Deadlines erreicht sind (oder keine Deadline gesetzt ist)
-            $all_deadlines_reached = true;
-            $has_any_deadline = false;
-            $now = time();
-
-            foreach ($affected_users as $uid) {
-                $personal_deadline = (int) $assignment->getPersonalDeadline($uid);
-                $general_deadline = (int) ($assignment->getDeadline() ?? 0);
-                $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
-
-                if ($effective_deadline > 0) {
-                    $has_any_deadline = true;
-                    if ($now < $effective_deadline) {
-                        $all_deadlines_reached = false;
-                        break;
-                    }
-                }
-            }
-
-            // Bewertung schreiben wenn:
-            // - Keine Deadline gesetzt ist (sofort sichtbar) ODER
-            // - Alle Deadlines erreicht sind
-            if ($all_deadlines_reached && !empty($affected_users)) {
-                $task->updateMemberStatus($affected_users);
-                // Mark this result as published so the GUI auto-publish does
-                // not re-write it later and clobber a tutor's correction.
-                $task->setPublishedReturnTime($task->getReturnTime());
-                $task->save();
-            }
+            $task->publishToMemberStatusIfDue($assignment);
         } catch (Throwable $e) {
-            $DIC->logger()->root()->error('ExAutoScore: Deadline check in receiveResult failed: ' . $e->getMessage());
+            $DIC->logger()->root()->error('ExAutoScore: auto-publish in receiveResult failed: ' . $e->getMessage());
         }
 
         $this->saveFeedbackFiles($task, $files);

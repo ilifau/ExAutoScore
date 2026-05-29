@@ -738,6 +738,67 @@ class ilExAutoScoreTask extends ActiveRecord
         return [];
     }
 
+    /**
+     * Publish the auto-correction grade into the ILIAS member status ("Note")
+     * exactly once per correction result — and never over a value somebody
+     * (tutor / manual / earlier auto) already set.
+     *
+     * Single source of truth for ALL auto-publish triggers:
+     *  - the student opening their submission (GUI),
+     *  - a tutor opening "Abgaben und Noten" (GUI, per assignment),
+     *  - the asynchronous service callback (ilExAutoScoreConnector::receiveResult()).
+     *
+     * Conditions (all must hold):
+     *  - there are affected users,
+     *  - a usable result exists: return_time set AND return_points is not null
+     *    (a build error / no-score callback sets return_time without points — we
+     *    must NOT auto-mark such submissions as 'failed'),
+     *  - this exact result was not published yet (published_return_time marker),
+     *  - EVERY affected user's deadline has passed (viewer-independent),
+     *  - EVERY affected user's note is still empty (notgraded + no mark) — so a
+     *    grade a tutor entered on ANY member (teams!) is never overwritten.
+     *
+     * @return bool true if a grade was actually written
+     */
+    public function publishToMemberStatusIfDue(ilExAssignment $ass): bool
+    {
+        $affected = $this->getAffectedUserIds();
+        if (empty($affected)) {
+            return false;
+        }
+
+        // Result must exist, must carry a score, and must not be published yet.
+        if (empty($this->getReturnTime()) || $this->getReturnPoints() === null) {
+            return false;
+        }
+        if ($this->getReturnTime() === $this->getPublishedReturnTime()) {
+            return false;
+        }
+
+        $now = time();
+        foreach ($affected as $uid) {
+            // Deadline of the affected user (NOT the viewer) must have passed.
+            $personal_deadline  = (int) $ass->getPersonalDeadline($uid);
+            $general_deadline   = (int) ($ass->getDeadline() ?? 0);
+            $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
+            if ($effective_deadline > 0 && $now < $effective_deadline) {
+                return false;
+            }
+
+            // Note must be empty for EVERY affected member — protects a tutor
+            // grade set on any member of a team, not just the first one.
+            $ms = $ass->getMemberStatus($uid);
+            if ($ms->getStatus() !== 'notgraded' || $ms->getMark() !== '') {
+                return false;
+            }
+        }
+
+        $this->updateMemberStatus($affected);
+        $this->setPublishedReturnTime($this->getReturnTime());
+        $this->save();
+        return true;
+    }
+
 /**
  * Update the assignment status of the related exercise members (user or team)
  * this must be done if the submission data changes

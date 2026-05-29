@@ -120,24 +120,22 @@ class PublishOnceMarkerTest extends TestCase
 
     public function testAutoPublishUsesMarker(): void
     {
-        // Since 2026-05 the marker logic lives in the shared helper
-        // publishAutoNoteIfDue() (see AutoNoteToGradesTest). The student-side
-        // auto-publish delegates to it. Here we only assert the marker is still
-        // the gate: skip when already published, set it after publishing.
+        // The marker logic now lives in ilExAutoScoreTask::publishToMemberStatusIfDue()
+        // (single source of truth, see AutoNoteToGradesTest). The GUI delegates.
         $this->assertStringContainsString(
-            'if ($task->getReturnTime() === $task->getPublishedReturnTime()) {',
-            $this->baseGui,
-            'Marker must gate publishing (skip when already published)'
+            'if ($this->getReturnTime() === $this->getPublishedReturnTime()) {',
+            $this->taskModel,
+            'Marker must gate publishing in the model (skip when already published)'
         );
         $this->assertStringContainsString(
-            '$task->setPublishedReturnTime($task->getReturnTime());',
-            $this->baseGui,
-            'Marker must be set after publishing'
+            '$this->setPublishedReturnTime($this->getReturnTime());',
+            $this->taskModel,
+            'Marker must be set after publishing in the model'
         );
         $this->assertStringContainsString(
             '$did_publish = $this->publishAutoNoteIfDue($ass, $task);',
             $this->baseGui,
-            'Student-side must delegate to the shared helper'
+            'Student-side must delegate to the GUI helper'
         );
     }
 
@@ -172,18 +170,23 @@ class PublishOnceMarkerTest extends TestCase
     }
 
     // -------------------------------------------------------------------
-    // receiveResult must set the marker too
+    // receiveResult publishes through the shared model method
     // -------------------------------------------------------------------
 
-    public function testReceiveResultSetsMarker(): void
+    public function testReceiveResultUsesSharedMethod(): void
     {
-        // When the result arrives and the deadline is already reached,
-        // receiveResult publishes directly — and must set the marker so the GUI
-        // does not re-publish (and clobber a later tutor correction).
-        $this->assertMatchesRegularExpression(
-            '/\$task->updateMemberStatus\(\$affected_users\);.*?\$task->setPublishedReturnTime\(\$task->getReturnTime\(\)\);\s*\$task->save\(\);/s',
+        // receiveResult must go through publishToMemberStatusIfDue() (which sets
+        // the marker + guards empty note / non-null points) instead of an
+        // unguarded updateMemberStatus that could clobber a tutor grade.
+        $this->assertStringContainsString(
+            '$task->publishToMemberStatusIfDue($assignment);',
             $this->connector,
-            'receiveResult() must set published_return_time after publishing'
+            'receiveResult() must publish via the shared model method'
+        );
+        $this->assertStringNotContainsString(
+            '$task->updateMemberStatus($affected_users);',
+            $this->connector,
+            'The old unguarded updateMemberStatus call must be gone from receiveResult'
         );
     }
 }
