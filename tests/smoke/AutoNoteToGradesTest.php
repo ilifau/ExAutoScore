@@ -135,17 +135,32 @@ class AutoNoteToGradesTest extends TestCase
             'Management side must guard the bulk pass per assignment'
         );
         $this->assertMatchesRegularExpression(
-            '/foreach \(ilExAutoScoreTask::getForAssignment\(\$ass_id\) as \$t\) \{\s*\$t->publishToMemberStatusIfDue\(\$ass\);/s',
+            '/foreach \(ilExAutoScoreTask::getForAssignment\(\$ass_id\) as \$t\) \{\s*if \(\$t->publishToMemberStatusIfDue\(\$ass\)\)/s',
             $this->baseGui,
             'Management side must bulk-publish all assignment tasks'
         );
-        // The "please reload" banner was REMOVED: injecting it via addOnLoadCode
-        // broke the ExerciseStatusFile multi-feedback button's JS. The management
-        // path must not reference the banner lang string anymore.
-        $this->assertStringNotContainsString(
-            "\$this->plugin->txt('autonote_reload_hint')",
+    }
+
+    public function testManagementHintUsesSafeOnScreenMessageNotRawJs(): void
+    {
+        // The hint must use the ILIAS-native on-screen message — NOT addOnLoadCode,
+        // whose raw-JS injection broke the ExerciseStatusFile multi-feedback button.
+        $this->assertMatchesRegularExpression(
+            '/setOnScreenMessage\(\s*\'info\',\s*\$this->plugin->txt\(\'autonote_reload_hint\'\)/s',
             $this->baseGui,
-            'The JS reload banner must NOT be injected (it broke other plugin JS)'
+            'Management hint must use setOnScreenMessage(info, autonote_reload_hint)'
+        );
+        // No addOnLoadCode in the bulk/hint block (the only addOnLoadCode left is
+        // the pre-existing feedback-modal injection, further down in the method).
+        $bulk = substr(
+            $this->baseGui,
+            (int) strpos($this->baseGui, 'self::$autoNoteBulkDone[] = $ass_id;'),
+            300
+        );
+        $this->assertStringNotContainsString(
+            'addOnLoadCode',
+            $bulk,
+            'The auto-note hint must not use addOnLoadCode (raw JS conflict)'
         );
     }
 

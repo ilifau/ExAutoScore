@@ -1157,17 +1157,28 @@ protected function downloadSubmittedFile()
         // is idempotent (marker + empty-note + deadline + non-null points), so a
         // tutor grade is never overwritten.
         //
-        // No JS / addOnLoadCode here on purpose: a previous "please reload"
-        // banner injected via addOnLoadCode broke the JS of the ExerciseStatusFile
-        // multi-feedback button (concatenated onLoad code). The freshly written
-        // notes simply show on the next table render — no banner needed.
+        // Hint via the ILIAS-native on-screen message (NOT addOnLoadCode):
+        // a previous raw-JS banner broke the ExerciseStatusFile multi-feedback
+        // button's JS (concatenated onLoad code). setOnScreenMessage renders in
+        // the standard message area of this request — no JS, no plugin conflict.
+        // The freshly written notes show on the next table render (the table
+        // reads its data before this per-row hook fires), hence the hint.
         try {
             $ass = $a_submission->getAssignment();
             $ass_id = (int) $ass->getId();
             if (!in_array($ass_id, self::$autoNoteBulkDone, true)) {
                 self::$autoNoteBulkDone[] = $ass_id;
+                $published_any = false;
                 foreach (ilExAutoScoreTask::getForAssignment($ass_id) as $t) {
-                    $t->publishToMemberStatusIfDue($ass);
+                    if ($t->publishToMemberStatusIfDue($ass)) {
+                        $published_any = true;
+                    }
+                }
+                if ($published_any) {
+                    $DIC->ui()->mainTemplate()->setOnScreenMessage(
+                        'info',
+                        $this->plugin->txt('autonote_reload_hint')
+                    );
                 }
             }
         } catch (Throwable $e) {
