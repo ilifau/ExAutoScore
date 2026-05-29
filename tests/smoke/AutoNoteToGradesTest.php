@@ -128,26 +128,24 @@ class AutoNoteToGradesTest extends TestCase
     public function testManagementSideBulkPublishesAllTasks(): void
     {
         // Fix D: on the first row for an assignment, publish ALL of its tasks
-        // (not just rendered rows), guarded once per request, then the banner.
+        // (not just rendered rows), guarded once per request.
         $this->assertStringContainsString(
             'self::$autoNoteBulkDone',
             $this->baseGui,
             'Management side must guard the bulk pass per assignment'
         );
         $this->assertMatchesRegularExpression(
-            '/foreach \(ilExAutoScoreTask::getForAssignment\(\$ass_id\) as \$t\) \{\s*if \(\$t->publishToMemberStatusIfDue\(\$ass\)\)/s',
+            '/foreach \(ilExAutoScoreTask::getForAssignment\(\$ass_id\) as \$t\) \{\s*\$t->publishToMemberStatusIfDue\(\$ass\);/s',
             $this->baseGui,
             'Management side must bulk-publish all assignment tasks'
         );
-        $this->assertStringContainsString(
+        // The "please reload" banner was REMOVED: injecting it via addOnLoadCode
+        // broke the ExerciseStatusFile multi-feedback button's JS. The management
+        // path must not reference the banner lang string anymore.
+        $this->assertStringNotContainsString(
             "\$this->plugin->txt('autonote_reload_hint')",
             $this->baseGui,
-            'Reload banner must use the autonote_reload_hint lang string'
-        );
-        $this->assertStringContainsString(
-            'addOnLoadCode',
-            $this->baseGui,
-            'Banner injected via addOnLoadCode'
+            'The JS reload banner must NOT be injected (it broke other plugin JS)'
         );
     }
 

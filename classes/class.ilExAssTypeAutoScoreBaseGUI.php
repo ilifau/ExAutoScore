@@ -1155,29 +1155,19 @@ protected function downloadSubmittedFile()
         // (covers every submission regardless of which rows are shown), guarded
         // per assignment so it runs only once per request. publishToMemberStatusIfDue()
         // is idempotent (marker + empty-note + deadline + non-null points), so a
-        // tutor grade is never overwritten. No redirect here (table context) —
-        // freshly written notes show on the next render, hence the banner.
+        // tutor grade is never overwritten.
+        //
+        // No JS / addOnLoadCode here on purpose: a previous "please reload"
+        // banner injected via addOnLoadCode broke the JS of the ExerciseStatusFile
+        // multi-feedback button (concatenated onLoad code). The freshly written
+        // notes simply show on the next table render — no banner needed.
         try {
             $ass = $a_submission->getAssignment();
             $ass_id = (int) $ass->getId();
             if (!in_array($ass_id, self::$autoNoteBulkDone, true)) {
                 self::$autoNoteBulkDone[] = $ass_id;
-                $published_any = false;
                 foreach (ilExAutoScoreTask::getForAssignment($ass_id) as $t) {
-                    if ($t->publishToMemberStatusIfDue($ass)) {
-                        $published_any = true;
-                    }
-                }
-                if ($published_any) {
-                    $hint = json_encode(
-                        '<div class="alert alert-info" role="alert" style="margin:10px 0">'
-                        . htmlspecialchars($this->plugin->txt('autonote_reload_hint'))
-                        . '</div>'
-                    );
-                    $DIC->ui()->mainTemplate()->addOnLoadCode(
-                        "var c=document.querySelector('#il_center_col, #mainscrolldiv, .il_Center, body');"
-                        . "if(c){c.insertAdjacentHTML('afterbegin', $hint);}"
-                    );
+                    $t->publishToMemberStatusIfDue($ass);
                 }
             }
         } catch (Throwable $e) {
