@@ -136,9 +136,10 @@ class ilExAutoScoreConnector
         $timeout = (int) $this->config->get('service_timeout');
 
         $post = [];
+        $post['api_key'] = $this->config->get('service_api_key');
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
-        
+
         // Debug-Modus mitschicken
         $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
         $post['debug_mode'] = $debugEnabled ? 'true' : 'false';
@@ -183,6 +184,7 @@ class ilExAutoScoreConnector
         $timeout = (int) $this->config->get('service_timeout');
 
         $post = [];
+        $post['api_key'] = $this->config->get('service_api_key');
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
 
