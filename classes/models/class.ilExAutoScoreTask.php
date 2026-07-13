@@ -6,12 +6,79 @@ declare(strict_types=1);
 class ilExAutoScoreTask extends ActiveRecord
 {
     /**
+     * Column widths of the free-text fields that a grading script fills via
+     * results.json. It can write anything there, and an oversized value must
+     * never reach the DB: MySQL aborts the INSERT, the result callback dies
+     * with a 500, and the whole result (points, feedback, debug logs) is lost
+     * without a trace. These fields are display-only, so cutting them is safe.
+     * Key columns (uuid) are deliberately NOT covered — see setUuid().
+     */
+    public const MAX_STATUS_LENGTH = 10;
+    public const MAX_MESSAGE_LENGTH = 4000;
+    public const MAX_SUBMIT_MESSAGE_LENGTH = 250;
+
+    /**
      * Override: name of the database table
      * @var string
      */
     public static function returnDbTableName(): string
     {
         return 'exautoscore_task';
+    }
+
+    /**
+     * Truncation notices collected by fitToColumn(), flushed into debug_logs on save().
+     * Not a DB field.
+     * @var string[]
+     */
+    protected array $truncations = [];
+
+    /**
+     * Cut a service-supplied value to its column width, loudly.
+     */
+    protected function fitToColumn(?string $value, int $max, string $field): ?string
+    {
+        if ($value === null || mb_strlen($value) <= $max) {
+            return $value;
+        }
+
+        $message = 'Wert für "' . $field . '" war zu lang (max. ' . $max
+            . ' Zeichen, geliefert: ' . mb_strlen($value) . ') und wurde gekürzt.'
+            . "\n  Gesendet: " . mb_substr($value, 0, 200);
+
+        // Shown to the tutor in the debug-logs modal — nobody reads the ILIAS log.
+        $this->truncations[] = $message;
+
+        // Setters also run from CLI/test contexts where $DIC is not booted, and
+        // this is the failure path — it must not fail itself.
+        global $DIC;
+        if (isset($DIC) && $DIC->offsetExists('ilLoggerFactory')) {
+            $DIC->logger()->root()->warning('[ExAutoScore] ' . $message);
+        } else {
+            error_log('[ExAutoScore] ' . $message);
+        }
+
+        return mb_substr($value, 0, $max);
+    }
+
+    /**
+     * Flush pending truncation notices into debug_logs, so a malformed
+     * results.json explains itself where the tutor already looks.
+     */
+    public function save(): void
+    {
+        if (!empty($this->truncations)) {
+            $notice = "=== Hinweise zur Rückmeldung des Korrektur-Skripts ===\n"
+                . implode("\n", $this->truncations)
+                . "\nDie Status-Felder (instant_status, protected_status) erwarten ein"
+                . " kurzes Schlüsselwort wie passed/failed/partial; ausführlicher Text"
+                . " gehört in instant_message bzw. protected_feedback_text.\n";
+
+            $this->setDebugLogs(trim($notice . "\n" . (string) $this->getDebugLogs()));
+            $this->truncations = [];
+        }
+
+        parent::save();
     }
 
     /**
@@ -495,6 +562,11 @@ class ilExAutoScoreTask extends ActiveRecord
      */
     public function setUuid(?string $uuid): void
     {
+        // Deliberately NOT truncated: the uuid is a lookup key, not display text.
+        // A cut uuid would save fine and then silently fail to match later
+        // callbacks. It is service-generated (uuid4, 36 chars) and cannot
+        // overflow the 50-char column — if it ever does, that is a service bug
+        // and should surface, not be papered over.
         $this->uuid = $uuid;
     }
 
@@ -575,7 +647,7 @@ class ilExAutoScoreTask extends ActiveRecord
      */
     public function setSubmitMessage(?string $submit_message): void
     {
-        $this->submit_message = $submit_message;
+        $this->submit_message = $this->fitToColumn($submit_message, self::MAX_SUBMIT_MESSAGE_LENGTH, 'submit_message');
     }
 
     /**
@@ -655,7 +727,7 @@ class ilExAutoScoreTask extends ActiveRecord
      */
     public function setInstantMessage(?string $instant_message): void
     {
-        $this->instant_message = $instant_message;
+        $this->instant_message = $this->fitToColumn($instant_message, self::MAX_MESSAGE_LENGTH, 'instant_message');
     }
 
     /**
@@ -671,7 +743,7 @@ class ilExAutoScoreTask extends ActiveRecord
      */
     public function setInstantStatus(?string $instant_status): void
     {
-        $this->instant_status = $instant_status;
+        $this->instant_status = $this->fitToColumn($instant_status, self::MAX_STATUS_LENGTH, 'instant_status');
     }
 
     /**
@@ -687,7 +759,7 @@ class ilExAutoScoreTask extends ActiveRecord
      */
     public function setProtectedStatus(?string $protected_status): void
     {
-        $this->protected_status = $protected_status;
+        $this->protected_status = $this->fitToColumn($protected_status, self::MAX_STATUS_LENGTH, 'protected_status');
     }
 
     /**
@@ -703,7 +775,7 @@ class ilExAutoScoreTask extends ActiveRecord
      */
     public function setProtectedFeedbackText(?string $protected_feedback_text): void
     {
-        $this->protected_feedback_text = $protected_feedback_text;
+        $this->protected_feedback_text = $this->fitToColumn($protected_feedback_text, self::MAX_MESSAGE_LENGTH, 'protected_feedback_text');
     }
 
     /**
