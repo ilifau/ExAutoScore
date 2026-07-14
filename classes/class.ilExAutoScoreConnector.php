@@ -543,8 +543,19 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
                 CURLOPT_HEADER => false,
             ]);
             
+            // Der Proxy ist der Weg nach draußen. Steht der Service im internen Netz,
+            // lehnt der Proxy das CONNECT ab (503) — solche Ziele direkt ansprechen.
+            $host = (string) parse_url($url, PHP_URL_HOST);
+            $is_internal = filter_var(
+                $host,
+                FILTER_VALIDATE_IP,
+                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+            ) === false;
+
             $proxy = ilProxySettings::_getInstance();
-            if ($proxy->isActive()) {
+            if ($is_internal) {
+                curl_setopt($curl, CURLOPT_NOPROXY, $host);
+            } elseif ($proxy->isActive()) {
                 curl_setopt($curl, CURLOPT_HTTPPROXYTUNNEL, true);
                 if (!empty($proxy->getHost())) {
                     curl_setopt($curl, CURLOPT_PROXY, $proxy->getHost());
