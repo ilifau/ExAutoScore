@@ -523,6 +523,27 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     }
 
     /**
+     * Liegt der Host in einem privaten/lokalen Netz? Namen werden dafür aufgelöst.
+     * Im Zweifel (nicht auflösbar) false — dann bleibt es beim bisherigen
+     * Verhalten und der Request läuft über den Proxy.
+     */
+    protected function isInternalHost(string $host): bool
+    {
+        $ip = filter_var($host, FILTER_VALIDATE_IP) !== false ? $host : gethostbyname($host);
+
+        // gethostbyname() gibt bei Fehlschlag den Namen unverändert zurück
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+            return false;
+        }
+
+        return filter_var(
+            $ip,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        ) === false;
+    }
+
+    /**
      * Call the external service using native PHP cURL
      */
     protected function callService($url, $post, $timeout): bool
@@ -545,17 +566,12 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             
             // Der Proxy ist der Weg nach draußen. Steht der Service im internen Netz,
             // lehnt der Proxy das CONNECT ab (503) — solche Ziele direkt ansprechen.
-            $host = (string) parse_url($url, PHP_URL_HOST);
-            $is_internal = filter_var(
-                $host,
-                FILTER_VALIDATE_IP,
-                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
-            ) === false;
+            $host = trim((string) parse_url($url, PHP_URL_HOST), '[]'); // IPv6 kommt geklammert
+            $is_internal = $host !== '' && $this->isInternalHost($host);
 
-            $proxy = ilProxySettings::_getInstance();
             if ($is_internal) {
                 curl_setopt($curl, CURLOPT_NOPROXY, $host);
-            } elseif ($proxy->isActive()) {
+            } elseif (($proxy = ilProxySettings::_getInstance())->isActive()) {
                 curl_setopt($curl, CURLOPT_HTTPPROXYTUNNEL, true);
                 if (!empty($proxy->getHost())) {
                     curl_setopt($curl, CURLOPT_PROXY, $proxy->getHost());
