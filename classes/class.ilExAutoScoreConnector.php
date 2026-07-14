@@ -553,6 +553,16 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             ) === false;
 
             $proxy = ilProxySettings::_getInstance();
+            $this->logger()->info(sprintf(
+                'ExAutoScore proxy check: url=%s host=%s internal=%s proxy_active=%s '
+                . 'proxy_host=%s env_http_proxy=%s',
+                $url,
+                $host,
+                $is_internal ? 'yes' : 'no',
+                $proxy->isActive() ? 'yes' : 'no',
+                (string) $proxy->getHost(),
+                (string) (getenv('http_proxy') ?: getenv('HTTP_PROXY') ?: '-')
+            ));
             if ($is_internal) {
                 curl_setopt($curl, CURLOPT_NOPROXY, $host);
             } elseif ($proxy->isActive()) {
