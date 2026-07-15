@@ -417,8 +417,30 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         }
 
         if (empty($result['success']) || $success_failed) {
-            $assignment = new ilExAssignment($task->getAssignmentId());
-            $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
+            // Nur echtes Service-Versagen melden: phase == 'build' = das Image ließ
+            // sich nicht bauen (Infrastruktur/Setup kaputt). Bei phase == 'run' LIEF
+            // der Container — der Exit-Code/das Ergebnis ist dann Sache des
+            // Dozenten-Skripts (z.B. nicht kompilierende Studi-Abgabe), NICHT des
+            // Autoscore-Service. Ein nicht erreichbarer Service wird separat beim
+            // Senden gemeldet (NOTIFY_SEND_FAILURE).
+            if (($result['phase'] ?? null) === 'build') {
+                $assignment = new ilExAssignment($task->getAssignmentId());
+                $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
+            }
+        } else {
+            // Erfolg: Drossel zurücksetzen, damit die nächste Störung wieder meldet.
+            $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($task->getAssignmentId());
+            if ($scoreAss->getFailureMailSent()) {
+                $scoreAss->setFailureMailSent(false);
+                $scoreAss->store();
+            }
+
+            // Nur der Musterlösungs-/Beispiel-Task (kein user_id/team_id) löst die
+            // "es funktioniert"-Bestätigung aus — studentische Abgaben nicht.
+            if ($task->getUserId() === null && $task->getTeamId() === null) {
+                $assignment = new ilExAssignment($task->getAssignmentId());
+                $this->notifySampleSuccess($assignment, $task);
+            }
         }
 
         // Single line per successful callback. Tells us at a glance whether the
@@ -811,6 +833,14 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             return;
         }
 
+        // Drossel: pro Assignment nur EINE Fehler-Mail, bis wieder eine Korrektur
+        // erfolgreich war (das Flag setzt receiveResult() bei Erfolg zurück). So
+        // löst ein defekter Service eine Meldung pro Störung aus, nicht pro Abgabe.
+        if ($scoreAss->getFailureMailSent()) {
+            return;
+        }
+
+        $subject = sprintf($this->plugin->txt('failure_subject_result'), $assignment->getTitle());
         switch ($type) {
             case self::NOTIFY_SEND_FAILURE:
                 $subject = sprintf($this->plugin->txt('failure_subject_send'), $assignment->getTitle());
@@ -867,6 +897,74 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         foreach ($info as $label => $content) {
             $body .= "$label: $content\n";
         }
+
+        $this->sendNotificationMail($scoreAss->getFailureMails(), $subject, $body);
+
+        // Drossel scharf stellen — bis receiveResult() sie bei Erfolg zurücksetzt.
+        $scoreAss->setFailureMailSent(true);
+        $scoreAss->store();
+    }
+
+    /**
+     * Positive Bestätigung an die Benachrichtigungs-Empfänger, dass die
+     * Musterlösung erfolgreich korrigiert wurde — der "es funktioniert"-Effekt,
+     * den der Dozent sonst nur durch aktives Nachschauen im Abgabe-Screen hätte.
+     * Wird NUR für den Musterlösungs-/Beispiel-Task ausgelöst, nie für
+     * studentische Abgaben.
+     *
+     * @param ilExAssignment    $assignment
+     * @param ilExAutoScoreTask $scoreTask
+     */
+    protected function notifySampleSuccess($assignment, $scoreTask): void
+    {
+        global $DIC;
+        $lng = $DIC->language();
+        $lng->loadLanguageModule('exc');
+
+        $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($scoreTask->getAssignmentId());
+        if (empty($scoreAss->getFailureMails())) {
+            return;
+        }
+
+        $subject = sprintf($this->plugin->txt('sample_success_subject'), $assignment->getTitle());
+
+        $info = [];
+        $info[$lng->txt('exc')] = ilObject::_lookupTitle($assignment->getExerciseId());
+        $info[$lng->txt('exc_assignment')] = $assignment->getTitle();
+        if ($scoreTask->getReturnPoints() !== null) {
+            $info[$this->plugin->txt('return_points')] = (string) $scoreTask->getReturnPoints();
+        }
+        if (!empty($scoreTask->getInstantStatus())) {
+            $info[$this->plugin->txt('instant_status')] = $scoreTask->getInstantStatus();
+        }
+        if (!empty($scoreTask->getInstantMessage())) {
+            $info[$this->plugin->txt('instant_message')] = $scoreTask->getInstantMessage();
+        }
+        if (!empty($scoreTask->getTaskDuration())) {
+            $info[$this->plugin->txt('task_duration')] = $scoreTask->getTaskDuration();
+        }
+
+        $body = '';
+        foreach ($info as $label => $content) {
+            $body .= "$label: $content\n";
+        }
+
+        $this->sendNotificationMail($scoreAss->getFailureMails(), $subject, $body);
+    }
+
+    /**
+     * Send a plain-text notification through the ILIAS mail system.
+     * Recipients may be comma-separated logins or e-mail addresses.
+     *
+     * @param string $recipients
+     * @param string $subject
+     * @param string $body
+     */
+    protected function sendNotificationMail(string $recipients, string $subject, string $body): void
+    {
+        $mail = new ilMail(ANONYMOUS_USER_ID);
+        $mail->appendInstallationSignature(true);
+        $mail->enqueue($recipients, '', '', $subject, $body, []);
     }
 
     /**

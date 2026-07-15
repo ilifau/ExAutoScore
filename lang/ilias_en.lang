@@ -123,10 +123,11 @@ tar_command#:#Pack Command
 tar_command_info#:#Path and parameters of the Linux "tar" command to pack files into an archive. The format must be .tgz.
 untar_command#:#Unpack Command
 untar_command_info#:#Path and parameters of the Linux "tar" command to unpack an archive. The format must be .tgz.
-failure_mails#:#Failure Recipients
-failure_mails_info#:#Usernames or email addresses (comma-separated) to which a message should be sent in case of a failed grading.
+failure_mails#:#Notification Recipients
+failure_mails_info#:#Usernames or email addresses (comma-separated) to be notified: on a failed grading as well as on a successfully tested sample solution. Leave empty for no notification.
 failure_subject_send#:#Error sending submission in "%s"
 failure_subject_result#:#Error evaluating submission in "%s"
+sample_success_subject#:#Sample solution graded successfully in "%s"
 assignment_send_success#:#The assignment was sent to the grading service for setup. Grading service message:<pre>%s</pre>
 assignment_send_failure#:#An error occurred while setting up the assignment. Grading service message:<pre>%s</pre>
 example_task_send_success#:#The sample solution was sent for grading. Grading service message:<pre>%s</pre>

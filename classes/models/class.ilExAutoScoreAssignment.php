@@ -76,6 +76,19 @@ class ilExAutoScoreAssignment extends ActiveRecord
     protected ?string $failure_mails = null;
 
     /**
+     * True once a failure notification has been sent for this assignment.
+     * Reset on the next successful grading so each outage is reported exactly
+     * once instead of one mail per failed submission.
+     *
+     * @var bool
+     * @con_has_field  true
+     * @con_fieldtype  integer
+     * @con_length     1
+     * @con_is_notnull false
+     */
+    protected ?bool $failure_mail_sent = null;
+
+    /**
      * @var bool
      * @con_has_field  true
      * @con_fieldtype  integer
@@ -222,6 +235,22 @@ class ilExAutoScoreAssignment extends ActiveRecord
     public function setFailureMails(string $failure_mails): void
     {
         $this->failure_mails = $failure_mails;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getFailureMailSent(): bool
+    {
+        return (bool) $this->failure_mail_sent;
+    }
+
+    /**
+     * @param bool $failure_mail_sent
+     */
+    public function setFailureMailSent(bool $failure_mail_sent): void
+    {
+        $this->failure_mail_sent = $failure_mail_sent;
     }
 
 

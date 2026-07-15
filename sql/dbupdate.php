@@ -396,3 +396,19 @@ if (!$ilDB->tableColumnExists('exautoscore_task', 'published_return_time'))
     ));
 }
 ?>
+
+<#13>
+<?php
+// Throttle flag for the failure notification: set to 1 once a failure mail has
+// been sent for this assignment, reset to 0 on the next successful grading, so
+// a broken service produces one notification per outage instead of one per
+// failed submission. Default 0 = "no failure pending" for existing assignments.
+if (!$ilDB->tableColumnExists('exautoscore_assignment', 'failure_mail_sent'))
+{
+    $ilDB->addTableColumn("exautoscore_assignment", 'failure_mail_sent', array(
+        'type' => 'integer',
+        'length' => 1,
+        'default' => 0
+    ));
+}
+?>
