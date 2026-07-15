@@ -126,7 +126,11 @@ class ilExAutoScoreSettingsGUI
 
             $assAuto->setCommand((string) $params['exautoscore_docker_command']);
             $assAuto->setMinPoints((float) $params['exautoscore_min_points']);
-            $assAuto->setFailureMails((string) $params['exautoscore_failure_mails']);
+            // Nur übernehmen, wenn das Feld überhaupt angezeigt wurde (Schalter an) —
+            // sonst bliebe ein vorhandener Empfänger-Eintrag sonst leer.
+            if (isset($params['exautoscore_failure_mails'])) {
+                $assAuto->setFailureMails((string) $params['exautoscore_failure_mails']);
+            }
             $assAuto->setHideSampleSolution(
                 isset($params['exautoscore_hide_sample_solution']) && (bool) $params['exautoscore_hide_sample_solution']
             );
@@ -207,10 +211,13 @@ class ilExAutoScoreSettingsGUI
         $minPoints->setValue(empty($assAuto->getMinPoints()) ? null : $this->formatFloatForInput($assAuto->getMinPoints()));
         $form->addItem($minPoints);
 
-        $failureMails = new ilTextInputGUI($this->plugin->txt('failure_mails'), 'exautoscore_failure_mails');
-        $failureMails->setInfo($this->plugin->txt('failure_mails_info'));
-        $failureMails->setValue($assAuto->getFailureMails());
-        $form->addItem($failureMails);
+        // Empfänger-Feld nur zeigen, wenn die Mail-Benachrichtigung global aktiv ist.
+        if ($this->plugin->getConfig()->get('enable_failure_mails')) {
+            $failureMails = new ilTextInputGUI($this->plugin->txt('failure_mails'), 'exautoscore_failure_mails');
+            $failureMails->setInfo($this->plugin->txt('failure_mails_info'));
+            $failureMails->setValue($assAuto->getFailureMails());
+            $form->addItem($failureMails);
+        }
 
         // Hard kill-switch: never show the sample solution in the overview,
         // independent of the deadline. Time-based gating still applies on top.

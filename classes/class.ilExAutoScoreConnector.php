@@ -825,6 +825,12 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     protected function notifyFailure($assignment, $scoreTask, $type)
     {
         global $DIC;
+
+        // Globaler Kill-Switch (Plugin-Konfiguration) — aus = gar keine Mails.
+        if (!$this->config->get('enable_failure_mails')) {
+            return;
+        }
+
         $lng = $DIC->language();
         $lng->loadLanguageModule('exc');
 
@@ -918,6 +924,12 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     protected function notifySampleSuccess($assignment, $scoreTask): void
     {
         global $DIC;
+
+        // Globaler Kill-Switch (Plugin-Konfiguration) — aus = gar keine Mails.
+        if (!$this->config->get('enable_failure_mails')) {
+            return;
+        }
+
         $lng = $DIC->language();
         $lng->loadLanguageModule('exc');
 

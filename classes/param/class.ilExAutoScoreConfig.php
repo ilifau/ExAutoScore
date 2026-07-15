@@ -88,6 +88,17 @@ class ilExAutoScoreConfig
             false
         );
 
+        // Globaler Schalter für die E-Mail-Benachrichtigungen (Fehler- und
+        // Musterlösungs-Erfolgsmails). Aus = das Empfänger-Feld je Übung wird
+        // ausgeblendet UND es werden keine Mails verschickt.
+        $params[] = ilExAutoScoreParam::_create(
+            'enable_failure_mails',
+            $this->plugin->txt('enable_failure_mails'),
+            $this->plugin->txt('enable_failure_mails_info'),
+            ilExAutoScoreParam::TYPE_BOOLEAN,
+            false
+        );
+
         $params[] = ilExAutoScoreParam::_create(
             'tar_command',
             $this->plugin->txt('tar_command'),

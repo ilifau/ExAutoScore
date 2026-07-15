@@ -121,6 +121,8 @@ failure_mails_info#:#Benutzernamen oder E-Mail-Adressen (kommagetrennt), die ben
 failure_subject_send#:#Fehler beim Senden einer Abgabe in "%s"
 failure_subject_result#:#Fehler beim Auswerten einer Abgabe in "%s"
 sample_success_subject#:#Musterlösung erfolgreich korrigiert in "%s"
+enable_failure_mails#:#E-Mail-Benachrichtigungen aktivieren
+enable_failure_mails_info#:#Wenn aktiviert, kann pro Übung ein Benachrichtigungs-Empfänger hinterlegt werden und es werden E-Mails bei fehlgeschlagener Korrektur bzw. erfolgreich getesteter Musterlösung verschickt. Ist der Schalter aus, wird das Empfänger-Feld ausgeblendet und es werden keinerlei Mails versendet.
 assignment_send_success#:#Die Aufgabe wurde zur Einrichtung an den Korrekturservice. Meldung des Korrekturservice:<pre>%s</pre>
 assignment_send_failure#:#Bem einrichten der Aufgabe trat ein Fehler auf. Meldung des Korrekturservice:<pre>%s</pre>
 example_task_send_success#:#Die Musterlösung wurde zur Korrektur eingesandt. Meldung des Korrekturservice:<pre>%s</pre>
