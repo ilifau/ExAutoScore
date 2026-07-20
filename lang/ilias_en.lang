@@ -128,6 +128,7 @@ failure_mails_info#:#Usernames or email addresses (comma-separated) to be notifi
 failure_subject_send#:#Error sending submission in "%s"
 failure_subject_result#:#Error evaluating submission in "%s"
 sample_success_subject#:#Sample solution graded successfully in "%s"
+sample_failed_subject#:#Sample solution grading failed in "%s"
 enable_failure_mails#:#Enable email notifications
 enable_failure_mails_info#:#When enabled, a notification recipient can be configured per assignment and emails are sent on a failed grading or a successfully tested sample solution. When disabled, the recipient field is hidden and no emails are sent at all.
 assignment_send_success#:#The assignment was sent to the grading service for setup. Grading service message:<pre>%s</pre>

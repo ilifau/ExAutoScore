@@ -53,7 +53,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * 
      * @return self
      */
-    public static function getInstance(): self 
+    public static function getInstance(): self
     {
         if (!isset(self::$instance)) {
             global $DIC;
@@ -64,6 +64,31 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
             );
         }
         return self::$instance;
+    }
+
+    /**
+     * Fresh language for notification mails, with this plugin's module and the
+     * exercise module preloaded. Benachrichtigungs-Mails werden im Callback
+     * (results.php) OHNE Login-Session gebaut — die Umgebungssprache fällt dann
+     * auf die Installations-Default ('en') zurück. Der Aufrufer bestimmt die
+     * Sprache selbst (i.d.R. die des Empfängers, sonst 'de'). Plugin-Keys
+     * über getLangPrefix() lesen: $lng->txt($prefix . '_key').
+     */
+    public function getNotificationLanguage(string $lang_key = 'de'): ilLanguage
+    {
+        $lng = new ilLanguage($lang_key);
+        $lng->loadLanguageModule('exc');
+        $lng->loadLanguageModule($this->getLanguageHandler()->getPrefix());
+        return $lng;
+    }
+
+    /**
+     * Prefix under which this plugin's language keys are stored
+     * (component_slot_plugin), for callers using their own ilLanguage instance.
+     */
+    public function getLangPrefix(): string
+    {
+        return $this->getLanguageHandler()->getPrefix();
     }
 
     /**

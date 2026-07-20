@@ -416,30 +416,40 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             }
         }
 
-        if (empty($result['success']) || $success_failed) {
-            // Nur echtes Service-Versagen melden: phase == 'build' = das Image ließ
-            // sich nicht bauen (Infrastruktur/Setup kaputt). Bei phase == 'run' LIEF
-            // der Container — der Exit-Code/das Ergebnis ist dann Sache des
-            // Dozenten-Skripts (z.B. nicht kompilierende Studi-Abgabe), NICHT des
-            // Autoscore-Service. Ein nicht erreichbarer Service wird separat beim
-            // Senden gemeldet (NOTIFY_SEND_FAILURE).
-            if (($result['phase'] ?? null) === 'build') {
-                $assignment = new ilExAssignment($task->getAssignmentId());
-                $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
-            }
-        } else {
-            // Erfolg: Drossel zurücksetzen, damit die nächste Störung wieder meldet.
+        $phase = $result['phase'] ?? null;
+        $failed = empty($result['success']) || $success_failed;
+        $isExample = ($task->getUserId() === null && $task->getTeamId() === null);
+        // Musterlösung gilt als fehlgeschlagen, wenn der Service-Erfolg fehlt ODER
+        // der Container zwar lief (success=true), aber instant_status 'failed' ist
+        // (z.B. Musterlösung kompiliert nicht).
+        $sampleFailed = $failed || strtolower((string) $task->getInstantStatus()) === 'failed';
+
+        if ($phase === 'build') {
+            // Image ließ sich nicht bauen — Infrastruktur/Setup kaputt.
+            // Gedrosselte Fehler-Mail (ein nicht erreichbarer Service wird separat
+            // beim Senden über NOTIFY_SEND_FAILURE gemeldet).
+            $assignment = new ilExAssignment($task->getAssignmentId());
+            $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
+        } elseif ($isExample) {
+            // Der Container LIEF (phase 'run'): dem Dozenten das Ergebnis seiner
+            // Musterlösung melden — Erfolg ODER Fehlschlag. Studentische Abgaben
+            // lösen hier bewusst nichts aus (Ergebnis = Sache des Dozenten-Skripts).
+            $assignment = new ilExAssignment($task->getAssignmentId());
+            $this->notifySampleResult(
+                $assignment,
+                $task,
+                $sampleFailed ? 'sample_failed_subject' : 'sample_success_subject'
+            );
+        }
+
+        // Drossel zurücksetzen, sobald der Service wieder ein echtes Lauf-Ergebnis
+        // liefert (er funktioniert dann wieder) — unabhängig vom Bewertungsausgang.
+        // Bei einem Build-Fehler bleibt sie gesetzt (Störung dauert an → eine Mail).
+        if ($phase !== 'build') {
             $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($task->getAssignmentId());
             if ($scoreAss->getFailureMailSent()) {
                 $scoreAss->setFailureMailSent(false);
                 $scoreAss->store();
-            }
-
-            // Nur der Musterlösungs-/Beispiel-Task (kein user_id/team_id) löst die
-            // "es funktioniert"-Bestätigung aus — studentische Abgaben nicht.
-            if ($task->getUserId() === null && $task->getTeamId() === null) {
-                $assignment = new ilExAssignment($task->getAssignmentId());
-                $this->notifySampleSuccess($assignment, $task);
             }
         }
 
@@ -824,15 +834,10 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
      */
     protected function notifyFailure($assignment, $scoreTask, $type)
     {
-        global $DIC;
-
         // Globaler Kill-Switch (Plugin-Konfiguration) — aus = gar keine Mails.
         if (!$this->config->get('enable_failure_mails')) {
             return;
         }
-
-        $lng = $DIC->language();
-        $lng->loadLanguageModule('exc');
 
         $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($scoreTask->getAssignmentId());
         if (empty($scoreAss->getFailureMails())) {
@@ -846,65 +851,64 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             return;
         }
 
-        $subject = sprintf($this->plugin->txt('failure_subject_result'), $assignment->getTitle());
-        switch ($type) {
-            case self::NOTIFY_SEND_FAILURE:
-                $subject = sprintf($this->plugin->txt('failure_subject_send'), $assignment->getTitle());
-                break;
-            case self::NOTIFY_RESULT_FAILURE:
-                $subject = sprintf($this->plugin->txt('failure_subject_result'), $assignment->getTitle());
-                break;
-        }
+        // Betreff/Text je Empfängersprache bauen (s. sendLocalizedNotification).
+        $this->sendLocalizedNotification(
+            $scoreAss->getFailureMails(),
+            function (ilLanguage $lng, string $p) use ($assignment, $scoreTask, $type) {
+                $subjectKey = ($type === self::NOTIFY_SEND_FAILURE)
+                    ? 'failure_subject_send'
+                    : 'failure_subject_result';
+                $subject = sprintf($lng->txt($p . $subjectKey), $assignment->getTitle());
 
-        $info = [];
+                $info = [];
+                $info[$lng->txt('exc')] = ilObject::_lookupTitle($assignment->getExerciseId());
+                $info[$lng->txt('exc_assignment')] = $assignment->getTitle();
 
-        $info[$lng->txt('exc')] = ilObject::_lookupTitle($assignment->getExerciseId());
-        $info[$lng->txt('exc_assignment')] = $assignment->getTitle();
+                // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
+                $affected_users = $scoreTask->getAffectedUserIds();
+                if (!empty($affected_users)) {
+                    $names = [];
+                    foreach ($affected_users as $user_id) {
+                        $names[] = ilObjUser::_lookupFullname($user_id);
+                    }
 
-        // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
-        $affected_users = $scoreTask->getAffectedUserIds();
-        if (!empty($affected_users)) {
-            $names = [];
-            foreach ($affected_users as $user_id) {
-                $names[] = ilObjUser::_lookupFullname($user_id);
+                    if (!empty($scoreTask->getTeamId())) {
+                        $info[$lng->txt('exc_team')] = '(' . $scoreTask->getTeamId() . ') ' . implode(', ', $names);
+                    } else {
+                        $info[$lng->txt('user')] = $names[0];
+                    }
+                }
+
+                if (!empty($scoreTask->getSubmitTime())) {
+                    $info[$lng->txt($p . 'submit_time')] = ilDatePresentation::formatDate(new ilDateTime($scoreTask->getSubmitTime(), IL_CAL_DATETIME));
+                }
+                if (!empty($scoreTask->getSubmitMessage())) {
+                    $info[$lng->txt($p . 'submit_message')] = $scoreTask->getSubmitMessage();
+                }
+                if (!empty($scoreTask->getReturnTime())) {
+                    $info[$lng->txt($p . 'return_time')] = ilDatePresentation::formatDate(new ilDateTime($scoreTask->getReturnTime(), IL_CAL_DATETIME));
+                }
+                if (!empty($scoreTask->getReturnCode())) {
+                    $info[$lng->txt($p . 'return_code')] = $scoreTask->getReturnCode();
+                }
+                if (!empty($scoreTask->getTaskDuration())) {
+                    $info[$lng->txt($p . 'task_duration')] = $scoreTask->getTaskDuration();
+                }
+                if (!empty($scoreTask->getInstantMessage())) {
+                    $info[$lng->txt($p . 'instant_message')] = $scoreTask->getInstantMessage();
+                }
+                if (!empty($scoreTask->getInstantStatus())) {
+                    $info[$lng->txt($p . 'instant_status')] = $scoreTask->getInstantStatus();
+                }
+
+                $body = '';
+                foreach ($info as $label => $content) {
+                    $body .= "$label: $content\n";
+                }
+
+                return [$subject, $body];
             }
-
-            if (!empty($scoreTask->getTeamId())) {
-                $info[$lng->txt('exc_team')] = '(' . $scoreTask->getTeamId() . ') ' . implode(', ', $names);
-            } else {
-                $info[$lng->txt('user')] = $names[0];
-            }
-        }
-
-        if (!empty($scoreTask->getSubmitTime())) {
-            $info[$this->plugin->txt('submit_time')] = ilDatePresentation::formatDate(new ilDateTime($scoreTask->getSubmitTime(), IL_CAL_DATETIME));
-        }
-        if (!empty($scoreTask->getSubmitMessage())) {
-            $info[$this->plugin->txt('submit_message')] = $scoreTask->getSubmitMessage();
-        }
-        if (!empty($scoreTask->getReturnTime())) {
-            $info[$this->plugin->txt('return_time')] = ilDatePresentation::formatDate(new ilDateTime($scoreTask->getReturnTime(), IL_CAL_DATETIME));
-        }
-        if (!empty($scoreTask->getReturnCode())) {
-            $info[$this->plugin->txt('return_code')] = $scoreTask->getReturnCode();
-        }
-        if (!empty($scoreTask->getTaskDuration())) {
-            $info[$this->plugin->txt('task_duration')] = $scoreTask->getTaskDuration();
-        }
-        if (!empty($scoreTask->getInstantMessage())) {
-            $info[$this->plugin->txt('instant_message')] = $scoreTask->getInstantMessage();
-        }
-        if (!empty($scoreTask->getInstantStatus())) {
-            $info[$this->plugin->txt('instant_status')] = $scoreTask->getInstantStatus();
-        }
-
-        $body = '';
-
-        foreach ($info as $label => $content) {
-            $body .= "$label: $content\n";
-        }
-
-        $this->sendNotificationMail($scoreAss->getFailureMails(), $subject, $body);
+        );
 
         // Drossel scharf stellen — bis receiveResult() sie bei Erfolg zurücksetzt.
         $scoreAss->setFailureMailSent(true);
@@ -912,71 +916,112 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     }
 
     /**
-     * Positive Bestätigung an die Benachrichtigungs-Empfänger, dass die
-     * Musterlösung erfolgreich korrigiert wurde — der "es funktioniert"-Effekt,
-     * den der Dozent sonst nur durch aktives Nachschauen im Abgabe-Screen hätte.
-     * Wird NUR für den Musterlösungs-/Beispiel-Task ausgelöst, nie für
-     * studentische Abgaben.
+     * Rückmeldung an die Benachrichtigungs-Empfänger über das Ergebnis der
+     * Musterlösungs-Korrektur — der "es funktioniert"- bzw. "schau mal, lief
+     * nicht"-Effekt, den der Dozent sonst nur durch aktives Nachschauen im
+     * Abgabe-Screen hätte. Wird NUR für den Musterlösungs-/Beispiel-Task
+     * ausgelöst, nie für studentische Abgaben. Der Betreff-Key unterscheidet
+     * Erfolg (sample_success_subject) und Fehlschlag (sample_failed_subject).
      *
      * @param ilExAssignment    $assignment
      * @param ilExAutoScoreTask $scoreTask
+     * @param string            $subjectKey
      */
-    protected function notifySampleSuccess($assignment, $scoreTask): void
+    protected function notifySampleResult($assignment, $scoreTask, string $subjectKey): void
     {
-        global $DIC;
-
         // Globaler Kill-Switch (Plugin-Konfiguration) — aus = gar keine Mails.
         if (!$this->config->get('enable_failure_mails')) {
             return;
         }
-
-        $lng = $DIC->language();
-        $lng->loadLanguageModule('exc');
 
         $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($scoreTask->getAssignmentId());
         if (empty($scoreAss->getFailureMails())) {
             return;
         }
 
-        $subject = sprintf($this->plugin->txt('sample_success_subject'), $assignment->getTitle());
+        // Betreff/Text je Empfängersprache bauen (s. sendLocalizedNotification).
+        $this->sendLocalizedNotification(
+            $scoreAss->getFailureMails(),
+            function (ilLanguage $lng, string $p) use ($assignment, $scoreTask, $subjectKey) {
+                $subject = sprintf($lng->txt($p . $subjectKey), $assignment->getTitle());
 
-        $info = [];
-        $info[$lng->txt('exc')] = ilObject::_lookupTitle($assignment->getExerciseId());
-        $info[$lng->txt('exc_assignment')] = $assignment->getTitle();
-        if ($scoreTask->getReturnPoints() !== null) {
-            $info[$this->plugin->txt('return_points')] = (string) $scoreTask->getReturnPoints();
-        }
-        if (!empty($scoreTask->getInstantStatus())) {
-            $info[$this->plugin->txt('instant_status')] = $scoreTask->getInstantStatus();
-        }
-        if (!empty($scoreTask->getInstantMessage())) {
-            $info[$this->plugin->txt('instant_message')] = $scoreTask->getInstantMessage();
-        }
-        if (!empty($scoreTask->getTaskDuration())) {
-            $info[$this->plugin->txt('task_duration')] = $scoreTask->getTaskDuration();
-        }
+                $info = [];
+                $info[$lng->txt('exc')] = ilObject::_lookupTitle($assignment->getExerciseId());
+                $info[$lng->txt('exc_assignment')] = $assignment->getTitle();
+                if ($scoreTask->getReturnPoints() !== null) {
+                    $info[$lng->txt($p . 'return_points')] = (string) $scoreTask->getReturnPoints();
+                }
+                if (!empty($scoreTask->getInstantStatus())) {
+                    $info[$lng->txt($p . 'instant_status')] = $scoreTask->getInstantStatus();
+                }
+                if (!empty($scoreTask->getInstantMessage())) {
+                    $info[$lng->txt($p . 'instant_message')] = $scoreTask->getInstantMessage();
+                }
+                if (!empty($scoreTask->getTaskDuration())) {
+                    $info[$lng->txt($p . 'task_duration')] = $scoreTask->getTaskDuration();
+                }
 
-        $body = '';
-        foreach ($info as $label => $content) {
-            $body .= "$label: $content\n";
-        }
+                $body = '';
+                foreach ($info as $label => $content) {
+                    $body .= "$label: $content\n";
+                }
 
-        $this->sendNotificationMail($scoreAss->getFailureMails(), $subject, $body);
+                return [$subject, $body];
+            }
+        );
     }
 
     /**
-     * Send a plain-text notification through the ILIAS mail system.
-     * Recipients may be comma-separated logins or e-mail addresses.
+     * Send a plain-text notification, localized per recipient.
      *
-     * @param string $recipients
-     * @param string $subject
-     * @param string $body
+     * Recipients (comma-separated logins or e-mail addresses) are grouped by
+     * language: a known ILIAS login uses that user's language, a plain e-mail
+     * address (not tied to a user) falls back to German. For each language the
+     * $build callback produces [subject, body] from a matching ilLanguage and
+     * the plugin key prefix. Runs in the results.php callback, which has no
+     * user session — hence the explicit per-recipient language resolution.
+     *
+     * @param string   $recipients
+     * @param callable $build  fn(ilLanguage $lng, string $prefix): array{0:string,1:string}
      */
-    protected function sendNotificationMail(string $recipients, string $subject, string $body): void
+    protected function sendLocalizedNotification(string $recipients, callable $build): void
     {
-        $mail = new ilMail(ANONYMOUS_USER_ID);
-        $mail->appendInstallationSignature(true);
-        $mail->enqueue($recipients, '', '', $subject, $body, []);
+        $byLang = [];
+        foreach (preg_split('/\s*,\s*/', trim($recipients), -1, PREG_SPLIT_NO_EMPTY) as $rcp) {
+            $lang_key = $this->resolveRecipientLanguage($rcp);
+            $byLang[$lang_key][] = $rcp;
+        }
+
+        $prefix = $this->plugin->getLangPrefix() . '_';
+        foreach ($byLang as $lang_key => $rcps) {
+            $lng = $this->plugin->getNotificationLanguage($lang_key);
+            [$subject, $body] = $build($lng, $prefix);
+
+            $mail = new ilMail(ANONYMOUS_USER_ID);
+            $mail->enqueue(implode(',', $rcps), '', '', $subject, $body, []);
+        }
+    }
+
+    /**
+     * Language of a notification recipient. A login resolves to exactly one
+     * account and its language is used. An e-mail address may belong to several
+     * accounts (e.g. shared test logins), so its language is only used when all
+     * matches agree; a genuine disagreement — or no match at all — falls back to
+     * German. A resolved user without an own language preference yields the
+     * installation default (see ilObjUser::_lookupLanguage).
+     */
+    protected function resolveRecipientLanguage(string $recipient): string
+    {
+        $usr_id = (int) ilObjUser::_lookupId($recipient);
+        if ($usr_id) {
+            return ilObjUser::_lookupLanguage($usr_id);
+        }
+
+        $languages = array_unique(array_map(
+            fn($id) => ilObjUser::_lookupLanguage((int) $id),
+            ilObjUser::getUserIdsByEmail($recipient)
+        ));
+        return count($languages) === 1 ? (string) reset($languages) : 'de';
     }
 
     /**
