@@ -123,7 +123,15 @@ failure_subject_result#:#Fehler beim Auswerten einer Abgabe in "%s"
 sample_success_subject#:#Musterlösung erfolgreich korrigiert in "%s"
 sample_failed_subject#:#Musterlösung-Korrektur fehlgeschlagen in "%s"
 enable_failure_mails#:#E-Mail-Benachrichtigungen aktivieren
-enable_failure_mails_info#:#Wenn aktiviert, kann pro Übung ein Benachrichtigungs-Empfänger hinterlegt werden und es werden E-Mails bei fehlgeschlagener Korrektur bzw. erfolgreich getesteter Musterlösung verschickt. Ist der Schalter aus, wird das Empfänger-Feld ausgeblendet und es werden keinerlei Mails versendet.
+enable_failure_mails_info#:#Wenn aktiviert, kann pro Übung ein Benachrichtigungs-Empfänger hinterlegt werden und es werden E-Mails bei fehlgeschlagener Korrektur bzw. erfolgreich getesteter Musterlösung verschickt. Ist der Schalter aus, wird das Empfänger-Feld ausgeblendet und es gehen keine Mails an die Empfänger der Übungen. Der Betreiber-Alarm bei Service-Störungen ist davon nicht betroffen — den schaltet allein das Feld darunter.
+enable_admin_failure_mails#:#Betreiber-Alarm bei Service-Störungen aktivieren
+enable_admin_failure_mails_info#:#Wenn aktiviert, werden die unten eingetragenen Empfänger benachrichtigt, sobald der Korrekturservice keine Abgaben mehr annimmt. Dieser Schalter ist unabhängig von den E-Mail-Benachrichtigungen der Übungen: Abschalten stellt den Betriebs-Alarm stumm (etwa bei geplanter Wartung oder einer bereits bekannten Störung), ohne dass die Empfängerliste verloren geht.
+admin_failure_mails#:#Betreiber-Empfänger für Service-Störungen
+admin_failure_mails_info#:#Benutzernamen oder E-Mail-Adressen (kommagetrennt) der Personen, die den Korrekturservice betreiben. Sie werden benachrichtigt, wenn der Service keine Abgaben mehr annimmt — unabhängig davon, welche Übung betroffen ist und ob dort ein Empfänger eingetragen ist. Pro Störung wird genau eine Mail verschickt; die nächste erst, nachdem der Service zwischenzeitlich wieder geantwortet hat. Fachliche Fehler einzelner Aufgaben (etwa ein Dockerfile, das nicht baut) gehen weiterhin nur an die Empfänger der jeweiligen Übung. Wirkt nur, wenn der Schalter darüber aktiv ist.
+outage_subject#:#Autoscore: Korrekturservice nimmt keine Abgaben an
+outage_intro#:#Eine Abgabe konnte nicht an den Korrekturservice übertragen werden. Solange die Störung anhält, werden Abgaben nicht korrigiert.
+outage_time#:#Zeitpunkt
+outage_hint#:#Diese Meldung wird pro Störung nur einmal verschickt. Eine weitere folgt erst, wenn der Service zwischenzeitlich wieder geantwortet hat. Zuerst prüfen: Erreichbarkeit des Service, freier Speicherplatz sowie die Logs von Redis und Celery-Worker.
 assignment_send_success#:#Die Aufgabe wurde zur Einrichtung an den Korrekturservice. Meldung des Korrekturservice:<pre>%s</pre>
 assignment_send_failure#:#Bem einrichten der Aufgabe trat ein Fehler auf. Meldung des Korrekturservice:<pre>%s</pre>
 example_task_send_success#:#Die Musterlösung wurde zur Korrektur eingesandt. Meldung des Korrekturservice:<pre>%s</pre>

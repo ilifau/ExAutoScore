@@ -99,6 +99,30 @@ class ilExAutoScoreConfig
             false
         );
 
+        // Eigener Schalter für den Betreiber-Alarm — bewusst getrennt von
+        // enable_failure_mails. Wer die Dozenten-Mails abschaltet, will den
+        // Betriebs-Alarm meist behalten; und wer ihn abschaltet (Wartung, Umzug,
+        // bekannte Störung), will die Empfänger-Adressen nicht dabei verlieren.
+        $params[] = ilExAutoScoreParam::_create(
+            'enable_admin_failure_mails',
+            $this->plugin->txt('enable_admin_failure_mails'),
+            $this->plugin->txt('enable_admin_failure_mails_info'),
+            ilExAutoScoreParam::TYPE_BOOLEAN,
+            false
+        );
+
+        // Betreiber-Adresse(n) für Störungen des Korrektur-Service. Bewusst getrennt
+        // vom Empfänger-Feld der Übung: dort trägt sich der Dozent ein und bekommt
+        // auch fachliche Fehler seiner eigenen Aufgabe; hier steht, wer den Betrieb
+        // macht, und bekommt ausschliesslich "der Service antwortet nicht".
+        $params[] = ilExAutoScoreParam::_create(
+            'admin_failure_mails',
+            $this->plugin->txt('admin_failure_mails'),
+            $this->plugin->txt('admin_failure_mails_info'),
+            ilExAutoScoreParam::TYPE_TEXT,
+            ''
+        );
+
         $params[] = ilExAutoScoreParam::_create(
             'tar_command',
             $this->plugin->txt('tar_command'),

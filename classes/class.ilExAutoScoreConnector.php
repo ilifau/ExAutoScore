@@ -238,6 +238,16 @@ class ilExAutoScoreConnector
 
         if (!$success) {
             $this->notifyFailure($assignment, $scoreTask, self::NOTIFY_SEND_FAILURE);
+            // Zusätzlich die Betreiber alarmieren: Wenn das Senden scheitert, liegt
+            // es am Service, nicht an der Aufgabe des Dozenten. Eigene Drossel, damit
+            // eine Störung EINE Mail auslöst und nicht eine pro betroffener Übung.
+            $this->notifyServiceOutage($assignment);
+        } else {
+            // Der Service nimmt wieder an. Die Drossel hier zurückzusetzen und nicht
+            // erst in receiveResult() schliesst eine Lücke: Ein Ergebnis trifft nur
+            // ein, wenn auch abgegeben wird — sonst bliebe der Alarm nach einer
+            // überstandenen Störung stumm geschaltet und die nächste ginge unter.
+            $this->clearServiceOutageFlag();
         }
         return $success;
     }
@@ -451,6 +461,9 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
                 $scoreAss->setFailureMailSent(false);
                 $scoreAss->store();
             }
+            // Der Service hat geantwortet — also läuft er wieder. Damit ist der
+            // Betreiber-Alarm für die nächste Störung wieder scharf.
+            $this->clearServiceOutageFlag();
         }
 
         // Single line per successful callback. Tells us at a glance whether the
@@ -913,6 +926,78 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         // Drossel scharf stellen — bis receiveResult() sie bei Erfolg zurücksetzt.
         $scoreAss->setFailureMailSent(true);
         $scoreAss->store();
+    }
+
+    /**
+     * Betreiber-Alarm: Der Korrektur-Service nimmt keine Abgaben mehr an.
+     *
+     * Bewusst getrennt von notifyFailure() und mit eigenen Regeln:
+     *
+     * - Empfänger kommen aus der PLUGIN-Konfiguration, nicht aus der Übung. Das
+     *   Feld der Übung pflegt der Dozent; die Betreiber stünden dort nirgends und
+     *   erführen von einer Störung nur, wenn sich jemand meldet.
+     * - Die Drossel ist GLOBAL. Die in notifyFailure() hängt am Assignment — bei
+     *   einer Service-Störung sind aber alle Übungen gleichzeitig betroffen, das
+     *   gäbe eine Mail pro Übung. receiveResult() macht sie wieder scharf, sobald
+     *   der Service antwortet.
+     * - Mit eigenem Schalter (enable_admin_failure_mails) statt am Kill-Switch
+     *   enable_failure_mails: Der schaltet die Mails an die DOZENTEN ab. Ein
+     *   abgeschalteter Dozenten-Versand darf den Betrieb nicht blind machen —
+     *   und umgekehrt soll man den Betriebs-Alarm bei Wartung oder bekannter
+     *   Störung stummschalten können, ohne die Empfängerliste zu verlieren.
+     *
+     * Nur für NOTIFY_SEND_FAILURE gedacht: dass eine Korrektur inhaltlich
+     * fehlschlägt oder ein Dockerfile nicht baut, ist Sache des Dozenten.
+     *
+     * @param ilExAssignment $assignment  Übung, bei der die Störung auffiel
+     */
+    protected function notifyServiceOutage($assignment): void
+    {
+        if (!$this->config->get('enable_admin_failure_mails')) {
+            return;
+        }
+
+        $recipients = trim((string) $this->config->get('admin_failure_mails'));
+        if ($recipients === '') {
+            return;
+        }
+
+        $settings = new ilSetting('exautoscore');
+        if ((int) $settings->get('service_outage_mail_sent', '0')) {
+            return;
+        }
+
+        // Betreff/Text je Empfängersprache bauen (s. sendLocalizedNotification).
+        $this->sendLocalizedNotification(
+            $recipients,
+            function (ilLanguage $lng, string $p) use ($assignment) {
+                $subject = $lng->txt($p . 'outage_subject');
+
+                $body = $lng->txt($p . 'outage_intro') . "\n\n";
+                $body .= $lng->txt('exc') . ': '
+                    . ilObject::_lookupTitle($assignment->getExerciseId()) . "\n";
+                $body .= $lng->txt('exc_assignment') . ': ' . $assignment->getTitle() . "\n";
+                // Sprachneutrales Format: die Mail geht an den Betrieb, nicht an Lernende.
+                $body .= $lng->txt($p . 'outage_time') . ': ' . date('Y-m-d H:i') . "\n\n";
+                $body .= $lng->txt($p . 'outage_hint');
+
+                return [$subject, $body];
+            }
+        );
+
+        $settings->set('service_outage_mail_sent', '1');
+    }
+
+    /**
+     * Betreiber-Alarm wieder scharf stellen. Wird aus receiveResult() gerufen,
+     * sobald der Service ein Lauf-Ergebnis liefert — dann funktioniert er wieder.
+     */
+    protected function clearServiceOutageFlag(): void
+    {
+        $settings = new ilSetting('exautoscore');
+        if ((int) $settings->get('service_outage_mail_sent', '0')) {
+            $settings->set('service_outage_mail_sent', '0');
+        }
     }
 
     /**

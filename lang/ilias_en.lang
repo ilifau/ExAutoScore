@@ -130,7 +130,15 @@ failure_subject_result#:#Error evaluating submission in "%s"
 sample_success_subject#:#Sample solution graded successfully in "%s"
 sample_failed_subject#:#Sample solution grading failed in "%s"
 enable_failure_mails#:#Enable email notifications
-enable_failure_mails_info#:#When enabled, a notification recipient can be configured per assignment and emails are sent on a failed grading or a successfully tested sample solution. When disabled, the recipient field is hidden and no emails are sent at all.
+enable_failure_mails_info#:#When enabled, a notification recipient can be configured per assignment and emails are sent on a failed grading or a successfully tested sample solution. When disabled, the recipient field is hidden and no emails go to the assignment recipients. The operator alert for service outages is not affected — it is controlled solely by the field below.
+enable_admin_failure_mails#:#Enable operator alert for service outages
+enable_admin_failure_mails_info#:#When enabled, the recipients configured below are notified as soon as the grading service stops accepting submissions. This switch is independent of the assignment email notifications: turning it off mutes the operator alert (for planned maintenance or an outage that is already known) without losing the recipient list.
+admin_failure_mails#:#Operator Recipients for Service Outages
+admin_failure_mails_info#:#Usernames or email addresses (comma-separated) of the people who operate the grading service. They are notified when the service stops accepting submissions — regardless of which assignment is affected and whether a recipient is configured there. Exactly one email is sent per outage; the next one only after the service has responded successfully in between. Problems with individual assignments (such as a Dockerfile that fails to build) still go only to the recipients of that assignment. Only effective when the switch above is enabled.
+outage_subject#:#Autoscore: grading service is not accepting submissions
+outage_intro#:#A submission could not be transferred to the grading service. While the outage lasts, submissions are not graded.
+outage_time#:#Time
+outage_hint#:#This message is sent only once per outage. A further one follows only after the service has responded again in between. Check first: whether the service is reachable, free disk space, and the logs of Redis and the Celery worker.
 assignment_send_success#:#The assignment was sent to the grading service for setup. Grading service message:<pre>%s</pre>
 assignment_send_failure#:#An error occurred while setting up the assignment. Grading service message:<pre>%s</pre>
 example_task_send_success#:#The sample solution was sent for grading. Grading service message:<pre>%s</pre>
