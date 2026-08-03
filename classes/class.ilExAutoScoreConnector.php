@@ -962,11 +962,35 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             return;
         }
 
-        $settings = new ilSetting('exautoscore');
-        if ((int) $settings->get('service_outage_mail_sent', '0')) {
-            return;
-        }
+        // Wie beim Zurücksetzen: Der Alarm ist eine Nebenwirkung. Scheitert er,
+        // wird das protokolliert — die Abgabe-Verarbeitung läuft unbeirrt weiter.
+        // Der Einstellungs-Zugriff gehört mit in den Block, sonst bliebe genau die
+        // Zeile ungeschützt, die als erste auf die Datenbank geht.
+        try {
+            $settings = new ilSetting('exautoscore');
+            if ((int) $settings->get('service_outage_mail_sent', '0')) {
+                return;
+            }
 
+            $this->sendServiceOutageMail($assignment, $recipients, $settings);
+        } catch (Throwable $e) {
+            $this->logger()->warning('[ExAutoScore] could not send outage alert', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Versand des Betreiber-Alarms — abgetrennt, damit notifyServiceOutage() die
+     * Vorbedingungen prüft und diese Methode nur noch die Mail baut und die
+     * Drossel scharf stellt.
+     *
+     * @param ilExAssignment $assignment
+     * @param string         $recipients
+     * @param ilSetting      $settings
+     */
+    protected function sendServiceOutageMail($assignment, string $recipients, $settings): void
+    {
         // Betreff/Text je Empfängersprache bauen (s. sendLocalizedNotification).
         $this->sendLocalizedNotification(
             $recipients,
@@ -989,14 +1013,26 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     }
 
     /**
-     * Betreiber-Alarm wieder scharf stellen. Wird aus receiveResult() gerufen,
-     * sobald der Service ein Lauf-Ergebnis liefert — dann funktioniert er wieder.
+     * Betreiber-Alarm wieder scharf stellen. Gerufen, sobald der Service wieder
+     * arbeitet — bei erfolgreichem Senden und bei eintreffendem Lauf-Ergebnis.
+     *
+     * Bewusst gekapselt: Diese Methode liegt auch im ERFOLGSFALL im Weg, also auf
+     * einem Pfad, auf dem vorher kein Benachrichtigungs-Code lief. Ein Fehler beim
+     * Zurücksetzen einer Mail-Drossel darf niemals eine funktionierende Abgabe
+     * scheitern lassen — schlimmstenfalls bleibt der Alarm stummgeschaltet, und
+     * das steht dann im Log.
      */
     protected function clearServiceOutageFlag(): void
     {
-        $settings = new ilSetting('exautoscore');
-        if ((int) $settings->get('service_outage_mail_sent', '0')) {
-            $settings->set('service_outage_mail_sent', '0');
+        try {
+            $settings = new ilSetting('exautoscore');
+            if ((int) $settings->get('service_outage_mail_sent', '0')) {
+                $settings->set('service_outage_mail_sent', '0');
+            }
+        } catch (Throwable $e) {
+            $this->logger()->warning('[ExAutoScore] could not reset outage alert flag', [
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
