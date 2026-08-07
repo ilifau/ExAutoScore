@@ -11,8 +11,12 @@ ki_infos/
 # PHPUnit cache
 .phpunit.result.cache
 
-# PHPUnit wird nur lokal zum Testen nachgezogen (composer require --dev phpunit/phpunit)
+# PHPUnit wird nur lokal zum Testen nachgezogen (composer require --dev phpunit/phpunit).
+# Das Plugin selbst hat bewusst KEINE composer-Verwaltung: es wird als Verzeichnis
+# ausgeliefert, und eine composer.json hier wuerde beim Deployen nur verwirren.
 vendor/
+composer.json
+composer.lock
 
 # Don't ignore .gitkeep and .htaccess files
 # these are used to commit empty directories
