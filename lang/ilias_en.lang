@@ -155,3 +155,9 @@ file_not_found_debug#:#The file "%s" (ID: %s) was not found. Error: %s. Check th
 hide_sample_solution#:#Hide sample solution in overview
 hide_sample_solution_info#:#When enabled, the sample solution files are never shown in the exercise overview or submission feedback — regardless of the submission deadline.
 autonote_reload_hint#:#Automatic correction grades were added to the assessment. Please reload the page once so all grades are shown.
+dockerfile_check_title#:#Dockerfile notes: avoidable disk usage
+dockerfile_check_intro#:#Docker stores every step as its own layer. Everything below a COPY or ADD is rebuilt and stored again for each assignment, because the copied assignment files differ. Expensive installations therefore belong above the COPY/ADD, so that all assignments share the same result.
+dockerfile_check_after_copy#:#Line %s: "%s" is below the %s in line %s. This step is therefore rebuilt for every assignment and consumes new disk space each time. Move it above that line so all assignments share the result.
+dockerfile_check_pip_cache#:#Line %s: "pip install" without --no-cache-dir. The downloaded package cache stays inside the image — for large packages such as PyTorch that is several hundred MB for nothing. Please add --no-cache-dir.
+dockerfile_check_apt_lists#:#Line %s: "apt-get install" without a trailing rm -rf /var/lib/apt/lists/* in the same line. Otherwise the package lists stay inside the image (about 40 MB).
+dockerfile_check_fat_base#:#Line %s: The base image %s is the large variant. Unless your correction needs compiler tools, %s is usually sufficient — that saves about 1.4 GB.

@@ -11,6 +11,9 @@ ki_infos/
 # PHPUnit cache
 .phpunit.result.cache
 
+# PHPUnit wird nur lokal zum Testen nachgezogen (composer require --dev phpunit/phpunit)
+vendor/
+
 # Don't ignore .gitkeep and .htaccess files
 # these are used to commit empty directories
 !.gitkeep

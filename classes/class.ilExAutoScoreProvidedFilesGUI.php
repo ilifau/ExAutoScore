@@ -5,6 +5,7 @@ require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreProvidedFile.php');
+require_once (__DIR__ . '/class.ilExAutoScoreDockerfileAnalyzer.php');
 
 /**
  * @ilCtrl_IsCalledBy ilExAutoScoreProvidedFilesGUI: ilExAssTypeAutoScoreUserGUI, ilExAssTypeAutoScoreTeamGUI, ilExAssignmentEditorGUI
@@ -64,6 +65,8 @@ class ilExAutoScoreProvidedFilesGUI
         if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
             $this->tpl->setOnScreenMessage('info', $this->plugin->txt('info_existing_tasks'));
         }
+
+        $this->showDockerfileHints();
 
         require_once (__DIR__ . '/class.ilExAutoScoreProvidedFilesTableGUI.php');
         $table = new ilExAutoScoreProvidedFilesTableGUI($this, 'listFiles');
@@ -150,6 +153,10 @@ class ilExAutoScoreProvidedFilesGUI
             $this->ctrl->returnToParent($this);
         }
 
+        // createFile() und updateFile() leiten beide hierher weiter — der Dozent sieht
+        // die Auswertung damit unmittelbar nach dem Hochladen des Dockerfiles.
+        $this->showDockerfileHints();
+
         $form = $this->initFileForm($file);
         $this->tpl->setContent( $form->getHTML());
     }
@@ -209,6 +216,61 @@ class ilExAutoScoreProvidedFilesGUI
 
         $this->setFileToolbar();
         $this->tpl->setContent($form->getHTML());
+    }
+
+    /**
+     * Wertet das hinterlegte Dockerfile aus und zeigt Hinweise zum Speicherplatz an.
+     *
+     * Anlass (Messung 07.08.2026): Die Korrektur-Images belegten 79,8 GB von 99 GB,
+     * weil in vielen Dockerfiles das teure "RUN pip install" UNTER dem "ADD" der
+     * Aufgabendateien stand. Jede Aufgabe speichert dadurch ihre eigene Kopie von
+     * PyTorch & Co., statt sich einen gemeinsamen Layer zu teilen. Das faellt sonst
+     * niemandem auf: das Dockerfile funktioniert ja, es kostet nur ein Vielfaches.
+     *
+     * Bleibt bewusst still, wenn nichts zu meckern ist — die Seite wird oft
+     * aufgerufen, und eine Meldung, die immer da steht, liest bald niemand mehr.
+     */
+    protected function showDockerfileHints(): void
+    {
+        $docker = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
+        if (empty($docker) || empty($docker->getId())) {
+            return;
+        }
+
+        $path = $docker->getAbsolutePath();
+        if (empty($path) || !is_readable($path)) {
+            return;
+        }
+
+        $content = file_get_contents($path);
+        if ($content === false || trim($content) === '') {
+            return;
+        }
+
+        $analyzer = new ilExAutoScoreDockerfileAnalyzer();
+        $findings = $analyzer->analyze($content);
+        if (empty($findings)) {
+            return;
+        }
+
+        $items = '';
+        foreach ($findings as $finding) {
+            // Argumente stammen teils aus dem Dockerfile (z.B. der Name des
+            // Basis-Images) und muessen deshalb maskiert werden.
+            $args = array_map(function ($arg): string {
+                return htmlspecialchars((string) $arg, ENT_QUOTES, 'UTF-8');
+            }, $finding['args']);
+
+            $text = vsprintf($this->plugin->txt($finding['key']), $args);
+            $weight = $finding['level'] === ilExAutoScoreDockerfileAnalyzer::LEVEL_WARNING
+                ? 'font-weight: bold;' : '';
+            $items .= '<li style="' . $weight . '">' . $text . '</li>';
+        }
+
+        $html = '<p><strong>' . htmlspecialchars($this->plugin->txt('dockerfile_check_title'), ENT_QUOTES, 'UTF-8')
+            . '</strong></p><p>' . $this->plugin->txt('dockerfile_check_intro') . '</p><ul>' . $items . '</ul>';
+
+        $this->tpl->setOnScreenMessage('info', $html);
     }
 
     /**
