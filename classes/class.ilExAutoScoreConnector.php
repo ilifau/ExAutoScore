@@ -67,6 +67,15 @@ class ilExAutoScoreConnector
 
         $post = [];
         $post['api_key'] = $this->config->get('service_api_key');
+        // Bisherige Service-UUID mitschicken, damit der Service DIESELBE Aufgabe neu
+        // einrichtet. Sonst legt er jedes Mal eine neue an und baut ein weiteres Image,
+        // waehrend das alte getaggt liegen bleibt (August 2026: 48 GB solcher Leichen).
+        // service_uuid zuerst: uuid ist nach einem Zuruecksetzen leer. Kennt der
+        // Service die UUID nicht (oder das Feld nicht, aeltere Version), legt er neu an.
+        $previousUuid = $scoreAss->getServiceUuid() !== '' ? $scoreAss->getServiceUuid() : $scoreAss->getUuid();
+        if ($previousUuid !== '') {
+            $post['uuid'] = $previousUuid;
+        }
         $post['name'] = $assignment->getTitle();
         $post['priority'] = false;
         $post['return_type'] = 'U';
@@ -112,6 +121,7 @@ class ilExAutoScoreConnector
 
         if ($success) {
             $scoreAss->setUuid($this->getResultUuid());
+            $scoreAss->setServiceUuid((string) $this->getResultUuid());
             $scoreAss->save();
         }
 

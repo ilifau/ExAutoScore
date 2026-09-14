@@ -412,3 +412,23 @@ if (!$ilDB->tableColumnExists('exautoscore_assignment', 'failure_mail_sent'))
     ));
 }
 ?>
+
+<#14>
+<?php
+// Remembers the last UUID the grading service assigned, independently of `uuid`.
+// `uuid` is cleared by resetCorrection() whenever support files or settings change
+// ("correction not set up, block submissions"). Exactly then the service needs the
+// previous UUID to set the SAME assignment up again instead of creating another one
+// with another multi-GB image. Backfilled from `uuid`, so assignments that are set
+// up today benefit on their very next setup.
+if (!$ilDB->tableColumnExists('exautoscore_assignment', 'service_uuid'))
+{
+    $ilDB->addTableColumn("exautoscore_assignment", 'service_uuid', array(
+        'type' => 'text',
+        'length' => 50,
+        'notnull' => false
+    ));
+    $ilDB->manipulate("UPDATE exautoscore_assignment SET service_uuid = uuid"
+        . " WHERE uuid IS NOT NULL AND uuid <> ''");
+}
+?>

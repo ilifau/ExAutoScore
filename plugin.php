@@ -7,7 +7,7 @@ declare(strict_types=1);
 $id = "exautoscore";
 
 // code version; must be changed for all code changes
-$version = "0.3.8";
+$version = "0.3.9";
 
 // ilias min and max version; must always reflect the versions that should
 // run with the plugin
