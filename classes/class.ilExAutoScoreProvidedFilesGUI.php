@@ -62,11 +62,7 @@ class ilExAutoScoreProvidedFilesGUI
      */
     public function listFiles()
     {
-        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            $this->tpl->setOnScreenMessage('info', $this->plugin->txt('info_existing_tasks'));
-        }
-
-        $this->showDockerfileHints();
+        $this->showInfoMessages();
 
         require_once (__DIR__ . '/class.ilExAutoScoreProvidedFilesTableGUI.php');
         $table = new ilExAutoScoreProvidedFilesTableGUI($this, 'listFiles');
@@ -142,10 +138,6 @@ class ilExAutoScoreProvidedFilesGUI
         $this->ctrl->saveParameter($this, 'id');
         $this->setFileToolbar();
 
-        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
-            $this->tpl->setOnScreenMessage('info', $this->plugin->txt('info_existing_tasks'));
-        }
-
         /** @var ilExAutoScoreProvidedFile $file */
         $file = ilExAutoScoreProvidedFile::find((int) $_GET['id']);
         if ($file->getAssignmentId() != $this->assignment->getId()) {
@@ -155,7 +147,7 @@ class ilExAutoScoreProvidedFilesGUI
 
         // createFile() und updateFile() leiten beide hierher weiter — der Dozent sieht
         // die Auswertung damit unmittelbar nach dem Hochladen des Dockerfiles.
-        $this->showDockerfileHints();
+        $this->showInfoMessages();
 
         $form = $this->initFileForm($file);
         $this->tpl->setContent( $form->getHTML());
@@ -230,27 +222,48 @@ class ilExAutoScoreProvidedFilesGUI
      * Bleibt bewusst still, wenn nichts zu meckern ist — die Seite wird oft
      * aufgerufen, und eine Meldung, die immer da steht, liest bald niemand mehr.
      */
-    protected function showDockerfileHints(): void
+    protected function showInfoMessages(): void
+    {
+        $parts = [];
+
+        if (ilExAutoScoreTask::hasTasks($this->assignment->getId())) {
+            $parts[] = '<p>' . $this->plugin->txt('info_existing_tasks') . '</p>';
+        }
+
+        $hints = $this->dockerfileHintsHtml();
+        if ($hints !== '') {
+            $parts[] = $hints;
+        }
+
+        // Eine einzige Meldung, nicht zwei: ilGlobalTemplate haelt pro Typ nur die
+        // zuletzt gesetzte fest. Getrennt gesetzt verschwand der Hinweis auf bereits
+        // vorhandene Abgaben genau dann, wenn es am Dockerfile auch etwas zu sagen gab.
+        if ($parts !== []) {
+            $this->tpl->setOnScreenMessage('info', implode('', $parts));
+        }
+    }
+
+    protected function dockerfileHintsHtml(): string
     {
         $docker = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
         if (empty($docker) || empty($docker->getId())) {
-            return;
+            return '';
         }
 
         $path = $docker->getAbsolutePath();
         if (empty($path) || !is_readable($path)) {
-            return;
+            return '';
         }
 
         $content = file_get_contents($path);
         if ($content === false || trim($content) === '') {
-            return;
+            return '';
         }
 
         $analyzer = new ilExAutoScoreDockerfileAnalyzer();
         $findings = $analyzer->analyze($content);
         if (empty($findings)) {
-            return;
+            return '';
         }
 
         $items = '';
@@ -267,10 +280,8 @@ class ilExAutoScoreProvidedFilesGUI
             $items .= '<li style="' . $weight . '">' . $text . '</li>';
         }
 
-        $html = '<p><strong>' . htmlspecialchars($this->plugin->txt('dockerfile_check_title'), ENT_QUOTES, 'UTF-8')
+        return '<p><strong>' . htmlspecialchars($this->plugin->txt('dockerfile_check_title'), ENT_QUOTES, 'UTF-8')
             . '</strong></p><p>' . $this->plugin->txt('dockerfile_check_intro') . '</p><ul>' . $items . '</ul>';
-
-        $this->tpl->setOnScreenMessage('info', $html);
     }
 
     /**

@@ -39,6 +39,25 @@ class ilExAutoScoreDockerfileAnalyzer
     protected const BARRIER_INSTRUCTIONS = ['COPY', 'ADD'];
 
     /**
+     * Dateien, deren Kopieren KEINE Barriere ist.
+     *
+     * "COPY requirements.txt ." gefolgt von "RUN pip install -r requirements.txt" ist
+     * die empfohlene Bauweise und genau das Gegenteil des Problems: Die Abhaengigkeits-
+     * liste aendert sich selten, also bleibt die teure Installation im Cache, waehrend
+     * die Aufgabendateien darunter beliebig wechseln duerfen. Wer hier warnte, raet dem
+     * Dozenten, die Installation ueber das Kopieren der Liste zu ziehen — dann fehlt
+     * ihr die Datei und der Build scheitert.
+     */
+    protected const DEPENDENCY_MANIFESTS = [
+        'requirements.txt', 'requirements-dev.txt', 'constraints.txt',
+        'pyproject.toml', 'poetry.lock', 'pipfile', 'pipfile.lock', 'setup.py', 'setup.cfg',
+        'environment.yml', 'environment.yaml', 'conda.yaml',
+        'package.json', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
+        'go.mod', 'go.sum', 'gemfile', 'gemfile.lock',
+        'pom.xml', 'build.gradle', 'build.gradle.kts', 'cargo.toml', 'cargo.lock',
+    ];
+
+    /**
      * Teure RUN-Schritte. Muster => Kurzname fuer die Meldung. Die Liste muss nicht
      * vollstaendig sein: sie soll die grossen Faelle treffen, ohne bei harmlosen
      * Zeilen (mkdir, chmod, echo) Laerm zu machen.
@@ -104,8 +123,10 @@ class ilExAutoScoreDockerfileAnalyzer
 
             if ($keyword === 'FROM') {
                 // Neue Build-Stufe: eigener Cache-Strang, die Barriere gilt nicht weiter.
+                // Auch ein ENV der vorherigen Stufe wirkt hier nicht mehr.
                 $barrierLine = null;
                 $barrierKeyword = '';
+                $this->pipCacheDisabledGlobally = false;
                 $this->checkBaseImage($line, $args);
                 continue;
             }
@@ -114,6 +135,9 @@ class ilExAutoScoreDockerfileAnalyzer
                 // "COPY --from=<stufe>" holt aus einer anderen Build-Stufe statt aus dem
                 // aufgabenspezifischen Kontext und bricht den geteilten Cache deshalb nicht.
                 if (preg_match('/(^|\s)--from=/i', $args)) {
+                    continue;
+                }
+                if ($this->copiesOnlyDependencyManifests($args)) {
                     continue;
                 }
                 if ($barrierLine === null) {
@@ -178,8 +202,11 @@ class ilExAutoScoreDockerfileAnalyzer
                     continue;
                 }
                 $startLine = $lineNumber;
-            } elseif ($trimmed !== '' && $trimmed[0] === '#') {
-                // Kommentar mitten in einer Fortsetzung — Docker ignoriert ihn ebenfalls.
+            } elseif ($trimmed === '' || $trimmed[0] === '#') {
+                // Leerzeile oder Kommentar mitten in einer Fortsetzung. Docker ignoriert
+                // beides und setzt die Anweisung fort; wer hier abbricht, zerlegt ein
+                // "RUN ... && \" mit Leerzeile in zwei Anweisungen und meldet z.B. ein
+                // fehlendes Aufraeumen, das eine Zeile weiter unten steht.
                 continue;
             }
 
@@ -214,6 +241,29 @@ class ilExAutoScoreDockerfileAnalyzer
             'args' => trim($matches[2]),
             'line' => $line,
         ];
+    }
+
+    /**
+     * Kopiert dieser Schritt ausschliesslich Abhaengigkeitslisten? Dann ist er keine
+     * Barriere, sondern gute Praxis (s. DEPENDENCY_MANIFESTS).
+     */
+    protected function copiesOnlyDependencyManifests(string $args): bool
+    {
+        // Flags (--chown=, --chmod=, ...) entfernen, dann Quellen vom Ziel trennen.
+        $args = preg_replace('/(^|\s)--\S+/', ' ', $args) ?? $args;
+        $parts = preg_split('/\s+/', trim($args), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if (count($parts) < 2) {
+            return false;
+        }
+        array_pop($parts); // Ziel
+
+        foreach ($parts as $source) {
+            $name = strtolower(basename(trim($source, "\"'")));
+            if (!in_array($name, self::DEPENDENCY_MANIFESTS, true)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -284,9 +334,15 @@ class ilExAutoScoreDockerfileAnalyzer
 
         $parts = explode(':', $reference, 2);
         $image = strtolower($parts[0]);
-        $tag = $parts[1] ?? 'latest';
+        $tag = $parts[1] ?? '';
 
         if (!in_array($image, self::SLIMMABLE_BASES, true)) {
+            return;
+        }
+        // Ohne ausdrueckliches Tag (oder mit "latest") laesst sich kein gueltiger
+        // Vorschlag bilden: aus "FROM python" wuerde "python:latest-slim", ein Tag, das
+        // es nicht gibt. Lieber schweigen als in die Irre schicken.
+        if ($tag === '' || strtolower($tag) === 'latest') {
             return;
         }
         if (preg_match('/slim|alpine/i', $tag)) {

@@ -152,6 +152,73 @@ DOCKER;
         $this->assertSame([], $this->withKey($this->analyzer->analyze($content), 'dockerfile_check_after_copy'));
     }
 
+    /**
+     * "COPY requirements.txt" + "RUN pip install -r requirements.txt" is the recommended
+     * layout, not a mistake. Advising someone to move the install above that COPY would
+     * leave the file missing and break their build — worse than saying nothing.
+     */
+    public function testCopyingOnlyDependencyManifestsIsNoBarrier(): void
+    {
+        $good = <<<'DOCKER'
+FROM debian:bookworm
+WORKDIR /work
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+ADD . ./
+RUN python -m zipfile -e tests.zip tests
+DOCKER;
+
+        $this->assertSame([], $this->withKey($this->analyzer->analyze($good), 'dockerfile_check_after_copy'));
+    }
+
+    public function testCopyingTheWholeContextStaysABarrier(): void
+    {
+        $bad = "FROM debian:bookworm\nCOPY . .\nRUN pip install --no-cache-dir -r requirements.txt\n";
+        $this->assertCount(1, $this->withKey($this->analyzer->analyze($bad), 'dockerfile_check_after_copy'));
+    }
+
+    public function testCopyingAManifestTogetherWithEverythingElseIsABarrier(): void
+    {
+        $bad = "FROM debian:bookworm\nCOPY requirements.txt tests/ .\nRUN pip install --no-cache-dir -r requirements.txt\n";
+        $this->assertCount(1, $this->withKey($this->analyzer->analyze($bad), 'dockerfile_check_after_copy'));
+    }
+
+    /** A blank line inside a "\" continuation does not end the instruction for Docker. */
+    public function testBlankLineInsideAContinuationDoesNotSplitTheInstruction(): void
+    {
+        $content = "FROM debian:bookworm\n"
+            . "RUN apt-get update && \\\n"
+            . "\n"
+            . "    apt-get install -y gcc && rm -rf /var/lib/apt/lists/*\n";
+
+        $this->assertSame([], $this->withKey($this->analyzer->analyze($content), 'dockerfile_check_apt_lists'),
+            'the cleanup is part of the same RUN, just past a blank line');
+    }
+
+    public function testBaseImageWithoutATagIsLeftAlone(): void
+    {
+        // "python:latest-slim" does not exist — a wrong suggestion is worse than none.
+        foreach (["FROM python\n", "FROM python:latest\n"] as $content) {
+            $this->assertSame([], $this->withKey($this->analyzer->analyze($content), 'dockerfile_check_fat_base'),
+                'must not invent a tag for: ' . trim($content));
+        }
+    }
+
+    public function testPipEnvOfAnEarlierStageDoesNotSilenceALaterOne(): void
+    {
+        $content = <<<'DOCKER'
+FROM python:3.12-slim AS builder
+ENV PIP_NO_CACHE_DIR=1
+RUN pip install torch
+FROM python:3.12-slim
+RUN pip install torch
+DOCKER;
+
+        $cache = $this->withKey($this->analyzer->analyze($content), 'dockerfile_check_pip_cache');
+        $this->assertCount(1, $cache, 'ENV does not survive a FROM');
+        $this->assertSame([5], $cache[0]['args']);
+    }
+
     public function testFatBaseImageIsHinted(): void
     {
         $base = $this->withKey($this->analyzer->analyze("FROM python:3.12\n"), 'dockerfile_check_fat_base');
