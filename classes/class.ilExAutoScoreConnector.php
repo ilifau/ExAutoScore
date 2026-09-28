@@ -557,7 +557,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         foreach ($files as $file) {
             // Überspringe result.json - das wurde bereits verarbeitet
             if ($file->getClientFilename() !== 'result.json') {
-                $file->moveTo($fb_path . "/". ilUtil::getASCIIFilename($file->getClientFilename()));
+                $file->moveTo($fb_path . "/". ilFileUtils::getASCIIFilename($file->getClientFilename()));
             }
         }
     }

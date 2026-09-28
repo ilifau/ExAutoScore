@@ -108,7 +108,7 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     /**
      * Uninstall custom data of this plugin
      */
-    protected function uninstallCustom(): void
+    protected function afterUninstall(): void
     {
         global $DIC;
         $db = $DIC->database();

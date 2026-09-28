@@ -317,7 +317,7 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
             return false;
         }
 
-        $tempfile = ilUtil::ilTempnam();
+        $tempfile = ilFileUtils::ilTempnam();
         copy($row['filename'], $tempfile);
 
         // Simuliere einen Upload (Datei wird per rename verschoben)
