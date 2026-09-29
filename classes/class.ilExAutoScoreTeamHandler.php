@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
-require_once "./Modules/Exercise/AssignmentTypes/classes/interface.ilExAssignmentTypeTeamHandlerInterface.php";
 require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
 require_once (__DIR__ . '/class.ilExAutoScoreConnector.php');
+require_once (__DIR__ . '/class.ilExAutoScoreSubmissionFiles.php');
 
 /**
  * Auto Score Team Handler
@@ -18,9 +18,6 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
 
     /** @var ilExAutoScorePlugin */
     protected mixed $plugin;
-
-    /** @var ilFSStorageExercise */
-    protected mixed $storage;
 
     /** @var bool */
     protected $is_management = false;
@@ -43,7 +40,6 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
         $this->assignment = $assignment;
         $this->is_management = $is_management;
         $this->plugin = $plugin;
-        $this->storage = new ilFSStorageExercise($this->assignment->getExerciseId(), $this->assignment->getId());
     }
 
 
@@ -66,7 +62,7 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
         $submission = new ilExSubmission($this->assignment, $user_id);
 
         $files = [];
-        foreach ($submission->getFiles() as $file) {
+        foreach (ilExAutoScoreSubmissionFiles::getFiles($submission) as $file) {
             $files[$file["filetitle"]] = true;
         }
 
@@ -119,7 +115,7 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
             foreach ($team->getMembers() as $user_id) {
                 $submission = new ilExSubmission($this->assignment, $user_id);
                 $submissions[$user_id] = $submission;
-                foreach ($submission->getFiles() as $file) {
+                foreach (ilExAutoScoreSubmissionFiles::getFiles($submission) as $file) {
                     $files[$file["user_id"]][$file['returned_id']] = $file['filetitle'];
 
                     // team files may come from different team members
@@ -183,7 +179,7 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
 
             foreach ($added_users as $user_id) {
                 $submission = new ilExSubmission($this->assignment, $user_id);
-                foreach ($submission->getFiles() as $file) {
+                foreach (ilExAutoScoreSubmissionFiles::getFiles($submission) as $file) {
                     if ($file['user_id'] == $user_id) {
                         $submission->deleteSelectedFiles([$file['returned_id']]);
                     }
@@ -237,7 +233,7 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
         // the files are listed with user_ids of the submitting team members
         foreach($check_users as $user_id) {
             $submission = new ilExSubmission($this->assignment, $user_id);
-            foreach ($submission->getFiles() as $file) {
+            foreach (ilExAutoScoreSubmissionFiles::getFiles($submission) as $file) {
                 $files[$file["filetitle"]][$file['user_id']] = $file['returned_id'];
             }
         }
@@ -295,9 +291,7 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
 
 
     /**
-     * Copy a submitted file to a user
-     * @see ilExSubmission::uploadFile()
-     * @todo rework for IRSS in ILIAS 7
+     * Copy a submitted file to a user, keeping submission time and late flag
      *
      * @param int $returned_id
      * @param int $user_id
@@ -312,43 +306,24 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
         $result = $db->query($query);
         $row = $db->fetchAssoc($result);
 
-        if (empty($row) || !is_file($row['filename'])) {
+        $tempfile = empty($row['rid']) ? null : ilExAutoScoreSubmissionFiles::copyToTemp($this->assignment, $row);
+        if ($tempfile === null) {
             $DIC->logger()->root()->error('ExAutoScore TeamHandler: File not found for returned_id ' . $returned_id);
             return false;
         }
 
-        $tempfile = ilFileUtils::ilTempnam();
-        copy($row['filename'], $tempfile);
+        $success = ilExAutoScoreSubmissionFiles::addLocalFile($this->assignment, (int) $user_id, 0, $tempfile, (string) $row['filetitle']);
+        @unlink($tempfile);
 
-        // Simuliere einen Upload (Datei wird per rename verschoben)
-        $post = [
-            'name' => $row['filetitle'],
-            'tmp_name' => $tempfile,
-            'size' => filesize($tempfile)
-        ];
-        
-        $deliver_result = $this->storage->uploadFile($post, $user_id, true);
-
-        // Speichere neuen Eintrag mit anderem User und neuem Upload-Pfad
-        if ($deliver_result) {
-            $next_id = $db->nextId("exc_returned");
-            $query = sprintf(
-                "INSERT INTO exc_returned " .
-                "(returned_id, obj_id, user_id, filename, filetitle, mimetype, ts, ass_id, late, team_id) " .
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                $db->quote($next_id, "integer"),
-                $db->quote($row['obj_id'], "integer"),
-                $db->quote($user_id, "integer"),
-                $db->quote($deliver_result["fullname"], "text"),
-                $db->quote($row['filetitle'], "text"),
-                $db->quote($row['mimetype'], "text"),
-                $db->quote($row['ts'], "timestamp"),
-                $db->quote($row['ass_id'], "integer"),
-                $db->quote($row['late'], "integer"),
-                $db->quote(0, "integer")  // team_id=0 für Einzeluser
+        if ($success) {
+            $query = "SELECT MAX(returned_id) id FROM exc_returned WHERE ass_id = " . $db->quote($this->assignment->getId(), 'integer')
+                . " AND user_id = " . $db->quote($user_id, 'integer');
+            $next_id = (int) ($db->fetchAssoc($db->query($query))['id'] ?? 0);
+            $db->update('exc_returned',
+                ['ts' => ['timestamp', $row['ts']], 'late' => ['integer', (int) $row['late']]],
+                ['returned_id' => ['integer', $next_id]]
             );
-            $db->manipulate($query);
-            
+
             $DIC->logger()->root()->error('ExAutoScore TeamHandler: Copied file to user ' . $user_id . ', new returned_id = ' . $next_id);
 
             return true;

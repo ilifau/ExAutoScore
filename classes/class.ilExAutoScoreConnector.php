@@ -8,6 +8,7 @@ require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreProvidedFile.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
+require_once (__DIR__ . '/class.ilExAutoScoreSubmissionFiles.php');
 
 /**
  * Connector for the AuDoscore server
@@ -29,7 +30,10 @@ class ilExAutoScoreConnector
     /** @var string|null */
     protected ?string $result_message = null;
 
-    protected ?string $debug_logs = null;    
+    protected ?string $debug_logs = null;
+
+    /** @var string[] */
+    protected array $temp_files = [];
 
     public function __construct()
     {
@@ -207,6 +211,10 @@ class ilExAutoScoreConnector
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
 
         $success = $this->callService($url, $post, $timeout);
+        foreach ($this->temp_files as $temp_file) {
+            @unlink($temp_file);
+        }
+        $this->temp_files = [];
 
         $scoreTask->clearSubmissionData();
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
@@ -532,34 +540,14 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         }
 
         // Für Feedback-Dateien: nimm einen beliebigen User (bei Teams ist es egal welcher)
-        $user_id = $affected_users[0];
-
-        // Team-Objekt nur bei Team-Aufgaben
-        $team = null;
-        if (!empty($task->getTeamId())) {
-            $team = new ilExAssignmentTeam($task->getTeamId());
-        }
-
-        $submission = new ilExSubmission($assignment, $user_id, $team);
-        $feedback_id = $submission->getFeedbackId();
-
-        $fstorage = new ilFSStorageExercise($assignment->getExerciseId(), $assignment->getId());
-        $fstorage->create();
-        $fb_path = $fstorage->getFeedbackPath($feedback_id);
-
-        // delete old feedback files and create the directory new
-        $fstorage->deleteDirectory($fb_path);
-        $fb_path = $fstorage->getFeedbackPath($feedback_id);
+        $user_id = (int) $affected_users[0];
 
         // HINWEIS: feedback.html wird NICHT mehr gespeichert, da das HTML über
         // den "Erweitertes Feedback" Modal-Button angezeigt wird (nach Deadline).
 
-        foreach ($files as $file) {
-            // Überspringe result.json - das wurde bereits verarbeitet
-            if ($file->getClientFilename() !== 'result.json') {
-                $file->moveTo($fb_path . "/". ilFileUtils::getASCIIFilename($file->getClientFilename()));
-            }
-        }
+        // Überspringe result.json - das wurde bereits verarbeitet
+        $feedback_files = array_filter($files, fn($file) => $file->getClientFilename() !== 'result.json');
+        ilExAutoScoreSubmissionFiles::replaceFeedbackFiles($assignment, $user_id, $feedback_files);
     }
 
     /**
@@ -737,7 +725,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             return $success;
             
         }
-        catch(Exception $e) {
+        catch(Throwable $e) {
             if (isset($curl) && is_resource($curl)) {
                 curl_close($curl);
             }
@@ -794,14 +782,16 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
 
         // add the required files which are submitted by the user
         $submitted = [];
-        foreach ($submission->getFiles() as $file) {
-            // $file['filetitle'] is basename
-            // $file['filename'] is absolute path
-            $submitted[$file["filetitle"]] = $file['filename'];
+        foreach (ilExAutoScoreSubmissionFiles::getFiles($submission) as $file) {
+            $submitted[$file["filetitle"]] = $file;
         }
         foreach (ilExAutoScoreRequiredFile::getForAssignment($submission->getAssignment()->getId()) as $file) {
             if (isset($submitted[$file->getFilename()])) {
-                $postfiles[$file->getFilename()] = $submitted[$file->getFilename()];
+                $path = ilExAutoScoreSubmissionFiles::copyToTemp($submission->getAssignment(), $submitted[$file->getFilename()]);
+                if ($path !== null) {
+                    $this->temp_files[] = $path;
+                    $postfiles[$file->getFilename()] = $path;
+                }
             }
         }
 

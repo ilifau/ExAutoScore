@@ -6,12 +6,10 @@ chdir(__DIR__ . '/../../../../../../../');
 //require_once ('./include/inc.debug.php');
 //log_request();
 
+require_once '../vendor/composer/vendor/autoload.php';
 
 // we need access handling
-include_once 'Services/Context/classes/class.ilContext.php';
 ilContext::init(ilContext::CONTEXT_RSS);
-
-require_once("Services/Init/classes/class.ilInitialisation.php");
 ilInitialisation::initILIAS();
 
 require_once (__DIR__ . '/classes/class.ilExAutoScoreConnector.php');

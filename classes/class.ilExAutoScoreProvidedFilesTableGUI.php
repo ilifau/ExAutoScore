@@ -43,7 +43,7 @@ class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
         $this->setFormAction($this->ctrl->getFormAction($a_parent_obj, $a_parent_cmd));
 
         $this->setStyle('table', 'fullwidth');
-        $this->setRowTemplate("tpl.exautoscore_provided_files_row.html", $this->plugin->getDirectory());
+        $this->setRowTemplate("tpl.exautoscore_provided_files_row.html", realpath($this->plugin->getDirectory()));
 
         $this->setExternalSorting(true);
         $this->setExternalSegmentation(true);

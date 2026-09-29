@@ -209,7 +209,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
                 $this->save();
                 return true;
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log('ExAutoScore file storage error: ' . $e->getMessage());
         }
 

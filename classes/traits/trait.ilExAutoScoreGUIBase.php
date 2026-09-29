@@ -48,4 +48,18 @@ trait ilExAutoScoreGUIBase
     public function getParentGUI(): mixed {
         return $this->parentGUI;
     }
+
+    /**
+     * Render a button that opens a modal with the given HTML content
+     */
+    protected function renderModalButton(string $title, string $body_html, string $button_label): string
+    {
+        global $DIC;
+        $factory = $DIC->ui()->factory();
+
+        $modal = $factory->modal()->lightbox([$factory->modal()->lightboxTextPage($body_html, $title)]);
+        $button = $factory->button()->standard($button_label, '')->withOnClick($modal->getShowSignal());
+
+        return $DIC->ui()->renderer()->render([$modal, $button]);
+    }
 }

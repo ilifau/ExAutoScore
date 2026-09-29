@@ -986,22 +986,10 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
         }
 
         // Für Feedback-Dateien: nimm einen beliebigen User (bei Teams ist es egal welcher)
-        $user_id = $affected_users[0];
+        $user_id = (int) $affected_users[0];
 
-        // Team-Objekt nur bei Team-Aufgaben
-        $team = null;
-        if (!empty($this->getTeamId())) {
-            $team = new ilExAssignmentTeam($this->getTeamId());
-        }
-
-        $submission = new ilExSubmission($assignment, $user_id, $team);
-        $feedback_id = $submission->getFeedbackId();
-
-        $fstorage = new ilFSStorageExercise($assignment->getExerciseId(), $assignment->getId());
-        $fstorage->create();
-        $fb_path = $fstorage->getFeedbackPath($feedback_id);
-
-        $fstorage->deleteDirectory($fb_path);
+        require_once __DIR__ . '/../class.ilExAutoScoreSubmissionFiles.php';
+        ilExAutoScoreSubmissionFiles::deleteFeedbackFiles($assignment, $user_id);
     }
 
     /**

@@ -10,8 +10,7 @@ require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreProvidedFile.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
 require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
-
-require_once "./Modules/Exercise/AssignmentTypes/GUI/classes/interface.ilExAssignmentTypeExtendedGUIInterface.php";
+require_once (__DIR__ . '/class.ilExAutoScoreSubmissionFiles.php');
 
 /**
  * Auto Score Base Assignment Type GUI
@@ -207,26 +206,15 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             return '';
         }
 
-        $item_id = "exautoscore_feedback_modal_" . $task->getId() . $item_id_suffix;
-
-        $modal = ilModalGUI::getInstance();
-        $modal->setId($item_id);
-        $modal->setType(ilModalGUI::TYPE_LARGE);
-
         $feedbackHtml = $task->getProtectedFeedbackHtml();
 
         $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
 
-        $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
-        $modal->setHeading($this->plugin->txt('protected_feedback_html'));
-
-        $button_html = sprintf(
-            '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\'); return false;">%s</button>',
-            $item_id,
+        return $this->renderModalButton(
+            $this->plugin->txt('protected_feedback_html'),
+            ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()),
             $this->plugin->txt('show_extended_feedback')
         );
-
-        return $modal->getHTML() . $button_html;
     }
 
     /**
@@ -458,7 +446,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         // Dateiliste (unverändert)
         $titles = [];
         $links = [];
-        foreach ($a_submission->getFiles() as $file) {
+        foreach (ilExAutoScoreSubmissionFiles::getFiles($a_submission) as $file) {
             $this->ctrl->setParameterByClass(strtolower(get_class($this)), 'delivered', $file['returned_id']);
             $link = $this->ctrl->getLinkTargetByClass(
                 [ ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, strtolower(get_class($this)) ],
@@ -747,7 +735,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     protected function initSubmissionForm(): ilPropertyFormGUI
     {
         $existing = [];
-        foreach ($this->submission->getFiles() as $file) {
+        foreach (ilExAutoScoreSubmissionFiles::getFiles($this->submission) as $file) {
             $existing[$file["filetitle"]] = $file;
         }
 
@@ -780,7 +768,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 $this->ctrl->setParameterByClass(strtolower(get_class($this)), 'delivered', $existing[$file->getFilename()]['returned_id']);
                 $link = $this->ctrl->getLinkTarget($this, 'downloadSubmittedFile');
                 $info[] = '<strong>' . sprintf($this->plugin->txt('existing_file_size_info'),
-                        ceil(filesize($existing[$file->getFilename()]['filename']) / 1000))
+                        ceil(ilExAutoScoreSubmissionFiles::getSize($existing[$file->getFilename()]) / 1000))
                     . '</strong>, <a href="' . $link . '">' . $this->lng->txt('download') . '</a>';
             }
             
@@ -855,7 +843,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
         // Dateien sammeln
         $existing = [];
-        foreach ($this->submission->getFiles() as $file) {
+        foreach (ilExAutoScoreSubmissionFiles::getFiles($this->submission) as $file) {
             $existing[$file["filetitle"]][] = $file['returned_id'];
         }
         
@@ -870,35 +858,17 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             if (isset($results[$requiredFile->getFilename()])) {
                 $result = $results[$requiredFile->getFilename()];
 
-                $uploadData = [
-                    'name'     => $result->getName(),
-                    'size'     => $result->getSize(),
-                    'tmp_name' => $result->getPath()
-                ];
-
-                if ($this->submission->uploadFile($uploadData)) {
+                if (ilExAutoScoreSubmissionFiles::addUpload($this->submission, $result)) {
                     $new[] = $requiredFile;
-                    
-                    $newFiles = $this->submission->getFiles();
-                    foreach ($newFiles as $newFile) {
-                        if ($newFile['filetitle'] == $result->getName()) {
-                            $returned_id = $newFile['returned_id'];
-                            $uploaded_ids[] = $returned_id;
-                            
-                            // FIX: Konvertiere absoluten Pfad in relativen Pfad wie Standard-ILIAS
-                            $db = $DIC->database();
-                            $absolute_path = $newFile['filename'];
-                            
-                            // Entferne CLIENT_DATA_DIR Prefix um relativen Pfad zu erhalten
-                            $relative_path = str_replace(CLIENT_DATA_DIR . '/', '', $absolute_path);
-                            
-                            $db->update('exc_returned',
-                                ['filename' => ['text', $relative_path]],
-                                ['returned_id' => ['integer', $returned_id]]
-                            );
 
-                            break;
+                    $returned_id = 0;
+                    foreach (ilExAutoScoreSubmissionFiles::getFiles($this->submission) as $newFile) {
+                        if ($newFile['filetitle'] == $result->getName()) {
+                            $returned_id = max($returned_id, (int) $newFile['returned_id']);
                         }
+                    }
+                    if ($returned_id > 0) {
+                        $uploaded_ids[] = $returned_id;
                     }
                 } else {
                     $failed = $requiredFile;
@@ -908,7 +878,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
 
         if (isset($failed)) {
-            foreach ($this->submission->getFiles() as $file) {
+            foreach (ilExAutoScoreSubmissionFiles::getFiles($this->submission) as $file) {
                 if (!is_array($existing[$file["filetitle"]])
                     || !in_array($file['returned_id'], $existing[$file["filetitle"]])) {
                     $this->submission->deleteSelectedFiles([$file['returned_id']]);
@@ -998,7 +968,7 @@ protected function downloadSubmittedFile()
             try {
                 $this->submission->downloadFiles($delivered_id);
                 exit;
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $plugin = ilExAutoScorePlugin::getInstance();
                 if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
                     $error_msg = sprintf(
@@ -1041,7 +1011,7 @@ protected function downloadSubmittedFile()
 
         try {
             $file->downloadFile();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $plugin = ilExAutoScorePlugin::getInstance();
             if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
                 $error_msg = sprintf(
@@ -1092,7 +1062,7 @@ protected function downloadSubmittedFile()
 
         try {
             $file->downloadFile();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $plugin = ilExAutoScorePlugin::getInstance();
             if ($plugin->getConfig()->get('enable_debug_logs') && $plugin->hasAdminAccess()) {
                 $error_msg = sprintf(
@@ -1280,7 +1250,7 @@ protected function downloadSubmittedFile()
             : ilExAssTypeAutoScoreUserGUI::class;
         
         $ass       = $sub->getAssignment();
-        $files_cnt = count($sub->getFiles());
+        $files_cnt = count(ilExAutoScoreSubmissionFiles::getFiles($sub));
         $can_submit = $sub->canSubmit();
 
         if ($can_submit) {
@@ -1418,27 +1388,16 @@ protected function downloadSubmittedFile()
             // Erweiterte Rückmeldung (Modal)
             if ($task->getProtectedFeedbackHtml() && $this->canShowExtendedFeedbackByDeadline($ass, $sub)) {
                 try {
-                    $item_id = "exautoscore_feedback_modal_" . $task->getId();
-
-                    $modal = ilModalGUI::getInstance();
-                    $modal->setId($item_id);
-                    $modal->setType(ilModalGUI::TYPE_LARGE);
-
                     $feedbackHtml = $task->getProtectedFeedbackHtml();
                     $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
-                    $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
-                    $modal->setHeading($this->plugin->txt('protected_feedback_html'));
-
-                    $modal_html = $modal->getHTML();
-                    $button_html = sprintf(
-                        '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\'); return false;">%s</button>',
-                        $item_id,
-                        $this->plugin->txt('show_extended_feedback')
-                    );
 
                     // Button in TUTOR_EVAL statt SUBMISSION => erscheint unten bei der Bewertung
-                    $builder->addProperty($builder::SEC_TUTOR_EVAL, '', $modal_html . $button_html);
-                } catch (Exception $e) {
+                    $builder->addProperty($builder::SEC_TUTOR_EVAL, '', $this->renderModalButton(
+                        $this->plugin->txt('protected_feedback_html'),
+                        ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()),
+                        $this->plugin->txt('show_extended_feedback')
+                    ));
+                } catch (Throwable $e) {
                     // optional logging
                 }
             }
@@ -1479,7 +1438,7 @@ protected function downloadSubmittedFile()
             return;
         }
 
-        $files = $this->submission->getFiles();
+        $files = ilExAutoScoreSubmissionFiles::getFiles($this->submission);
 
         // NUR DATEILISTE - KEINE AUSWERTUNG
         $files_html = '';

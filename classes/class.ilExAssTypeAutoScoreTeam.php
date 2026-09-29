@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
-require_once "./Modules/Exercise/AssignmentTypes/classes/interface.ilExAssignmentTypeExtendedInterface.php";
 require_once(__DIR__ . '/class.ilExAssTypeAutoScoreBase.php');
 
 require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');

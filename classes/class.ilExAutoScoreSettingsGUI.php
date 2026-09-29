@@ -312,25 +312,14 @@ class ilExAutoScoreSettingsGUI
 
             if (!empty($assTask->getProtectedFeedbackHtml())) {
                 $protectedFeedbackHtml = new ilNonEditableValueGUI($this->plugin->txt('protected_feedback_html'), 'exautoscore_protected_feedback_html', true);
-                $item_id = "exautoscore_feedback_html_" . $this->assignment->getId();
-                
-                $modal = ilModalGUI::getInstance();
-                $modal->setId($item_id);
-                $modal->setType(ilModalGUI::TYPE_LARGE);
-                
                 $feedbackHtml = $assTask->getProtectedFeedbackHtml();
-                $cleanFeedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);                                                 
-                
-                $modal->setBody(ilUtil::stripScriptHTML($cleanFeedbackHtml, $this->plugin->getAllowedTags()));
-                $modal->setHeading($this->plugin->txt('protected_feedback_html'));
-                
-                $button_html = sprintf(
-                    '<button type="button" class="btn btn-default" onclick="$(\'#%s\').modal(\'show\');">%s</button>',
-                    $item_id,
+                $cleanFeedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
+
+                $protectedFeedbackHtml->setValue($this->renderModalButton(
+                    $this->plugin->txt('protected_feedback_html'),
+                    ilUtil::stripScriptHTML($cleanFeedbackHtml, $this->plugin->getAllowedTags()),
                     $this->plugin->txt('show_extended_feedback')
-                );
-                                
-                $protectedFeedbackHtml->setValue($modal->getHTML() . $button_html);
+                ));
                 $form->addItem($protectedFeedbackHtml);
             }
 
@@ -352,27 +341,15 @@ class ilExAutoScoreSettingsGUI
                     $logDate = ' (' . ilDatePresentation::formatDate($time) . ')';
                 }                
                 
-                $item_id = "exautoscore_debug_logs_modal_" . $this->assignment->getId();
-                
-                $modal = ilModalGUI::getInstance();
-                $modal->setId($item_id);
-                $modal->setType(ilModalGUI::TYPE_LARGE);
-                $formattedLogs = $this->formatDebugLogs($assTask->getDebugLogs());                
-                $modal->setBody(
-                    '<pre style="max-height:70vh;overflow:auto;background:white;color:black;padding:15px;border-radius:4px;font-family:monospace;font-size:12px;line-height:1.4;">' 
-                    . htmlspecialchars($formattedLogs) 
-                    . '</pre>'
-                );
-                $modal->setHeading($this->plugin->txt('debug_logs'));
-                
-                $button_html = sprintf(
-                    '<button type="button" class="btn btn-warning" onclick="$(\'#%s\').modal(\'show\');">%s%s</button>',
-                    $item_id,
-                    $this->plugin->txt('show_debug_logs'),
-                    $logDate
-                );
-                
-                $debugLogs->setValue($modal->getHTML() . $button_html);
+                $formattedLogs = $this->formatDebugLogs($assTask->getDebugLogs());
+
+                $debugLogs->setValue($this->renderModalButton(
+                    $this->plugin->txt('debug_logs'),
+                    '<pre style="max-height:70vh;overflow:auto;background:white;color:black;padding:15px;border-radius:4px;font-family:monospace;font-size:12px;line-height:1.4;">'
+                    . htmlspecialchars($formattedLogs)
+                    . '</pre>',
+                    $this->plugin->txt('show_debug_logs') . $logDate
+                ));
                 $form->addItem($debugLogs);
             }
         }
