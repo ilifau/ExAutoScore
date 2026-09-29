@@ -26,12 +26,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     /** @var ilExAutoScorePlugin */
     protected mixed $plugin;
 
-    /** @var ilExSubmission|null */
-    protected $submission = null;
-
-    /** @var ilObjExercise|null */
-    protected $exercise = null;
-
     public function __construct($plugin)
     {
         $this->initGlobals();

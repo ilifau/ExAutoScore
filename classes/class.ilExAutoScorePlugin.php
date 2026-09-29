@@ -28,8 +28,8 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
      * Constructor for ILIAS 9 compatibility
      */
     public function __construct(
-        \ilDBInterface $db = null,
-        \ilComponentRepositoryWrite $component_repository = null,
+        ?\ilDBInterface $db = null,
+        ?\ilComponentRepositoryWrite $component_repository = null,
         string $id = ''
     ) {
         parent::__construct($db, $component_repository, $id);
