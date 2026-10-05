@@ -3,6 +3,15 @@
 Version scheme: `0.x` for StudOn 9 (branch `dev-ilias9`), `10.x` for
 StudOn 10 (`dev-ilias10`), `11.x` for StudOn 11 (`dev-ilias11`).
 
+## Unreleased — StudOn 11
+Preparation for ILIAS 12 (legacy UI components are removed there):
+- Action menus in the file tables use the UI framework dropdown
+  (`ilAdvancedSelectionListGUI` is already removed in ILIAS 12).
+- Toolbar buttons use UI framework buttons instead of `ilLinkButton`.
+- "Delete submission" and "Send all tasks" ask for confirmation in a dialog
+  (UI framework interruptive modal) instead of a separate page, and only
+  accept POST requests.
+
 ## 11.0.0 (2026-10-05) — StudOn 11
 Port of 10.0.0 to ILIAS 11. Requires a StudOn 11 core with the patch
 `fau: exAssHook`.

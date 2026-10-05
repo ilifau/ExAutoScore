@@ -325,7 +325,6 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                     case 'uploadSubmission':
                     case 'sendSubmission':
                     case 'returnToParent':
-                    case 'confirmDeleteSubmission':
                     case 'deleteSubmission':
                         $this->$cmd();
                         break;
@@ -463,11 +462,13 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
                 $a_info->addProperty($this->plugin->txt("files_missing"), implode(', ', $missing));
             }
 
-            $button = ilLinkButton::getInstance();
-            $button->setPrimary(true);
-            $button->setCaption($this->lng->txt(empty($titles) ? 'exc_hand_in' : 'exc_edit_submission'), false);
-            $button->setUrl($this->getSubmissionScreenLinkTarget());
-            $content = $button->render();
+            global $DIC;
+            $factory = $DIC->ui()->factory();
+            $renderer = $DIC->ui()->renderer();
+            $content = $renderer->render($factory->button()->primary(
+                $this->lng->txt(empty($titles) ? 'exc_hand_in' : 'exc_edit_submission'),
+                $this->getSubmissionScreenLinkTarget()
+            ));
 
             $this->ctrl->setParameterByClass(ilExSubmissionGUI::class, "ass_id", $a_submission->getAssignment()->getId());
             $sendLink = $this->ctrl->getLinkTargetByClass(
@@ -477,17 +478,11 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
             if (empty($missing)) {
                 if (empty($task->getSubmitTime())) {
-                    $button = ilLinkButton::getInstance();
-                    $button->setCaption($this->plugin->txt('send_submission'), false);
-                    $button->setUrl($sendLink);
-                    $content .= ' ' . $button->render();
+                    $content .= ' ' . $renderer->render($factory->button()->standard($this->plugin->txt('send_submission'), $sendLink));
                 } elseif (empty($task->getReturnTime())) {
                     $submit = (new ilDateTime($task->getSubmitTime(), IL_CAL_DATETIME))->get(IL_CAL_UNIX);
                     if (time() > $submit + 60) {
-                        $button = ilLinkButton::getInstance();
-                        $button->setCaption($this->plugin->txt('send_submission_again'), false);
-                        $button->setUrl($sendLink);
-                        $content .= ' ' . $button->render();
+                        $content .= ' ' . $renderer->render($factory->button()->standard($this->plugin->txt('send_submission_again'), $sendLink));
                     }
                 }
             }
@@ -655,14 +650,16 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             return;
         }
         
-        $button = ilLinkButton::getInstance();
-        $button->setCaption($this->plugin->txt('delete_submission'), false);
         $this->ctrl->setParameterByClass(get_class($this), 'ass_id', $this->assignment->getId());
-        $button->setUrl($this->ctrl->getLinkTargetByClass(
-            [ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, get_class($this)],
-            'confirmDeleteSubmission'
-        ));
-        $DIC->toolbar()->addButtonInstance($button);
+        $this->addToolbarConfirmButton(
+            $this->plugin->txt('delete_submission'),
+            $this->plugin->txt('confirm_delete_submission'),
+            $this->ctrl->getFormActionByClass(
+                [ilAssignmentPresentationGUI::class, ilExSubmissionGUI::class, get_class($this)],
+                'deleteSubmission'
+            ),
+            $this->plugin->txt('delete_submission')
+        );
 
         if (!$this->submission->canAddFile()) {
             $this->tpl->setOnScreenMessage('info', 'Sie können derzeit keine Dateien hochladen.');
@@ -683,31 +680,12 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         exit;
     }
 
-    protected function confirmDeleteSubmission()
-    {
-        $this->handleSubmissionTabs($this->tabs);
-
-        if (!$this->submission->canSubmit()) {
-            $this->tpl->setOnScreenMessage('info', $this->lng->txt("exercise_time_over"));
-            return;
-        }
-
-        $gui = new ilConfirmationGUI();
-        
-        $this->ctrl->setParameterByClass(get_class($this), 'ass_id', $this->assignment->getId());
-        $gui->setFormAction($this->ctrl->getFormActionByClass(get_class($this)));
-        
-        $gui->setHeaderText($this->plugin->txt('confirm_delete_submission'));
-        $gui->setConfirm($this->plugin->txt('delete_submission'), 'deleteSubmission');
-        $gui->setCancel($this->lng->txt('cancel'), 'submissionScreen');
-        
-        $this->tpl->setContent($gui->getHTML());
-        $this->tpl->printToStdout();
-        exit;
-    }
-
     protected function deleteSubmission()
     {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $this->returnToParent();
+            return;
+        }
         if (!$this->submission->canSubmit()) {
             $this->tpl->setOnScreenMessage('info', $this->lng->txt("exercise_time_over"));
         } else {

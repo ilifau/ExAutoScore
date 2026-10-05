@@ -52,7 +52,6 @@ class ilExAutoScoreSettingsGUI
                     case 'saveSettings':
                     case 'sendAssignment':
                     case 'sendExampleTask':
-                    case 'confirmSendAllTasks':
                     case 'sendAllTasks':
                         $this->$cmd();
                         break;
@@ -428,20 +427,14 @@ class ilExAutoScoreSettingsGUI
     }
 
 
-    public function confirmSendAllTasks()
-    {
-        $gui = new ilConfirmationGUI();
-        $gui->setFormAction($this->ctrl->getFormAction($this));
-        $gui->setHeaderText($this->plugin->txt('confirm_send_all_tasks'));
-        $gui->setConfirm($this->plugin->txt('send'), 'sendAllTasks');
-        $gui->setCancel($this->lng->txt('cancel'), 'showSettings');
-        $this->tpl->setContent($gui->getHTML());
-    }
-
 
     public function sendAllTasks()
     {
         global $DIC;
+
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            $this->ctrl->redirect($this, 'showSettings');
+        }
 
         $connector = new ilExAutoScoreConnector();
 
@@ -492,28 +485,18 @@ class ilExAutoScoreSettingsGUI
 
         $canSendAssignment = $hasDockerfile && $hasExampleFiles;
 
-        $button = ilLinkButton::getInstance();
-        $button->setCaption($this->plugin->txt('send_assignment'), false);
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'sendAssignment'));
-        if (!$canSendAssignment) {
-            $button->setDisabled(true);
-        }
-        $this->toolbar->addButtonInstance($button);
+        $this->addToolbarButton($this->plugin->txt('send_assignment'), $this->ctrl->getLinkTarget($this, 'sendAssignment'), !$canSendAssignment);
 
-        $button = ilLinkButton::getInstance();
-        $button->setCaption($this->plugin->txt('send_example_task'), false);
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'sendExampleTask'));
-        if (!$canSendAssignment) {
-            $button->setDisabled(true);
-        }
-        $this->toolbar->addButtonInstance($button);
+        $this->addToolbarButton($this->plugin->txt('send_example_task'), $this->ctrl->getLinkTarget($this, 'sendExampleTask'), !$canSendAssignment);
 
         $this->toolbar->addSeparator();
 
-        $button = ilLinkButton::getInstance();
-        $button->setCaption($this->plugin->txt('send_all_tasks'), false);
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'confirmSendAllTasks'));
-        $this->toolbar->addButtonInstance($button);
+        $this->addToolbarConfirmButton(
+            $this->plugin->txt('send_all_tasks'),
+            $this->plugin->txt('confirm_send_all_tasks'),
+            $this->ctrl->getFormAction($this, 'sendAllTasks'),
+            $this->plugin->txt('send')
+        );
     }
 
     private function formatFloatForInput(?float $value, int $decimals = 2): ?string

@@ -413,10 +413,7 @@ class ilExAutoScoreProvidedFilesGUI
      */
     protected function setListToolbar(): void {
 
-        $button = ilLinkButton::getInstance();
-        $button->setCaption($this->plugin->txt('add_file'), false);
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'addFile'));
-        $this->toolbar->addButtonInstance($button);
+        $this->addToolbarButton($this->plugin->txt('add_file'), $this->ctrl->getLinkTarget($this, 'addFile'));
     }
 
     /**
@@ -424,10 +421,7 @@ class ilExAutoScoreProvidedFilesGUI
      */
     protected function setFileToolbar(): void
     {
-        $button = ilLinkButton::getInstance();
-        $button->setCaption('« ' . $this->plugin->txt('back_to_list'), false);
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'listFiles'));
-        $this->toolbar->addButtonInstance($button);
+        $this->addToolbarButton('« ' . $this->plugin->txt('back_to_list'), $this->ctrl->getLinkTarget($this, 'listFiles'));
     }
 
     /**

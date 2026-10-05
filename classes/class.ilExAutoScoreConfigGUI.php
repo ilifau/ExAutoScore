@@ -91,15 +91,11 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
     {
         $this->toolbar->setFormAction($this->ctrl->getFormAction($this, 'configure'));
 
-        /*$button = ilLinkButton::getInstance();
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'updateLanguages'));
-        $button->setCaption($this->plugin->txt('update_languages'), false);
-        $this->toolbar->addButtonInstance($button);*/
-
-        $button = ilLinkButton::getInstance();
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'generateDBUpdate'));
-        $button->setCaption($this->plugin->txt('generate_db_update'), false);
-        $this->toolbar->addButtonInstance($button);
+        global $DIC;
+        $this->toolbar->addComponent($DIC->ui()->factory()->button()->standard(
+            $this->plugin->txt('generate_db_update'),
+            $this->ctrl->getLinkTarget($this, 'generateDBUpdate')
+        ));
     }
 
     /**

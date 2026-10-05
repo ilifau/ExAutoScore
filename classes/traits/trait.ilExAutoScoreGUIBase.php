@@ -49,6 +49,27 @@ trait ilExAutoScoreGUIBase
         return $this->parentGUI;
     }
 
+    protected function addToolbarButton(string $label, string $url, bool $disabled = false): void
+    {
+        global $DIC;
+        $button = $DIC->ui()->factory()->button()->standard($label, $url)->withUnavailableAction($disabled);
+        $this->toolbar->addComponent($button);
+    }
+
+    /**
+     * Toolbar button that asks for confirmation and then posts to $form_action
+     */
+    protected function addToolbarConfirmButton(string $button_label, string $message, string $form_action, string $action_label): void
+    {
+        global $DIC;
+        $factory = $DIC->ui()->factory();
+        $modal = $factory->modal()->interruptive($button_label, $message, $form_action)
+            ->withActionButtonLabel($action_label);
+        $button = $factory->button()->standard($button_label, '')->withOnClick($modal->getShowSignal());
+        $this->toolbar->addComponent($button);
+        $this->toolbar->addComponent($modal);
+    }
+
     /**
      * Render a button that opens a modal with the given HTML content
      */

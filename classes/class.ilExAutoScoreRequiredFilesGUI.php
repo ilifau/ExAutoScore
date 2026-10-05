@@ -295,15 +295,8 @@ class ilExAutoScoreRequiredFilesGUI
      */
     protected function setListToolbar(): void {
 
-        $button = ilLinkButton::getInstance();
-        $button->setCaption($this->plugin->txt('add_file'), false);
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'addFile'));
-        $this->toolbar->addButtonInstance($button);
-
-        $button = ilLinkButton::getInstance();
-        $button->setCaption($this->plugin->txt('send_example_task'), false);
-        $button->setUrl($this->ctrl->getLinkTargetByClass('ilExAutoScoreSettingsGUI', 'sendExampleTask'));
-        $this->toolbar->addButtonInstance($button);
+        $this->addToolbarButton($this->plugin->txt('add_file'), $this->ctrl->getLinkTarget($this, 'addFile'));
+        $this->addToolbarButton($this->plugin->txt('send_example_task'), $this->ctrl->getLinkTargetByClass('ilExAutoScoreSettingsGUI', 'sendExampleTask'));
 
         $this->toolbar->addSeparator();
     }
@@ -313,9 +306,6 @@ class ilExAutoScoreRequiredFilesGUI
      */
     protected function setFileToolbar(): void
     {
-        $button = ilLinkButton::getInstance();
-        $button->setCaption('« ' . $this->plugin->txt('back_to_list'), false);
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'listFiles'));
-        $this->toolbar->addButtonInstance($button);
+        $this->addToolbarButton('« ' . $this->plugin->txt('back_to_list'), $this->ctrl->getLinkTarget($this, 'listFiles'));
     }
 }

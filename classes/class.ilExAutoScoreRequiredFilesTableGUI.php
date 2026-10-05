@@ -127,16 +127,13 @@ class ilExAutoScoreRequiredFilesTableGUI extends ilTable2GUI
         $this->tpl->setVariable('DESCRIPTION', $file->getDescription());
 
         // show action column
-        $list = new ilAdvancedSelectionListGUI();
-        $list->setSelectionHeaderClass('small');
-        $list->setItemLinkClass('small');
-        $list->setId('actl_'.$id.'_'.$this->getId());
-        $list->setListTitle($this->lng->txt('actions'));
-
-        // add actions
+        global $DIC;
+        $factory = $DIC->ui()->factory();
         $this->ctrl->setParameter($this->parent_obj, 'id', $id);
-        $list->addItem($this->plugin->txt('edit_file'), '', $this->ctrl->getLinkTarget($this->parent_obj,'editFile'));
+        $actions = $factory->dropdown()->standard([
+            $factory->button()->shy($this->plugin->txt('edit_file'), $this->ctrl->getLinkTarget($this->parent_obj, 'editFile'))
+        ])->withLabel($this->lng->txt('actions'));
 
-        $this->tpl->setVariable('ACTIONS', $list->getHtml());
+        $this->tpl->setVariable('ACTIONS', $DIC->ui()->renderer()->render($actions));
     }
 }
