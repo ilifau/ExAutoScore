@@ -67,6 +67,18 @@ class UiFrameworkMigrationTest extends TestCase
         $this->assertStringNotContainsString('function confirmSendAllTasks(', $this->source('class.ilExAutoScoreSettingsGUI.php'));
     }
 
+    public function testPluginConfigurationUsesUiForm(): void
+    {
+        $gui = $this->source('class.ilExAutoScoreConfigGUI.php');
+        $param = $this->source('param/class.ilExAutoScoreParam.php');
+        foreach (['ilPropertyFormGUI', 'ilTextInputGUI', 'ilNumberInputGUI', 'ilCheckboxInputGUI', 'ilSelectInputGUI', 'ilTextAreaInputGUI', 'ilFormSectionHeaderGUI'] as $legacy) {
+            $this->assertStringNotContainsString($legacy, $gui . $param, "$legacy is deprecated with ILIAS 12");
+        }
+        $this->assertStringContainsString('form()->standard(', $gui);
+        $this->assertStringContainsString('->withRequest(', $this->method($gui, 'saveBasicSettings'));
+        $this->assertStringContainsString('->tag(', $this->method($param, 'getUiInput'), 'roles are entered as tags');
+    }
+
     public function testDestructiveCommandsRequirePost(): void
     {
         $this->assertStringContainsString(

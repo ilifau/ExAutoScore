@@ -11,6 +11,8 @@ Preparation for ILIAS 12 (legacy UI components are removed there):
 - "Delete submission" and "Send all tasks" ask for confirmation in a dialog
   (UI framework interruptive modal) instead of a separate page, and only
   accept POST requests.
+- The plugin configuration is a UI framework form. Creator roles are chosen
+  as tags from the global roles; roles that are already configured are kept.
 
 ## 11.0.0 (2026-10-05) — StudOn 11
 Port of 10.0.0 to ILIAS 11. Requires a StudOn 11 core with the patch

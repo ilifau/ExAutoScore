@@ -119,151 +119,103 @@ class ilExAutoScoreParam
     }
 
     /**
-     * Get a form item for setting the parameter
+     * Get a UI framework input for setting the parameter, null for TYPE_HEAD
      */
-    public function getFormItem(): mixed
+    public function getUiInput(): ?\ILIAS\UI\Component\Input\Field\FormInput
     {
         global $DIC;
+        $field = $DIC->ui()->factory()->input()->field();
+        $byline = strpos((string) $this->description, '-') === 0 ? null : (string) $this->description;
 
-        $title = $this->title;
-        $description = $this->description;
-        $postvar = $this->getPostvar();
-
-        switch($this->type)
-        {
-            case self::TYPE_HEAD:
-                $item = new ilFormSectionHeaderGUI();
-                $item->setTitle($title);
-                break;
-
+        switch ($this->type) {
             case self::TYPE_TEXT:
-                $item = new ilTextInputGUI($title, $postvar);
-                $item->setValue($this->value);
-                break;
+                return $field->text($this->title, $byline)->withValue((string) $this->value);
 
             case self::TYPE_RICHTEXT:
-                $item = new ilTextAreaInputGUI($title, $postvar);
-                $item->setUseRte(true);
-                $item->setRteTagSet('mini');
-                $item->setValue($this->value);
-                break;
+                return $field->textarea($this->title, $byline)->withValue((string) $this->value);
 
             case self::TYPE_REF_ID:
             case self::TYPE_INT:
-                $item = new ilNumberInputGUI($title, $postvar);
-                $item->allowDecimals(false);
-                $item->setSize(10);
-                $item->setValue($this->value !== null ? (string)$this->value : null);
-                break;
-
-            case self::TYPE_BOOLEAN:
-                $item = new ilCheckboxInputGUI($title, $postvar);
-                $item->setValue('1');  // Der Wert wenn gecheckt
-                // FIX: Cast zu bool, nicht zu string
-                $item->setChecked((bool)$this->value);  // ← GEÄNDERT (statt setValue)
-                break;
+                return $field->numeric($this->title, $byline)
+                    ->withValue($this->value === null || $this->value === '' ? null : (int) $this->value);
 
             case self::TYPE_FLOAT:
-                $item = new ilNumberInputGUI($title, $postvar);
-                $item->allowDecimals(true);
-                $item->setSize(10);
-                $item->setValue($this->value !== null ? (string)$this->value : null);
-                break;
+                return $field->text($this->title, $byline)->withValue($this->value === null ? '' : (string) $this->value);
+
+            case self::TYPE_BOOLEAN:
+                return $field->checkbox($this->title, $byline)->withValue((bool) $this->value);
 
             case self::TYPE_ROLES:
-                $titles = array();
-                foreach (explode(',', $this->value) as $role_id) {
-                    $titles[] = ilObject::_lookupTitle((int) $role_id);
-                }
-                $item = new ilTextInputGUI($title, $postvar);
-                $item->setMulti(true);
-                $item->setDataSource($DIC->ctrl()->getLinkTargetByClass(
-                    ['ilAdministrationGUI','ilObjAuthSettingsGUI','ilRegistrationSettingsGUI'],
-                    "getLocalRoleAutoComplete", "", true));
-                $item->setMultiValues($titles);
-                if (count($titles)) {
-                    $item->setValue($titles[0]);
-                }
-                break;
+                $selected = $this->getRoleTitles();
+                $suggestions = array_values(array_unique(array_merge($this->getGlobalRoleTitles(), $selected)));
+                return $field->tag($this->title, $suggestions, $byline)
+                    ->withUserCreatedTagsAllowed(false)
+                    ->withValue($selected);
 
             case self::TYPE_SELECT:
-                $item = new ilSelectInputGUI($title, $postvar);
-                $item->setOptions($this->options);
-                $item->setValue($this->value);
-                break;
+                return $field->select($this->title, $this->options, $byline)->withValue($this->value);
         }
-
-        if (strpos($description, '-') !== 0)
-        {
-            $item->setInfo($description);
-        }
-
-        return $item;
+        return null;
     }
 
     /**
-     * Read the data posted to the form
-     * @param ilPropertyFormGUI $form
+     * Take the value from the data of a submitted UI framework form
      */
-    public function setByForm($form): void
+    public function setByUiValue($value): void
     {
         global $DIC;
 
-        /** @var ilFormPropertyGUI $item */
-        $item = $form->getItemByPostVar($this->getPostvar());
-
-        if (!isset($item)) {
-            return;
-        }
-
-        switch($this->type)
-        {
-            case self::TYPE_TEXT:
-                /** @var ilTextInputGUI $item */
-                $this->value = $item->getValue();
-                break;
-
-            case self::TYPE_RICHTEXT:
-                /** @var ilTextAreaInputGUI $item */
-                $this->value = $item->getValue();
-                break;
-
+        switch ($this->type) {
             case self::TYPE_REF_ID:
             case self::TYPE_INT:
-                /** @var ilNumberInputGUI $item */
-                $this->value = (int) $item->getValue();
-                break;
-
-            case self::TYPE_BOOLEAN:
-                /** @var ilCheckboxInputGUI $item */
-                $this->value = (bool) $item->getChecked();
+                $this->value = (int) $value;
                 break;
 
             case self::TYPE_FLOAT:
-                /** @var ilNumberInputGUI $item */
-                $this->value = (float) $item->getValue();
+                $this->value = (float) str_replace(',', '.', (string) $value);
+                break;
+
+            case self::TYPE_BOOLEAN:
+                $this->value = (bool) $value;
                 break;
 
             case self::TYPE_ROLES:
                 $role_ids = [];
-                $roles = $item->getMultiValues();
-                if (is_array($roles)) {
-                    foreach (array_unique($roles) as $title) {
-                        if (trim($title)) {
-                            $role_id = $DIC->rbac()->review()->roleExists($title);
-                            if ($role_id) {
-                                $role_ids[] = (int) $role_id;
-                            }
-                        }
+                foreach (array_unique((array) $value) as $title) {
+                    $role_id = trim((string) $title) !== '' ? $DIC->rbac()->review()->roleExists((string) $title) : 0;
+                    if ($role_id) {
+                        $role_ids[] = (int) $role_id;
                     }
                 }
                 $this->value = implode(',', $role_ids);
                 break;
 
-            case self::TYPE_SELECT:
-                /** @var ilSelectInputGUI $item */
-                $this->value = $item->getValue();
+            default:
+                $this->value = $value;
         }
+    }
+
+    /** @return string[] */
+    private function getRoleTitles(): array
+    {
+        $titles = [];
+        foreach (explode(',', (string) $this->value) as $role_id) {
+            if ((int) $role_id > 0) {
+                $titles[] = ilObject::_lookupTitle((int) $role_id);
+            }
+        }
+        return $titles;
+    }
+
+    /** @return string[] */
+    private function getGlobalRoleTitles(): array
+    {
+        global $DIC;
+        $titles = [];
+        foreach ($DIC->rbac()->review()->getGlobalRoles() as $role_id) {
+            $titles[] = ilObject::_lookupTitle((int) $role_id);
+        }
+        return $titles;
     }
 
     /**

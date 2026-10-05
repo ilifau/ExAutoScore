@@ -6,7 +6,6 @@ declare(strict_types=1);
 /**
  * ExAutoScore configuration user interface class
  *
- * @ilCtrl_Calls: ilExAutoScoreConfigGUI: ilPropertyFormGUI
  * @ilCtrl_isCalledBy ilExAutoScoreConfigGUI: ilObjComponentSettingsGUI
  *
  *
@@ -57,30 +56,14 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
         $this->tabs->addTab('basic', $this->plugin->txt('basic_configuration'), $this->ctrl->getLinkTarget($this, 'configure'));
         $this->setToolbar();
 
-        switch ($DIC->ctrl()->getNextClass())
+        switch ($cmd)
         {
-            case 'ilpropertyformgui':
-                switch ($_GET['config'])
-                {
-                    case 'basic':
-                        $DIC->ctrl()->forwardCommand($this->initBasicConfigurationForm());
-                        break;
-                }
-
+            case "configure":
+            case "saveBasicSettings":
+            case "generateDBUpdate":
+                $this->tabs->activateTab('basic');
+                $this->$cmd();
                 break;
-
-            default:
-                switch ($cmd)
-                {
-                    case "configure":
-                    case "saveBasicSettings":
-                    #case "updateLanguages": still needed? CSM
-                    case "loadCampusExams":
-                    case "generateDBUpdate":
-                        $this->tabs->activateTab('basic');
-                        $this->$cmd();
-                        break;
-                }
         }
 	}
 
@@ -103,9 +86,15 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
 	 */
 	protected function configure()
 	{
-		$form = $this->initBasicConfigurationForm();
-		$this->tpl->setContent($form->getHTML());
+		$this->showForm($this->initBasicConfigurationForm());
 	}
+
+    protected function showForm(\ILIAS\UI\Component\Input\Container\Form\Standard $form): void
+    {
+        global $DIC;
+        $panel = $DIC->ui()->factory()->panel()->standard($this->plugin->txt('basic_configuration'), $form);
+        $this->tpl->setContent($DIC->ui()->renderer()->render($panel));
+    }
 
     /**
      * Update Languages
@@ -129,21 +118,24 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
 
     /**
 	 * Initialize the configuration form
-	 * @return ilPropertyFormGUI form object
 	 */
-	protected function initBasicConfigurationForm(): ilPropertyFormGUI
+	protected function initBasicConfigurationForm(): \ILIAS\UI\Component\Input\Container\Form\Standard
 	{
-		$form = new ilPropertyFormGUI();
-        $form->setTitle($this->plugin->txt('basic_configuration'));
-		$form->setFormAction($this->ctrl->getFormAction($this, 'saveBasicSettings'));
+        global $DIC;
 
-        foreach($this->config->getParams() as $param) {
+        $inputs = [];
+        foreach ($this->config->getParams() as $param) {
             $param->setValue($this->config->get($param->name));
-            $form->addItem($param->getFormItem());
+            $input = $param->getUiInput();
+            if ($input !== null) {
+                $inputs[$param->name] = $input;
+            }
         }
 
-		$form->addCommandButton("saveBasicSettings", $this->lng->txt("save"));
-		return $form;
+        return $DIC->ui()->factory()->input()->container()->form()->standard(
+            $this->ctrl->getFormAction($this, 'saveBasicSettings'),
+            $inputs
+        );
 	}
 
 	/**
@@ -151,22 +143,23 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
 	 */
 	protected function saveBasicSettings()
 	{
-		$form = $this->initBasicConfigurationForm();
-		if ($form->checkInput())
-		{
-            $form->setValuesByPost();
-            foreach($this->config->getParams() as $param) {
-                $param->setByForm($form);
+        global $DIC;
+
+        $form = $this->initBasicConfigurationForm()->withRequest($DIC->http()->request());
+        $data = $form->getData();
+        if ($data === null) {
+            $this->showForm($form);
+            return;
+        }
+
+        foreach ($this->config->getParams() as $param) {
+            if (array_key_exists($param->name, $data)) {
+                $param->setByUiValue($data[$param->name]);
                 $this->config->set($param->name, $param->value);
             }
-            $this->config->write();
-            $this->tpl->setOnScreenMessage('success', $this->lng->txt("settings_saved"), true);
-			$this->ctrl->redirect($this, 'configure');
-		}
-		else
-		{
-			$form->setValuesByPost();
-			$this->tpl->setContent($form->getHtml());
-		}
+        }
+        $this->config->write();
+        $this->tpl->setOnScreenMessage('success', $this->lng->txt("settings_saved"), true);
+        $this->ctrl->redirect($this, 'configure');
 	}
 }
