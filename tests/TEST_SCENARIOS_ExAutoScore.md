@@ -667,6 +667,97 @@ $DIC->ctrl()->redirectByClass($current_class, $DIC->ctrl()->getCmd());
 
 ---
 
+## J. Plattform ILIAS 10 / 11 (NEU 2026-10-05)
+
+Gilt für `dev-ilias10` (10.x) und `dev-ilias11` (11.x). Voraussetzung: StudOn-Core
+mit dem Patch `fau: exAssHook`. Teststand: J1–J7 bestanden auf vanilla ILIAS 10.6
+und 11.1 mit Patch (2026-09-29); J8–J10 offen.
+
+### J1: Installation auf ILIAS 10/11
+**Aktionen:**
+1. Core mit `exAssHook`, Plugin nach `public/Customizing/global/plugins/Modules/Exercise/AssignmentHook/ExAutoScore`
+2. `composer dump-autoload`, `php cli/setup.php build`
+3. Plugin installieren, aktivieren, konfigurieren
+
+**Erwartetes Verhalten:**
+- ✅ Plugin erscheint unter Administration → Plugins, Slot "AssignmentHook"
+- ✅ Beide Aufgabentypen (Einzel/Team) stehen bei "Übungseinheit hinzufügen" zur Auswahl (für berechtigte Rollen)
+- ✅ Tabs "Einstellungen", bereitgestellte und benötigte Dateien im Aufgaben-Editor
+
+### J2: Abgabe im Resource Storage
+**Aktionen:**
+1. Student lädt die benötigten Dateien hoch
+
+**Erwartetes Verhalten:**
+- ✅ Dateien erscheinen in der eigenen Abgabe und bei "Abgaben und Noten"
+- ✅ Download funktioniert (Student und Tutor)
+
+**Datenbank-Check:**
+```sql
+SELECT returned_id, user_id, team_id, filetitle, rid FROM exc_returned WHERE ass_id=X;
+-- Erwartung: rid ist gesetzt (nicht NULL/leer)
+```
+
+### J3: Callback `results.php`
+**Aktionen:**
+1. Abgabe wird an den Dienst geschickt, Ergebnis kommt zurück
+
+**Erwartetes Verhalten:**
+- ✅ Ergebnis wird gespeichert (Status, Punkte, Rückmeldung)
+- ✅ Kein Fehler im Apache-/ILIAS-Log zum Aufruf von `results.php`
+- 11: Start über `entry_point()` — ohne diesen fehlen Teile des DIC
+
+### J4: Feedback-Dateien vom Dienst
+**Erwartetes Verhalten:**
+- ✅ Nach der Deadline sieht der Student die Feedback-Dateien unter der Tutor-Bewertung
+- ✅ Bei erneuter Bewertung werden die alten Feedback-Dateien ersetzt, nicht ergänzt
+- ✅ "Erweitertes Feedback" öffnet sich als Dialog (UI-Framework-Modal)
+
+### J5: Team-Änderungen
+**Aktionen:**
+1. Team-Mitglied hinzufügen (durch Mitglied und durch Tutor)
+2. Team-Mitglied entfernen
+
+**Erwartetes Verhalten:**
+- ✅ Entfernte Mitglieder erhalten Kopien der Team-Abgabe (mit ursprünglichem Abgabedatum)
+- ✅ Hinzugefügte Mitglieder verlieren ihre eigene Einzel-Abgabe
+
+### J6: Plugin deaktiviert
+**Erwartetes Verhalten:**
+- ✅ Bestehende ExAutoScore-Aufgaben werden als "inaktiv" angezeigt
+- ✅ Kein Absturz der Übung (Platzhaltertyp `ilExAssTypeInactive`)
+
+### J7: Sammel-Download
+**Erwartetes Verhalten:**
+- ✅ "Alle Abgaben herunterladen" enthält die Dateien der ExAutoScore-Aufgabe
+
+### J8: Deinstallation (offen)
+**Erwartetes Verhalten:**
+- ✅ Die Tabellen `exautoscore_*` sind danach entfernt
+
+### J9: Einzel-Teams anlegen (`exTeamSingles`, offen)
+**Aktionen:**
+1. Team-Aufgabe, mehrere Teilnehmende ohne Team, Button "Einzel-Teams anlegen"
+
+**Erwartetes Verhalten:**
+- ✅ Bestätigungsseite listet alle Teilnehmenden ohne Team
+- ✅ Nach Bestätigen hat jede/r ein Ein-Personen-Team
+- ✅ Vorhandene vollständige Abgaben werden neu an den Dienst geschickt
+
+### J10: Upgrade StudOn 9 → 10 mit Bestandsdaten (offen, geplant)
+**Setup:**
+- Kopie der studon9-Datenbank und -Daten mit bestehenden ExAutoScore-Aufgaben
+
+**Aktionen:**
+1. ILIAS-Update auf 10 (Migration der Abgaben in den Resource Storage), danach Plugin `dev-ilias10`
+2. Alte Aufgabe öffnen, Abgabe herunterladen, neu einreichen, Ergebnis abwarten
+
+**Erwartetes Verhalten:**
+- ✅ Alte Abgaben und Feedback-Dateien sind nach der Migration sichtbar und herunterladbar
+- ✅ Neue Abgaben und Bewertungen funktionieren wie gewohnt
+
+---
+
 ## Zusammenfassung: Kritische Testfälle
 
 **Must-Test (vor Deployment):**
@@ -719,6 +810,10 @@ $DIC->ctrl()->redirectByClass($current_class, $DIC->ctrl()->getCmd());
 □ I2: SCRUB löst Redirect aus
 □ I3: Kein Redirect wenn Bewertung bereits publiziert
 □ I4: Redirect verwendet ilCtrl-API korrekt
+□ J1–J7: Plattform 10/11 (bei jedem ILIAS-Update)
+□ J8: Deinstallation entfernt Tabellen
+□ J9: Einzel-Teams anlegen
+□ J10: Upgrade 9 → 10 mit Bestandsdaten
 ```
 
 ---
@@ -771,6 +866,13 @@ $DIC->ctrl()->redirectByClass($current_class, $DIC->ctrl()->getCmd());
 **Existierende Smoke Tests:**
 - ✅ `tests/smoke/BasicFunctionalityTest.php` (23 Tests)
 - ✅ `tests/smoke/TaskMethodsTest.php` (6 Tests)
+- ✅ `tests/smoke/PortRegressionTest.php` (9: 3, 10: 9, 11: 12 Tests) — sichert die beim Port
+  gefundenen Fallen ab (entfernte Core-APIs, Resource Storage, `results.php`, typisierte Trait-Properties)
+
+**Ausführen** (kein PHPUnit im Plugin; z. B. das eines ILIAS-Cores verwenden):
+```bash
+php8.4 /srv/www/plattformen/ilias11/vendor/composer/vendor/bin/phpunit tests/
+```
 
 **Neue Tests (TODO):**
 ```php
@@ -785,8 +887,10 @@ class RedirectBehaviorTest extends PHPUnit\Framework\TestCase {
 
 ---
 
-**Letzte Aktualisierung:** 2025-11-03
+**Letzte Aktualisierung:** 2026-10-05
 **Wichtige Änderungen:**
+- ✅ Abschnitt J: Plattform ILIAS 10/11 (J1–J7 bestanden, J8–J10 offen)
+- ✅ Regressions-Tests für den Port (`PortRegressionTest.php`)
 - ✅ Redirect-Verhalten für Auto-Publish hinzugefügt (I1)
 - ✅ Redirect-Verhalten für SCRUB hinzugefügt (I2)
 - ✅ Submission-Existenz-Prüfung dokumentiert (F4)
