@@ -529,7 +529,10 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $a_info->addProperty($this->plugin->txt("submit_time"), ilDatePresentation::formatDate($time));
             
             if (!empty($task->getSubmitMessage())) {
-                $a_info->addProperty($this->plugin->txt("submit_message"), $task->getSubmitMessage());
+                $a_info->addProperty(
+                    $this->plugin->txt("submit_message"),
+                    nl2br(htmlspecialchars($task->getSubmitMessage(), ENT_QUOTES, 'UTF-8'))
+                );
             }
         }
 

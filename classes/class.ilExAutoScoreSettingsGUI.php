@@ -404,12 +404,12 @@ class ilExAutoScoreSettingsGUI
 
         $connector = new ilExAutoScoreConnector();
         if ($connector->sendAssignment($this->assignment)) {
-            $this->tpl->setOnScreenMessage('success', sprintf($this->plugin->txt('assignment_send_success'), $connector->getResultMessage())
+            $this->tpl->setOnScreenMessage('success', sprintf($this->plugin->txt('assignment_send_success'), htmlspecialchars((string) $connector->getResultMessage(), ENT_QUOTES, 'UTF-8'))
                 . sprintf('<p class="small"><a href="%s">%s</a></p>', $this->ctrl->getLinkTarget($this, 'showSettings'), $this->plugin->txt('refresh_screen_link'))
                 , true);
         }
         else {
-            $this->tpl->setOnScreenMessage('failure', sprintf($this->plugin->txt('assignment_send_failure'), $connector->getResultMessage()), true);
+            $this->tpl->setOnScreenMessage('failure', sprintf($this->plugin->txt('assignment_send_failure'), htmlspecialchars((string) $connector->getResultMessage(), ENT_QUOTES, 'UTF-8')), true);
         }
         $this->ctrl->redirect($this, 'showSettings');
     }
@@ -439,12 +439,12 @@ class ilExAutoScoreSettingsGUI
         global $DIC;
         $connector = new ilExAutoScoreConnector();
         if ($connector->sendExampleTask($this->assignment, $DIC->user())) {
-            $this->tpl->setOnScreenMessage('success', sprintf($this->plugin->txt('example_task_send_success'), $connector->getResultMessage())
+            $this->tpl->setOnScreenMessage('success', sprintf($this->plugin->txt('example_task_send_success'), htmlspecialchars((string) $connector->getResultMessage(), ENT_QUOTES, 'UTF-8'))
                 . sprintf('<p class="small"><a href="%s">%s</a></p>', $this->ctrl->getLinkTarget($this, 'showSettings'), $this->plugin->txt('refresh_screen_link'))
                 , true);
         }
         else {
-            $this->tpl->setOnScreenMessage('failure', sprintf($this->plugin->txt('example_task_send_failure'), $connector->getResultMessage()), true);
+            $this->tpl->setOnScreenMessage('failure', sprintf($this->plugin->txt('example_task_send_failure'), htmlspecialchars((string) $connector->getResultMessage(), ENT_QUOTES, 'UTF-8')), true);
         }
 
         $this->ctrl->redirect($this, 'showSettings');
