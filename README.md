@@ -21,7 +21,7 @@ exercises by an external grading service.
 ## Requirements
 | Branch        | StudOn       | ILIAS       | PHP       | Plugin version |
 |---------------|--------------|-------------|-----------|----------------|
-| `dev-ilias9`  | StudOn 9     | 9.12 – 9.x  | 8.1 – 8.2 | 0.x            |
+| `main-ilias9` | StudOn 9     | 9.12 – 9.x  | 8.1 – 8.2 | 0.x            |
 | `dev-ilias10` | StudOn 10    | 10.x        | 8.2 – 8.3 | 10.x           |
 | `dev-ilias11` | StudOn 11    | 11.x        | 8.3 – 8.4 | 11.x           |
 
@@ -37,7 +37,7 @@ exercises by an external grading service.
 ### StudOn 9
 ```bash
 cd <ILIAS>/Customizing/global/plugins/Modules/Exercise/AssignmentHook
-git clone -b dev-ilias9 https://github.com/ilifau/ExAutoScore.git ExAutoScore
+git clone -b main-ilias9 https://github.com/ilifau/ExAutoScore.git ExAutoScore
 cd <ILIAS>
 composer install --no-dev
 php setup/setup.php update

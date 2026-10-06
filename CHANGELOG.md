@@ -1,6 +1,6 @@
 # Changelog
 
-Version scheme: `0.x` for StudOn 9 (branch `dev-ilias9`), `10.x` for
+Version scheme: `0.x` for StudOn 9 (branch `main-ilias9`), `10.x` for
 StudOn 10 (`dev-ilias10`), `11.x` for StudOn 11 (`dev-ilias11`).
 
 ## 0.4.0 (2026-10-05) — StudOn 9
