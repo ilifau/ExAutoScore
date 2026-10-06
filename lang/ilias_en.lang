@@ -26,8 +26,6 @@ service_timeout#:#Timeout
 service_timeout_info#:#Maximum time in seconds to wait for a response from the service
 creator_roles#:#Creator Roles
 creator_roles_info#:#Only members of these roles can create new programming assignments or edit their grading settings and thus trigger the creation of a container on the grading server.
-update_languages#:#Update Languages
-generate_db_update#:#Generate Database Update
 basic_configuration#:#Basic Configuration
 docker_upload#:#Upload Dockerfile
 docker_upload_info#:#Command file for Docker to create a container image for grading this exercise. Upload additional required files on the "Provided Files" tab.

@@ -32,9 +32,6 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
     /** @var ilTemplate $lng */
 	protected ilGlobalTemplateInterface $tpl;
 
-    /** @var  ilToolbarGUI $toolbar */
-    protected mixed $toolbar;
-
     /**
 	 * Handles all commands, default is "configure"
      * @param string $cmd
@@ -51,11 +48,9 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
         $this->tabs = $DIC->tabs();
         $this->ctrl = $DIC->ctrl();
         $this->tpl = $DIC->ui()->mainTemplate();
-        $this->toolbar = $DIC->toolbar();
 
 
         $this->tabs->addTab('basic', $this->plugin->txt('basic_configuration'), $this->ctrl->getLinkTarget($this, 'configure'));
-        $this->setToolbar();
 
         switch ($DIC->ctrl()->getNextClass())
         {
@@ -74,33 +69,12 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
                 {
                     case "configure":
                     case "saveBasicSettings":
-                    #case "updateLanguages": still needed? CSM
-                    case "loadCampusExams":
-                    case "generateDBUpdate":
                         $this->tabs->activateTab('basic');
                         $this->$cmd();
                         break;
                 }
         }
 	}
-
-    /**
-     * Set the toolbar
-     */
-    protected function setToolbar(): void
-    {
-        $this->toolbar->setFormAction($this->ctrl->getFormAction($this, 'configure'));
-
-        /*$button = ilLinkButton::getInstance();
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'updateLanguages'));
-        $button->setCaption($this->plugin->txt('update_languages'), false);
-        $this->toolbar->addButtonInstance($button);*/
-
-        $button = ilLinkButton::getInstance();
-        $button->setUrl($this->ctrl->getLinkTarget($this, 'generateDBUpdate'));
-        $button->setCaption($this->plugin->txt('generate_db_update'), false);
-        $this->toolbar->addButtonInstance($button);
-    }
 
     /**
 	 * Show base configuration screen
@@ -110,26 +84,6 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
 		$form = $this->initBasicConfigurationForm();
 		$this->tpl->setContent($form->getHTML());
 	}
-
-    /**
-     * Update Languages
-     */
-    /*protected function updateLanguages()
-    {
-        $this->plugin->updateLanguages();
-        $this->ctrl->redirect($this, 'configure');
-    }*/
-
-
-    /**
-     * Generate the db update steps for active record
-     */
-	protected function generateDBUpdate()
-    {
-        require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
-        $arBuilder = new arBuilder(new ilExAutoScoreTask());
-        $arBuilder->generateDBUpdateForInstallation();
-    }
 
     /**
 	 * Initialize the configuration form
