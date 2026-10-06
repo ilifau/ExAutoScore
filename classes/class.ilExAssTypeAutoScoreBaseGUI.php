@@ -212,7 +212,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
         return $this->renderModalButton(
             $this->plugin->txt('protected_feedback_html'),
-            ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()),
+            $this->plugin->purifyFeedbackHtml($feedbackHtml),
             $this->plugin->txt('show_extended_feedback')
         );
     }
@@ -1167,7 +1167,7 @@ protected function downloadSubmittedFile()
 
             // Modal erstellen
             $page = $factory->modal()->lightboxTextPage(
-                ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()),
+                $this->plugin->purifyFeedbackHtml($feedbackHtml),
                 $this->plugin->txt('protected_feedback_html')
             );
             $modal = $factory->modal()->lightbox([$page]);
@@ -1394,7 +1394,7 @@ protected function downloadSubmittedFile()
                     // Button in TUTOR_EVAL statt SUBMISSION => erscheint unten bei der Bewertung
                     $builder->addProperty($builder::SEC_TUTOR_EVAL, '', $this->renderModalButton(
                         $this->plugin->txt('protected_feedback_html'),
-                        ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()),
+                        $this->plugin->purifyFeedbackHtml($feedbackHtml),
                         $this->plugin->txt('show_extended_feedback')
                     ));
                 } catch (Throwable $e) {
