@@ -321,7 +321,7 @@ class ilExAutoScoreSettingsGUI
                 $feedbackHtml = $assTask->getProtectedFeedbackHtml();
                 $cleanFeedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);                                                 
                 
-                $modal->setBody(ilUtil::stripScriptHTML($cleanFeedbackHtml, $this->plugin->getAllowedTags()));
+                $modal->setBody($this->plugin->purifyFeedbackHtml($cleanFeedbackHtml));
                 $modal->setHeading($this->plugin->txt('protected_feedback_html'));
                 
                 $button_html = sprintf(

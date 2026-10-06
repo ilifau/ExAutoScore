@@ -217,7 +217,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
         $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
 
-        $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
+        $modal->setBody($this->plugin->purifyFeedbackHtml($feedbackHtml));
         $modal->setHeading($this->plugin->txt('protected_feedback_html'));
 
         $button_html = sprintf(
@@ -1197,7 +1197,7 @@ protected function downloadSubmittedFile()
 
             // Modal erstellen
             $page = $factory->modal()->lightboxTextPage(
-                ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()),
+                $this->plugin->purifyFeedbackHtml($feedbackHtml),
                 $this->plugin->txt('protected_feedback_html')
             );
             $modal = $factory->modal()->lightbox([$page]);
@@ -1426,7 +1426,7 @@ protected function downloadSubmittedFile()
 
                     $feedbackHtml = $task->getProtectedFeedbackHtml();
                     $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
-                    $modal->setBody(ilUtil::stripScriptHTML($feedbackHtml, $this->plugin->getAllowedTags()));
+                    $modal->setBody($this->plugin->purifyFeedbackHtml($feedbackHtml));
                     $modal->setHeading($this->plugin->txt('protected_feedback_html'));
 
                     $modal_html = $modal->getHTML();

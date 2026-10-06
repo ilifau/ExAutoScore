@@ -301,38 +301,19 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
     // Content Security
     // =========================================================================
 
+    /** @var ilExAutoScoreFeedbackPurifier|null */
+    protected ?ilExAutoScoreFeedbackPurifier $feedback_purifier = null;
+
     /**
-     * Get allowed HTML tags for feedback display
-     * 
-     * Used to strip potentially dangerous HTML from correction service feedback.
-     * - No elements outside body
-     * - No frames, forms, audio, video, object
-     * - No scripts
-     * 
-     * @see \ilUtil::stripScriptHTML()
-     * @return string Allowed HTML tags
+     * Sanitize the extended feedback HTML from the correction service before display
      */
-    public function getAllowedTags(): string
+    public function purifyFeedbackHtml(string $html): string
     {
-        return
-            '<a><abbr><acronym><address><applet><area>' .
-            '<big><blockquote><br>' .
-            '<caption><center><cite><code><col><colgroup>' .
-            '<dd><del><dfn><dir><div><dl><dt>' .
-            '<em>' .
-            '<font>' .
-            '<h1><h2><h3><h4><h5><h6><hr>' .
-            '<i><img><ins>' .
-            '<kbd>' .
-            '<li><link>' .
-            '<map><menu>' .
-            '<ol>' .
-            '<p>' .
-            '<q>' .
-            '<s><samp><small><span><strike><strong><style><sub><sup>' .
-            '<table><tbody><td><tfoot><th><thead><title><tr><tt>' .
-            '<u><ul>' .
-            '<var>';
+        if ($this->feedback_purifier === null) {
+            require_once __DIR__ . '/class.ilExAutoScoreFeedbackPurifier.php';
+            $this->feedback_purifier = new ilExAutoScoreFeedbackPurifier();
+        }
+        return $this->feedback_purifier->purify($html);
     }
 
     // =========================================================================
