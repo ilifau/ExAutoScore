@@ -19,8 +19,6 @@ service_timeout#:#Timeout
 service_timeout_info#:#Maximalzeit in Sekunden, in der auf eine Antwort des Services gewartet wird
 creator_roles#:#Erzeuger-Rollen
 creator_roles_info#:#Nur Mitglieder dieser Rollen können neue Programmieraufgaben erstellen oder ihre Korrektur-Einstellungen bearbeiten und damit die Erzeugung eines Containers auf dem Korrektur-Server anstoßen.
-update_languages#:#Sprachen aktualisieren
-generate_db_update#:#Datenbank-Update generieren
 basic_configuration#:#Basis-Konfiguration
 docker_upload#:#Dockerfile hochladen
 docker_upload_info#:#Kommandodatei für Docker, um ein Container-Image zur Korrektur dieser Übung zu erzeugen. Laden Sie weitere benötigte Dateien auf dem Reiter "Bereitgestellte Dateien" hoch.

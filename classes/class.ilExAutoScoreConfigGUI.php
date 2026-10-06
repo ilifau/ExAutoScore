@@ -31,9 +31,6 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
     /** @var ilTemplate $lng */
 	protected ilGlobalTemplateInterface $tpl;
 
-    /** @var  ilToolbarGUI $toolbar */
-    protected mixed $toolbar;
-
     /**
 	 * Handles all commands, default is "configure"
      * @param string $cmd
@@ -50,36 +47,19 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
         $this->tabs = $DIC->tabs();
         $this->ctrl = $DIC->ctrl();
         $this->tpl = $DIC->ui()->mainTemplate();
-        $this->toolbar = $DIC->toolbar();
 
 
         $this->tabs->addTab('basic', $this->plugin->txt('basic_configuration'), $this->ctrl->getLinkTarget($this, 'configure'));
-        $this->setToolbar();
 
         switch ($cmd)
         {
             case "configure":
             case "saveBasicSettings":
-            case "generateDBUpdate":
                 $this->tabs->activateTab('basic');
                 $this->$cmd();
                 break;
         }
 	}
-
-    /**
-     * Set the toolbar
-     */
-    protected function setToolbar(): void
-    {
-        $this->toolbar->setFormAction($this->ctrl->getFormAction($this, 'configure'));
-
-        global $DIC;
-        $this->toolbar->addComponent($DIC->ui()->factory()->button()->standard(
-            $this->plugin->txt('generate_db_update'),
-            $this->ctrl->getLinkTarget($this, 'generateDBUpdate')
-        ));
-    }
 
     /**
 	 * Show base configuration screen
@@ -94,26 +74,6 @@ class ilExAutoScoreConfigGUI extends ilPluginConfigGUI
         global $DIC;
         $panel = $DIC->ui()->factory()->panel()->standard($this->plugin->txt('basic_configuration'), $form);
         $this->tpl->setContent($DIC->ui()->renderer()->render($panel));
-    }
-
-    /**
-     * Update Languages
-     */
-    /*protected function updateLanguages()
-    {
-        $this->plugin->updateLanguages();
-        $this->ctrl->redirect($this, 'configure');
-    }*/
-
-
-    /**
-     * Generate the db update steps for active record
-     */
-	protected function generateDBUpdate()
-    {
-        require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
-        $arBuilder = new arBuilder(new ilExAutoScoreTask());
-        $arBuilder->generateDBUpdateForInstallation();
     }
 
     /**
