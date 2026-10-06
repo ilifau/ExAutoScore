@@ -316,7 +316,7 @@ class ilExAutoScoreSettingsGUI
 
                 $protectedFeedbackHtml->setValue($this->renderModalButton(
                     $this->plugin->txt('protected_feedback_html'),
-                    ilUtil::stripScriptHTML($cleanFeedbackHtml, $this->plugin->getAllowedTags()),
+                    $this->plugin->purifyFeedbackHtml($cleanFeedbackHtml),
                     $this->plugin->txt('show_extended_feedback')
                 ));
                 $form->addItem($protectedFeedbackHtml);
