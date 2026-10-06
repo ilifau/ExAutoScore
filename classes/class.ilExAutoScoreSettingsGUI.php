@@ -7,6 +7,7 @@ require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
 require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
 require_once (__DIR__ . '/class.ilExAutoScoreConnector.php');
+require_once (__DIR__ . '/class.ilExAutoScoreDebugLogFormatter.php');
 
 /**
  * Specific settings of an auto score assignment
@@ -340,7 +341,7 @@ class ilExAutoScoreSettingsGUI
                     $logDate = ' (' . ilDatePresentation::formatDate($time) . ')';
                 }                
                 
-                $formattedLogs = $this->formatDebugLogs($assTask->getDebugLogs());
+                $formattedLogs = (new ilExAutoScoreDebugLogFormatter())->format((string) $assTask->getDebugLogs());
 
                 $debugLogs->setValue($this->renderModalButton(
                     $this->plugin->txt('debug_logs'),
@@ -506,59 +507,4 @@ class ilExAutoScoreSettingsGUI
         }
         return sprintf('%.' . $decimals . 'f', $value);
     }
-
-
-    /**
-     * Formatiert Debug-Logs für bessere Lesbarkeit und einheitliche Zeitstempel
-     * @param string $logs Rohe Debug-Logs
-     * @return string Formatierte Debug-Logs
-     */
-    private function formatDebugLogs(string $logs): string 
-    {
-        if (empty($logs)) {
-            return $logs;
-        }
-        
-        // Zeilen aufteilen
-        $lines = explode("\n", $logs);
-        $formatted_lines = [];
-        
-        foreach ($lines as $line) {
-            // Celery Timestamps normalisieren: [2025-10-13 06:36:52,313: -> [13.10.2025 08:36:52:
-            // Füge +2h für CEST hinzu
-            $line = preg_replace_callback(
-                '/\[(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}),\d+:/',
-                function($matches) {
-                    $hour = (int)$matches[4];
-                    $adjusted_hour = ($hour + 2) % 24; // +2h für CEST
-                    return sprintf('[%s.%s.%s %02d:%s:%s:', 
-                        $matches[3], $matches[2], $matches[1], 
-                        $adjusted_hour, $matches[5], $matches[6]);
-                },
-                $line
-            );
-            
-            // Journalctl Timestamps: Okt 13 08:36:52 -> 13.10.2025 08:36:52
-            $line = preg_replace('/Okt (\d+) (\d{2}):(\d{2}):(\d{2})/', 
-                            '13.10.2025 $2:$3:$4', $line);
-            
-            // Weitere Monate falls nötig
-            $line = preg_replace('/Nov (\d+) (\d{2}):(\d{2}):(\d{2})/', 
-                            '${1}.11.2025 $2:$3:$4', $line);
-            $line = preg_replace('/Dez (\d+) (\d{2}):(\d{2}):(\d{2})/', 
-                            '${1}.12.2025 $2:$3:$4', $line);
-            $line = preg_replace('/Jan (\d+) (\d{2}):(\d{2}):(\d{2})/', 
-                            '${1}.01.2026 $2:$3:$4', $line);
-            
-            $formatted_lines[] = $line;
-        }
-        
-        // Header mit Erklärung hinzufügen
-        $header = "=== DEBUG-PROTOKOLL ===\n";
-        $header .= "Zeitstempel wurden auf CEST normalisiert.\n";
-        $header .= "Quelle: Celery-Logs, Docker-Build-Output, Task-Ausführung\n\n";
-        
-        return $header . implode("\n", $formatted_lines);
-    }    
-
 }
