@@ -35,6 +35,9 @@ class ilExAutoScoreConnector
     /** @var string[] */
     protected array $temp_files = [];
 
+    /** @var string[] temp directories created by packFiles() */
+    protected array $temp_dirs = [];
+
     public function __construct()
     {
         $this->plugin = ilExAutoScorePlugin::getInstance();
@@ -109,6 +112,7 @@ class ilExAutoScoreConnector
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
 
         $success = $this->callService($url, $post, $timeout);
+        $this->removeTempDirs();
 
         $scoreTask->clearSubmissionData();
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
@@ -166,6 +170,7 @@ class ilExAutoScoreConnector
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
 
         $success = $this->callService($url, $post, $timeout);
+        $this->removeTempDirs();
 
         $scoreTask->clearSubmissionData();
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
@@ -215,6 +220,7 @@ class ilExAutoScoreConnector
             @unlink($temp_file);
         }
         $this->temp_files = [];
+        $this->removeTempDirs();
 
         $scoreTask->clearSubmissionData();
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));
@@ -833,10 +839,30 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
 
         $curdir = getcwd();
         chdir($temproot . '/' . $tempdir);
-        exec($tarcmd . ' ' . $temptar . ' *');
+        // './*' instead of '*': a file named like '--checkpoint-action=...' would otherwise become a tar option
+        exec($tarcmd . ' ' . escapeshellarg($temptar) . ' ./*');
         chdir($curdir);
 
+        $this->temp_dirs[] = $temproot . '/' . $tempdir;
         return $temproot . '/' . $tempdir . '/' . $temptar;
+    }
+
+    /**
+     * Remove the temporary directories created by packFiles(); they hold copies of submissions
+     */
+    protected function removeTempDirs(): void
+    {
+        foreach ($this->temp_dirs as $dir) {
+            try {
+                ilFileUtils::delDir($dir);
+            } catch (Throwable $e) {
+                $this->logger()->warning('[ExAutoScore] could not remove temp dir', [
+                    'dir'   => $dir,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        $this->temp_dirs = [];
     }
 
     /**
