@@ -432,9 +432,10 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         // it directly — through the SAME shared rule as the GUI triggers, so a
         // tutor grade entered before this (delayed) callback is never
         // overwritten and no-score/build-error results are not auto-failed.
+        $published = false;
         try {
             $assignment = new ilExAssignment($task->getAssignmentId());
-            $task->publishToMemberStatusIfDue($assignment);
+            $published = $task->publishToMemberStatusIfDue($assignment);
         } catch (Throwable $e) {
             $DIC->logger()->root()->error('ExAutoScore: auto-publish in receiveResult failed: ' . $e->getMessage());
         }
@@ -502,7 +503,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             'rc'         => $task->getReturnCode(),
             'html_size'  => strlen((string) $task->getProtectedFeedbackHtml()),
             'text_size'  => strlen((string) $task->getProtectedFeedbackText()),
-            'published'  => ($all_deadlines_reached ?? false) && !empty($affected_users ?? null),
+            'published'  => $published,
         ]);
     }
 
