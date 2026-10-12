@@ -83,4 +83,16 @@ trait ilExAutoScoreGUIBase
 
         return $DIC->ui()->renderer()->render([$modal, $button]);
     }
+
+    /**
+     * Ids confirmed in an interruptive modal, empty unless posted
+     * @return int[]
+     */
+    protected function getConfirmedIds(): array
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            return [];
+        }
+        return array_map('intval', (array) ($_POST['interruptive_items'] ?? []));
+    }
 }

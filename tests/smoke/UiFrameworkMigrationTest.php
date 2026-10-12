@@ -79,6 +79,27 @@ class UiFrameworkMigrationTest extends TestCase
         $this->assertStringContainsString('->tag(', $this->method($param, 'getUiInput'), 'roles are entered as tags');
     }
 
+    public function testFileTablesUseDataTable(): void
+    {
+        $table = $this->source('class.ilExAutoScoreFileTable.php');
+        $this->assertStringContainsString('implements DataRetrieval', $table);
+        $this->assertStringContainsString('->withAsync()', $this->method($table, 'getActions'), 'delete opens a modal instead of a page');
+        $this->assertStringContainsString('->withAffectedItems(', $this->method($table, 'sendDeleteConfirmation'));
+        $this->assertStringContainsString("'ALL_OBJECTS'", $this->method($table, 'sendDeleteConfirmation'));
+
+        foreach (['ProvidedFiles', 'RequiredFiles'] as $name) {
+            $this->assertStringContainsString('extends ilExAutoScoreFileTable', $this->source("class.ilExAutoScore{$name}TableGUI.php"));
+            $gui = $this->source("class.ilExAutoScore{$name}GUI.php");
+            foreach (['ilTable2GUI', 'ilConfirmationGUI', 'function confirmDeleteFiles(', "\$_POST['ids']"] as $legacy) {
+                $this->assertStringNotContainsString($legacy, $gui, "$name: $legacy");
+            }
+            $this->assertStringContainsString('sendDeleteConfirmation()', $this->method($gui, 'listFiles'));
+            $this->assertStringContainsString('getConfirmedIds()', $this->method($gui, 'deleteFiles'));
+            $this->assertStringContainsString('getRequestedFileId(', $this->method($gui, 'editFile'));
+            $this->assertStringContainsString('getRequestedFileId(', $this->method($gui, 'updateFile'));
+        }
+    }
+
     public function testDestructiveCommandsRequirePost(): void
     {
         $this->assertStringContainsString(
@@ -90,6 +111,11 @@ class UiFrameworkMigrationTest extends TestCase
             "REQUEST_METHOD'] ?? '') !== 'POST'",
             $this->method($this->source('class.ilExAutoScoreSettingsGUI.php'), 'sendAllTasks'),
             're-sending all submissions must not be possible by a plain link'
+        );
+        $this->assertStringContainsString(
+            "REQUEST_METHOD'] ?? '') !== 'POST'",
+            $this->method($this->source('traits/trait.ilExAutoScoreGUIBase.php'), 'getConfirmedIds'),
+            'deleting files must not be possible by a plain link'
         );
     }
 }

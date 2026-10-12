@@ -93,16 +93,10 @@ class PortRegressionTest extends TestCase
         $this->assertNowhere('/ilModalGUI/', 'deprecated in 10 and removed in 11');
     }
 
-    public function testRowTemplatesUseNormalizedPath(): void
+    public function testFileTablesHaveNoRowTemplates(): void
     {
-        foreach (['ProvidedFiles', 'RequiredFiles'] as $table) {
-            $source = file_get_contents($this->base . "classes/class.ilExAutoScore{$table}TableGUI.php");
-            $this->assertStringContainsString(
-                'realpath($this->plugin->getDirectory())',
-                $source,
-                "$table: getDirectory() is not normalized in 10, ilTemplate would not find the row template"
-            );
-        }
+        $this->assertNowhere('/ilTable2GUI/', 'file tables are UI data tables since 11, no ilTemplate row path to normalize');
+        $this->assertSame([], glob($this->base . 'templates/default/tpl.exautoscore_*_files_row.html'));
     }
 
     public function testResultsEndpointBootsFromWebroot(): void

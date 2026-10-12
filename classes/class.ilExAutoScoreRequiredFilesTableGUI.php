@@ -3,137 +3,66 @@ declare(strict_types=1);
 
 // Copyright (c) 2021 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
+require_once(__DIR__ . '/class.ilExAutoScoreFileTable.php');
+
 /**
- * Record table
+ * Table of the files students have to submit, with optional example files
  */
-class ilExAutoScoreRequiredFilesTableGUI extends ilTable2GUI
+class ilExAutoScoreRequiredFilesTableGUI extends ilExAutoScoreFileTable
 {
-    // Note: $parent_obj and $parent_cmd are inherited from ilTable2GUI
-    
-    protected ilExAutoScorePlugin $plugin;
-    
-    protected int $assignment_id;
-    public function __construct($a_parent_obj, $a_parent_cmd)
+    public const NS = 'exautoscore_req';
+
+    protected function getNamespace(): string
     {
-        global $DIC;
-
-        $this->lng = $DIC->language();
-        $this->ctrl = $DIC->ctrl();
-        $this->parent_obj = $a_parent_obj;
-        $this->parent_cmd = $a_parent_cmd;
-        $this->plugin = $a_parent_obj->plugin;
-
-        $this->setId('ilExAutoScoreRequiredFilesGUI');
-        $this->setPrefix('ilExAutoScoreRequiredFilesGUI');
-
-        parent::__construct($a_parent_obj, $a_parent_cmd);
-
-        $this->addColumn('', '', '1%', true);
-        $this->addColumn($this->plugin->txt('filename'), 'filename');
-        $this->addColumn($this->plugin->txt('encoding'), 'encoding');
-        $this->addColumn($this->plugin->txt('max_size'), 'max_size');
-        $this->addColumn($this->plugin->txt('example_size'), 'example_size');
-        $this->addColumn($this->lng->txt('description'), 'description');
-
-        $this->addColumn($this->lng->txt('actions'));
-
-        $this->setTitle($this->plugin->txt('required_files'));
-        $this->setFormName('provided_files');
-        $this->setFormAction($this->ctrl->getFormAction($a_parent_obj, $a_parent_cmd));
-
-        $this->setStyle('table', 'fullwidth');
-        $this->setRowTemplate("tpl.exautoscore_required_files_row.html", realpath($this->plugin->getDirectory()));
-
-        $this->setExternalSorting(true);
-        $this->setExternalSegmentation(true);
-
-        $this->disable('sort');
-        $this->enable('header');
-
-        $this->setSelectAllCheckbox('ids');
-        $this->addMultiCommand('confirmDeleteFiles', $this->plugin->txt('delete_files'));
+        return self::NS;
     }
 
-
-    /**
-     * Query for the data to be shown
-     * @param integer $assignment_id
-     * @throws Exception
-     */
-    public function loadData($assignment_id): void
+    protected function getTitle(): string
     {
-        $this->assignment_id = $assignment_id;
+        return $this->plugin->txt('required_files');
+    }
 
+    protected function getColumns(): array
+    {
+        $column = $this->ui_factory->table()->column();
+        return [
+            'filename' => $column->link($this->plugin->txt('filename')),
+            'encoding' => $column->text($this->plugin->txt('encoding')),
+            'max_size' => $column->text($this->plugin->txt('max_size')),
+            'example_size' => $column->text($this->plugin->txt('example_size')),
+            'description' => $column->text($this->lng->txt('description'))->withIsSortable(false),
+        ];
+    }
+
+    protected function getFiles(): array
+    {
+        return ilExAutoScoreRequiredFile::getCollection()
+            ->where(['assignment_id' => $this->assignment_id])
+            ->get();
+    }
+
+    protected function getRecord(ilExAutoScoreFileBase $file): array
+    {
         /** @var ilExAutoScoreRequiredFile $file */
-        $filesList = ilExAutoScoreRequiredFile::getCollection();
-        $filesList->where(['assignment_id' => $assignment_id]);
-
-        // paging
-        $this->determineOffsetAndOrder();
-        $this->determineLimit();
-        $this->setMaxCount($filesList->count());
-        if (isset($this->fields[$this->getOrderField()])) {
-            $filesList->orderBy($this->getOrderField(), $this->getOrderDirection());
-        }
-        $filesList->limit($this->getOffset(), $this->getLimit());
-
-        // prepare row data (fillRow expects array)
-       $data = [];
-       $files = $filesList->get();
-       foreach ($files as $file) {
-            $row = [];
-            $row['id'] = $file->getId();
-            $row['file'] = $file;
-            $data[] = $row;
-       }
-       $this->setData($data);
+        $this->ctrl->setParameter($this->parent_gui->getParentGUI(), 'file_id', $file->getId());
+        $url = $this->ctrl->getLinkTarget($this->parent_gui->getParentGUI(), 'downloadExampleFile');
+        return [
+            'filename' => $this->ui_factory->link()->standard($file->getFilename(), $url),
+            'encoding' => $file->getRequiredEncoding(),
+            'max_size' => $file->getMaxSize() ? ceil($file->getMaxSize() / 1000) . ' KB' : '',
+            'example_size' => $file->getSize() ? ceil($file->getSize() / 1000) . ' KB' : '',
+            'description' => $file->getDescription(),
+        ];
     }
 
-
-    /**
-	 * Define ordering mode for a field (not needed, if externally sorted)
-     * @param string $a_field
-	 * @return boolean  numeric ordering; default is false
-	 */
-	function numericOrdering($a_field): bool
-	{
-	    if ($a_field == 'mas_size' || $a_field == 'example_size') {
-	        return true;
-        }
-	    return false;
-	}
-
-	/**
-	 * fill row
-	 * @param array $data
-	 */
-	public function fillRow(array $data): void
-	{
-		$id = $data['id'];
-
-		/** @var ilExAutoScoreRequiredFile $file */
-		$file = $data['file'];
-
-        $this->ctrl->setParameter($this->parent_obj->getParentGUI(), 'file_id', $file->getId());
-        $url = $this->ctrl->getLinkTarget($this->parent_obj->getParentGUI(), 'downloadExampleFile');
-        $link = '<a href="' . $url . '">' . $file->getFilename() . '</a></p>';
-
-        // checkbox
-        $this->tpl->setVariable('ID', $id);
-        $this->tpl->setVariable('FILENAME', $link);
-        $this->tpl->setVariable('ENCODING', $file->getRequiredEncoding());
-        $this->tpl->setVariable('MAX_SIZE', $file->getMaxSize() ? ceil($file->getMaxSize() / 1000) . ' KB' : '');
-        $this->tpl->setVariable('EXAMPLE_SIZE', $file->getSize() ? ceil($file->getSize() / 1000) . ' KB' : '');
-        $this->tpl->setVariable('DESCRIPTION', $file->getDescription());
-
-        // show action column
-        global $DIC;
-        $factory = $DIC->ui()->factory();
-        $this->ctrl->setParameter($this->parent_obj, 'id', $id);
-        $actions = $factory->dropdown()->standard([
-            $factory->button()->shy($this->plugin->txt('edit_file'), $this->ctrl->getLinkTarget($this->parent_obj, 'editFile'))
-        ])->withLabel($this->lng->txt('actions'));
-
-        $this->tpl->setVariable('ACTIONS', $DIC->ui()->renderer()->render($actions));
+    protected function getSortValues(ilExAutoScoreFileBase $file): array
+    {
+        /** @var ilExAutoScoreRequiredFile $file */
+        return [
+            'filename' => strtolower($file->getFilename()),
+            'encoding' => $file->getRequiredEncoding(),
+            'max_size' => $file->getMaxSize(),
+            'example_size' => $file->getSize(),
+        ];
     }
 }

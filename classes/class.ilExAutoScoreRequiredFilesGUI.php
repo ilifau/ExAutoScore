@@ -44,7 +44,6 @@ class ilExAutoScoreRequiredFilesGUI
                     case 'createFile':
                     case 'editFile':
                     case 'updateFile':
-                    case 'confirmDeleteFiles':
                     case 'deleteFiles':
                         $this->$cmd();
                         break;
@@ -59,11 +58,15 @@ class ilExAutoScoreRequiredFilesGUI
      */
     public function listFiles()
     {
+        global $DIC;
+
         require_once (__DIR__ . '/class.ilExAutoScoreRequiredFilesTableGUI.php');
-        $table = new ilExAutoScoreRequiredFilesTableGUI($this, 'listFiles');
-        $table->loadData($this->assignment->getId());
+        $table = new ilExAutoScoreRequiredFilesTableGUI($this, $this->plugin, $this->assignment->getId());
+        if ($table->getRequestedAction() === 'delete') {
+            $table->sendDeleteConfirmation();
+        }
         $this->setListToolbar();
-        $this->tpl->setContent($table->getHTML());
+        $this->tpl->setContent($DIC->ui()->renderer()->render($table->getComponent()));
     }
 
 
@@ -120,12 +123,14 @@ class ilExAutoScoreRequiredFilesGUI
      */
     protected function editFile()
     {
-        $this->ctrl->saveParameter($this, 'id');
+        require_once (__DIR__ . '/class.ilExAutoScoreRequiredFilesTableGUI.php');
+        $id = ilExAutoScoreFileTable::getRequestedFileId(ilExAutoScoreRequiredFilesTableGUI::NS);
+        $this->ctrl->setParameter($this, 'id', $id);
         $this->setFileToolbar();
 
         /** @var ilExAutoScoreRequiredFile $file */
-        $file = ilExAutoScoreRequiredFile::find((int) $_GET['id']);
-        if ($file->getAssignmentId() != $this->assignment->getId()) {
+        $file = ilExAutoScoreRequiredFile::find($id);
+        if (!isset($file) || $file->getAssignmentId() != $this->assignment->getId()) {
             $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->ctrl->returnToParent($this);
         }
@@ -141,11 +146,13 @@ class ilExAutoScoreRequiredFilesGUI
     {
         global $DIC;
 
-        $this->ctrl->saveParameter($this, 'id');
+        require_once (__DIR__ . '/class.ilExAutoScoreRequiredFilesTableGUI.php');
+        $id = ilExAutoScoreFileTable::getRequestedFileId(ilExAutoScoreRequiredFilesTableGUI::NS);
+        $this->ctrl->setParameter($this, 'id', $id);
 
         /** @var ilExAutoScoreRequiredFile $file */
-        $file = ilExAutoScoreRequiredFile::find((int) $_GET['id']);
-        if ($file->getAssignmentId() != $this->assignment->getId()) {
+        $file = ilExAutoScoreRequiredFile::find($id);
+        if (!isset($file) || $file->getAssignmentId() != $this->assignment->getId()) {
             $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->ctrl->returnToParent($this);
         }
@@ -230,44 +237,18 @@ class ilExAutoScoreRequiredFilesGUI
         return $form;
     }
 
-
-    /**
-     * Confirm the deletion of files
-     */
-    protected function confirmDeleteFiles()
-    {
-        if (empty($_POST['ids'])) {
-            $this->tpl->setOnScreenMessage('failure', $this->lng->txt('select_at_least_one_object'), true);
-            $this->ctrl->redirect($this,'listFiles');
-        }
-
-        $conf_gui = new ilConfirmationGUI();
-        $conf_gui->setFormAction($this->ctrl->getFormAction($this));
-        $conf_gui->setHeaderText($this->plugin->txt('confirm_delete_files'));
-        $conf_gui->setConfirm($this->lng->txt('delete'),'deleteFiles');
-        $conf_gui->setCancel($this->lng->txt('cancel'), 'listFiles');
-
-        /** @var ilExAutoScoreRequiredFile[] $files */
-        $files = ilExAutoScoreRequiredFile::where(['id' => $_POST['ids']])->get();
-
-        foreach($files as $file) {
-            $conf_gui->addItem('ids[]', (string) $file->getId(), $file->getFilename());
-            if ($file->getAssignmentId() != $this->assignment->getId()) {
-                $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
-                $this->ctrl->returnToParent($this);
-            }
-        }
-
-        $this->tpl->setContent($conf_gui->getHTML());
-    }
-
     /**
      * Delete confirmed items
      */
     protected function deleteFiles()
     {
+        $ids = $this->getConfirmedIds();
+        if (empty($ids)) {
+            $this->tpl->setOnScreenMessage('failure', $this->lng->txt('select_at_least_one_object'), true);
+            $this->ctrl->redirect($this, 'listFiles');
+        }
         /** @var ilExAutoScoreRequiredFile[] $files */
-        $files = ilExAutoScoreRequiredFile::where(['id' => $_POST['ids']])->get();
+        $files = ilExAutoScoreRequiredFile::where(['id' => $ids])->get();
 
         foreach($files as $file) {
             if ($file->getAssignmentId() != $this->assignment->getId()) {

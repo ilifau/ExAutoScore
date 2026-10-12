@@ -3,139 +3,67 @@ declare(strict_types=1);
 
 // Copyright (c) 2021 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
+require_once(__DIR__ . '/class.ilExAutoScoreFileTable.php');
+
 /**
- * Record table
+ * Table of the files provided by the lecturer (without the Dockerfile)
  */
-class ilExAutoScoreProvidedFilesTableGUI extends ilTable2GUI
+class ilExAutoScoreProvidedFilesTableGUI extends ilExAutoScoreFileTable
 {
-    // Note: $parent_obj and $parent_cmd are inherited from ilTable2GUI
-    // They cannot be redeclared with different types
-    
-    protected ilExAutoScorePlugin $plugin;
-    
-    protected int $assignment_id;
-    public function __construct($a_parent_obj, $a_parent_cmd)
+    public const NS = 'exautoscore_prov';
+
+    protected function getNamespace(): string
     {
-        global $DIC;
-
-        $this->lng = $DIC->language();
-        $this->ctrl = $DIC->ctrl();
-        $this->parent_obj = $a_parent_obj;
-        $this->parent_cmd = $a_parent_cmd;
-        $this->plugin = $a_parent_obj->plugin;
-
-
-        $this->setId('ilExAutoScoreProvidedFilesGUI');
-        $this->setPrefix('ilExAutoScoreProvidedFilesGUI');
-
-        parent::__construct($a_parent_obj, $a_parent_cmd);
-
-        $this->addColumn('', '', '1%', true);
-        $this->addColumn($this->plugin->txt('filename'), 'filename');
-        $this->addColumn($this->plugin->txt('file_size'), 'size');
-        $this->addColumn($this->plugin->txt('purpose'), 'purpose');
-        $this->addColumn($this->plugin->txt('is_public'), 'is_public');
-        $this->addColumn($this->lng->txt('description'), 'description');
-        $this->addColumn($this->lng->txt('actions'));
-
-        $this->setTitle($this->plugin->txt('provided_files'));
-        $this->setFormName('provided_files');
-        $this->setFormAction($this->ctrl->getFormAction($a_parent_obj, $a_parent_cmd));
-
-        $this->setStyle('table', 'fullwidth');
-        $this->setRowTemplate("tpl.exautoscore_provided_files_row.html", realpath($this->plugin->getDirectory()));
-
-        $this->setExternalSorting(true);
-        $this->setExternalSegmentation(true);
-
-        $this->disable('sort');
-        $this->enable('header');
-
-        $this->setSelectAllCheckbox('ids');
-        $this->addMultiCommand('confirmDeleteFiles', $this->plugin->txt('delete_files'));
+        return self::NS;
     }
 
-
-    /**
-     * Query for the data to be shown
-     * @param integer $assignment_id
-     * @throws Exception
-     */
-    public function loadData($assignment_id)
+    protected function getTitle(): string
     {
-        $this->assignment_id = $assignment_id;
+        return $this->plugin->txt('provided_files');
+    }
 
+    protected function getColumns(): array
+    {
+        $column = $this->ui_factory->table()->column();
+        return [
+            'filename' => $column->link($this->plugin->txt('filename')),
+            'size' => $column->number($this->plugin->txt('file_size')),
+            'purpose' => $column->text($this->plugin->txt('purpose')),
+            'is_public' => $column->boolean($this->plugin->txt('is_public'), $this->lng->txt('yes'), $this->lng->txt('no')),
+            'description' => $column->text($this->lng->txt('description'))->withIsSortable(false),
+        ];
+    }
+
+    protected function getFiles(): array
+    {
+        return ilExAutoScoreProvidedFile::getCollection()
+            ->where(['assignment_id' => $this->assignment_id])
+            ->where(['purpose' => ilExAutoScoreProvidedFile::PURPOSE_DOCKER], '!=')
+            ->get();
+    }
+
+    protected function getRecord(ilExAutoScoreFileBase $file): array
+    {
         /** @var ilExAutoScoreProvidedFile $file */
-        $filesList = ilExAutoScoreProvidedFile::getCollection();
-        $filesList->where(['assignment_id' => $assignment_id])
-        ->where(['purpose' => ilExAutoScoreProvidedFile::PURPOSE_DOCKER], '!=');
-
-        // paging
-        $this->determineOffsetAndOrder();
-        $this->determineLimit();
-        $this->setMaxCount($filesList->count());
-        if (isset($this->fields[$this->getOrderField()])) {
-            $filesList->orderBy($this->getOrderField(), $this->getOrderDirection());
-        }
-        $filesList->limit($this->getOffset(), $this->getLimit());
-
-        // prepare row data (fillRow expects array)
-       $data = [];
-       $files = $filesList->get();
-       foreach ($files as $file) {
-            $row = [];
-            $row['id'] = $file->getId();
-            $row['file'] = $file;
-            $data[] = $row;
-       }
-       $this->setData($data);
+        $this->ctrl->setParameter($this->parent_gui->getParentGUI(), 'file_id', $file->getId());
+        $url = $this->ctrl->getLinkTarget($this->parent_gui->getParentGUI(), 'downloadProvidedFile');
+        return [
+            'filename' => $this->ui_factory->link()->standard($file->getFilename(), $url),
+            'size' => $file->getSize(),
+            'purpose' => $file->getPurposeText(),
+            'is_public' => $file->isPublic(),
+            'description' => $file->getDescription(),
+        ];
     }
 
-
-    /**
-	 * Define ordering mode for a field (not needed, if externally sorted)
-     * @param string $a_field
-	 * @return boolean  numeric ordering; default is false
-	 */
-	function numericOrdering($a_field): bool
-	{
-	    if ($a_field == 'size') {
-	        return true;
-        }
-	    return false;
-	}
-
-	/**
-	 * fill row
-	 * @param array $data
-	 */
-	public function fillRow(array $data): void
-	{
-		$id = $data['id'];
-
-		/** @var ilExAutoScoreProvidedFile $file */
-		$file = $data['file'];
-
-        $this->ctrl->setParameter($this->parent_obj->getParentGUI(), 'file_id', $file->getId());
-        $url = $this->ctrl->getLinkTarget($this->parent_obj->getParentGUI(), 'downloadProvidedFile');
-        $link = '<a href="' . $url . '">' . $file->getFilename() . '</a></p>';
-
-        // checkbox
-        $this->tpl->setVariable('ID', $id);
-        $this->tpl->setVariable('FILENAME', $link);
-        $this->tpl->setVariable('FILE_SIZE', $file->getSize());
-        $this->tpl->setVariable('PURPOSE', $file->getPurposeText());
-        $this->tpl->setVariable('IS_PUBLIC', $this->lng->txt($file->isPublic() ?  'yes' : 'no'));
-        $this->tpl->setVariable('DESCRIPTION', $file->getDescription());
-
-        // show action column
-        global $DIC;
-        $factory = $DIC->ui()->factory();
-        $this->ctrl->setParameter($this->parent_obj, 'id', $id);
-        $actions = $factory->dropdown()->standard([
-            $factory->button()->shy($this->plugin->txt('edit_file'), $this->ctrl->getLinkTarget($this->parent_obj, 'editFile'))
-        ])->withLabel($this->lng->txt('actions'));
-
-        $this->tpl->setVariable('ACTIONS', $DIC->ui()->renderer()->render($actions));
+    protected function getSortValues(ilExAutoScoreFileBase $file): array
+    {
+        /** @var ilExAutoScoreProvidedFile $file */
+        return [
+            'filename' => strtolower($file->getFilename()),
+            'size' => $file->getSize(),
+            'purpose' => $file->getPurposeText(),
+            'is_public' => $file->isPublic(),
+        ];
     }
 }

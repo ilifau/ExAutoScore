@@ -13,6 +13,9 @@ Preparation for ILIAS 12 (legacy UI components are removed there):
   accept POST requests.
 - The plugin configuration is a UI framework form. Creator roles are chosen
   as tags from the global roles; roles that are already configured are kept.
+- The tables of provided and required files are UI framework data tables
+  (sortable, paginated). "Edit file" is a row action; "Delete files" asks in
+  a dialog and only accepts POST requests.
 
 ## 11.0.0 (2026-10-05) — StudOn 11
 Port of 10.0.0 to ILIAS 11. Requires a StudOn 11 core with the patch
