@@ -3,6 +3,20 @@
 Version scheme: `0.x` for StudOn 9 (branch `main-ilias9`), `10.x` for
 StudOn 10 (`dev-ilias10`), `11.x` for StudOn 11 (`dev-ilias11`).
 
+## 0.4.1 (2026-10-07) — StudOn 9
+- Security: file names of provided files are no longer passed to `tar` as
+  options; temporary copies of submissions are removed after sending.
+- Security: the extended feedback HTML is filtered with HTMLPurifier
+  (formatting stays, scripts, layout CSS and images are removed); service
+  messages are escaped.
+- Fix: results, extended feedback and grades follow the effective deadline
+  of ILIAS (grace period, individual and relative deadlines).
+- Fix: the reset before the deadline only clears a grade the plugin wrote
+  itself; a tutor grade is never removed. A cleared grade is published again.
+- Small fixes: unknown file ids, debug log time zone, removed developer
+  command from the configuration.
+- Requires a plugin update (new column `published_note_hash`).
+
 ## 0.4.0 (2026-10-05) — StudOn 9
 - Fix: feedback files returned by the grading service were not stored
   (`ilUtil::getASCIIFilename()` no longer exists since ILIAS 9).
