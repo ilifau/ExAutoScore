@@ -121,7 +121,7 @@ class ilExAutoScoreParam
     /**
      * Get a UI framework input for setting the parameter, null for TYPE_HEAD
      */
-    public function getUiInput(): ?\ILIAS\UI\Component\Input\Field\FormInput
+    public function getUiInput(): ?\ILIAS\UI\Component\Input\Input
     {
         global $DIC;
         $field = $DIC->ui()->factory()->input()->field();
