@@ -10,6 +10,7 @@ require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreProvidedFile.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
 require_once (__DIR__ . '/traits/trait.ilExAutoScoreGUIBase.php');
+require_once (__DIR__ . '/class.ilExAutoScoreDeadline.php');
 
 require_once "./Modules/Exercise/AssignmentTypes/GUI/classes/interface.ilExAssignmentTypeExtendedGUIInterface.php";
 
@@ -124,63 +125,21 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     }
 
     /**
-     * Bewertungsbereich anzeigen?
-     * - Admins/Tutor:innen: immer
-     * - Teilnehmende: erst NACH persönlicher Deadline ODER (falls nicht vorhanden) allgemeiner Deadline
-     * - Wenn gar keine Deadline gesetzt: sofort anzeigen (kein zeitlicher Schutz nötig)
+     * Show points and grade to the current user?
+     * Tutors always; participants only after their submission phase has ended.
      */
     protected function canShowAssessmentNow(ilExAssignment $ass, ilExSubmission $sub): bool
     {
-        // Admin/Korrektur -> sofort
-        if ($this->plugin->canDefine()) {
-            return true;
-        }
-
-        $usr_id = (int) $this->user->getId();
-
-        // persönliche Deadline bevorzugen
-        $personal_deadline = (int) $ass->getPersonalDeadline($usr_id);
-
-        // allgemeine Deadline als Fallback
-        $general_deadline = (int) ($ass->getDeadline() ?? 0);
-
-        $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
-
-        if ($effective_deadline <= 0) {
-            // keine Frist -> sofort anzeigen
-            return true;
-        }
-
-        return time() >= $effective_deadline;
+        return $this->plugin->canDefine() || ilExAutoScoreDeadline::hasEnded($ass, (int) $this->user->getId());
     }
 
     /**
-     * Bewertungsbereich für einen spezifischen User anzeigen?
-     * - Admins/Tutor:innen: immer
-     * - Teilnehmende: erst NACH persönlicher Deadline ODER (falls nicht vorhanden) allgemeiner Deadline
-     * - Wenn gar keine Deadline gesetzt: sofort anzeigen (kein zeitlicher Schutz nötig)
+     * Show points and grade of a specific user?
+     * Tutors always; otherwise only after that user's submission phase has ended.
      */
     protected function canShowAssessmentNowForUser(ilExAssignment $ass, int $user_id): bool
     {
-        // Admin/Korrektur -> sofort
-        if ($this->plugin->canDefine()) {
-            return true;
-        }
-
-        // persönliche Deadline bevorzugen
-        $personal_deadline = (int) $ass->getPersonalDeadline($user_id);
-
-        // allgemeine Deadline als Fallback
-        $general_deadline = (int) ($ass->getDeadline() ?? 0);
-
-        $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
-
-        if ($effective_deadline <= 0) {
-            // keine Frist -> sofort anzeigen
-            return true;
-        }
-
-        return time() >= $effective_deadline;
+        return $this->plugin->canDefine() || ilExAutoScoreDeadline::hasEnded($ass, $user_id);
     }
 
     /**
@@ -230,24 +189,12 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
     }
 
     /**
-     * Check if extended feedback can be shown (based on deadline)
-     * @param ilExAssignment $ass
-     * @param ilExSubmission $sub
-     * @return bool
+     * Show the extended feedback to the current user?
+     * Same rule as for the points: only after the submission phase has ended.
      */
     protected function canShowExtendedFeedbackByDeadline(ilExAssignment $ass, ilExSubmission $sub): bool
     {
-        if ($this->plugin->canDefine()) {
-            return true;
-        }
-
-        $personal_deadline = $ass->getPersonalDeadline($this->user->getId());
-
-        if (!empty($personal_deadline)) {
-            return time() > (int)$personal_deadline;
-        }
-
-        return $sub->hasSubmitted();
+        return $this->canShowAssessmentNow($ass, $sub);
     }
 
     /**
@@ -1334,29 +1281,37 @@ protected function downloadSubmittedFile()
                     }
                 }
 
-                // Check if SCRUB is needed (status is not already "notgraded")
-                $first_user = $affected_user_ids[0] ?? null;
-                if ($first_user) {
-                    $current_status = $ass->getMemberStatus($first_user);
-                    // Note: Use strict comparison against empty string, not empty(), because mark can be "0"
-                    if ($current_status->getStatus() !== 'notgraded' || $current_status->getMark() !== '') {
-                        foreach ($affected_user_ids as $uid) {
-                            $ms = new ilExAssignmentMemberStatus($ass->getId(), $uid);
-                            if (method_exists($ms, 'setComment')) { $ms->setComment(''); }
-                            $ms->setStatus('notgraded');
-                            $ms->setMark('');
-                            $ms->setReturned(false);
-                            $ms->update();
-                        }
-
-                        // Auch Feedback-Dateien löschen wenn Deadline verlängert wurde
-                        // (verhindert dass "Evaluation by Tutor" Sektion vor neuer Deadline erscheint)
-                        if ($task) {
-                            $task->deleteFeedbackFiles();
-                        }
-
-                        $did_scrub = true;
+                // Only a grade the plugin wrote itself and nobody changed since may be
+                // cleared; a tutor grade is never touched (the member status has no history).
+                $plugin_note = $task !== null && $task->getPublishedNoteHash() !== null;
+                $statuses = [];
+                foreach ($affected_user_ids as $uid) {
+                    $ms = new ilExAssignmentMemberStatus($ass->getId(), $uid);
+                    $is_empty = $ms->getStatus() === 'notgraded' && $ms->getMark() === '' && $ms->getComment() === '';
+                    if (!$is_empty) {
+                        $plugin_note = $plugin_note && $task->isNoteFromPlugin($ms);
+                        $statuses[] = $ms;
                     }
+                }
+
+                if ($plugin_note && !empty($statuses)) {
+                    foreach ($statuses as $ms) {
+                        $ms->setComment('');
+                        $ms->setStatus('notgraded');
+                        $ms->setMark('');
+                        $ms->setReturned(false);
+                        $ms->update();
+                    }
+                    // the feedback directory only holds files of the grading service;
+                    // tutor feedback files are kept in the ILIAS resource storage
+                    $task->deleteFeedbackFiles();
+
+                    // publish again once the (extended) submission phase is over
+                    $task->setPublishedNoteHash(null);
+                    $task->setPublishedReturnTime(null);
+                    $task->save();
+
+                    $did_scrub = true;
                 }
             }
         } catch (Throwable $e) {

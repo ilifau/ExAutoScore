@@ -8,6 +8,7 @@ require_once (__DIR__ . '/models/class.ilExAutoScoreAssignment.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreTask.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreProvidedFile.php');
 require_once (__DIR__ . '/models/class.ilExAutoScoreRequiredFile.php');
+require_once (__DIR__ . '/class.ilExAutoScoreDeadline.php');
 
 /**
  * Connector for the AuDoscore server
@@ -516,25 +517,8 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             return;
         }
 
-        // Prüfe ob Deadline erreicht ist - Feedback-Dateien nur NACH Deadline speichern
-        $all_deadlines_reached = true;
-        $now = time();
-
-        foreach ($affected_users as $uid) {
-            $personal_deadline = (int) $assignment->getPersonalDeadline($uid);
-            $general_deadline = (int) ($assignment->getDeadline() ?? 0);
-            $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
-
-            if ($effective_deadline > 0) {
-                if ($now < $effective_deadline) {
-                    $all_deadlines_reached = false;
-                    break;
-                }
-            }
-        }
-
-        // Wenn Deadline nicht erreicht -> Feedback-Dateien NICHT speichern
-        if (!$all_deadlines_reached) {
+        // feedback files only after the submission phase of all affected users has ended
+        if (!ilExAutoScoreDeadline::hasEndedForAll($assignment, $affected_users)) {
             return;
         }
 
