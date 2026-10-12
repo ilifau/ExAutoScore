@@ -77,7 +77,7 @@ class AutoNoteToGradesTest extends TestCase
         // ONE loop over all affected users: deadline must have passed AND each
         // member's note must be empty (fix C — not just affected[0]).
         $this->assertMatchesRegularExpression(
-            '/foreach \(\$affected as \$uid\) \{.*?\$ass->getPersonalDeadline\(\$uid\).*?\$now < \$effective_deadline.*?return false;.*?\$ms = \$ass->getMemberStatus\(\$uid\);.*?\$ms->getStatus\(\) !== \'notgraded\' \|\| \$ms->getMark\(\) !== \'\'.*?return false;/s',
+            '/foreach \(\$affected as \$uid\) \{.*?!ilExAutoScoreDeadline::hasEnded\(\$ass, \(int\) \$uid\).*?return false;.*?\$ms = \$ass->getMemberStatus\(\$uid\);.*?\$ms->getStatus\(\) !== \'notgraded\' \|\| \$ms->getMark\(\) !== \'\'.*?return false;/s',
             $this->taskModel,
             'Must check deadline AND empty note for EVERY affected user'
         );

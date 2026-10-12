@@ -432,3 +432,18 @@ if (!$ilDB->tableColumnExists('exautoscore_assignment', 'service_uuid'))
         . " WHERE uuid IS NOT NULL AND uuid <> ''");
 }
 ?>
+
+<#15>
+<?php
+// Fingerprint of the grade the plugin wrote into the ILIAS member status.
+// The pre-deadline reset only clears a grade that still matches it, so a grade
+// a tutor entered or changed is never removed. NULL for grades published before.
+if (!$ilDB->tableColumnExists('exautoscore_task', 'published_note_hash'))
+{
+    $ilDB->addTableColumn("exautoscore_task", 'published_note_hash', array(
+        'type' => 'text',
+        'length' => 40,
+        'notnull' => false
+    ));
+}
+?>
