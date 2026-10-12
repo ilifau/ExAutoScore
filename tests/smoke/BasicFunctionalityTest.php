@@ -175,7 +175,7 @@ class BasicFunctionalityTest extends TestCase
         );
 
         $this->assertStringContainsString(
-            'all_deadlines_reached',
+            'ilExAutoScoreDeadline::hasEndedForAll($assignment, $affected_users)',
             $content,
             'receiveResult should have deadline check logic'
         );
@@ -196,7 +196,7 @@ class BasicFunctionalityTest extends TestCase
         );
 
         $this->assertStringContainsString(
-            'all_deadlines_reached',
+            'ilExAutoScoreDeadline::hasEndedForAll($assignment, $affected_users)',
             $content,
             'saveFeedbackFiles() should check deadline before saving files'
         );
@@ -234,26 +234,24 @@ class BasicFunctionalityTest extends TestCase
     }
 
     /**
-     * Test that SCRUB logic calls deleteFeedbackFiles (deadline extension fix)
+     * The SCRUB only clears a grade the plugin wrote itself
      */
-    public function testScrubLogicDeletesFeedbackFiles()
+    public function testScrubOnlyClearsPluginGrades()
     {
         $file = __DIR__ . '/../../classes/class.ilExAssTypeAutoScoreBaseGUI.php';
         $content = file_get_contents($file);
 
-        // Check for SCRUB section
-        $this->assertStringContainsString(
-            'Pre-deadline SCRUB',
-            $content,
-            'BaseGUI should have SCRUB logic'
-        );
+        $start = strpos($content, 'Pre-deadline SCRUB');
+        $this->assertNotFalse($start, 'BaseGUI should have SCRUB logic');
+        $scrub = substr($content, $start, strpos($content, '// --- /SCRUB ---', $start) - $start);
 
-        // Check that it calls deleteFeedbackFiles
-        $this->assertStringContainsString(
-            'deleteFeedbackFiles()',
-            $content,
-            'SCRUB logic should delete feedback files when hiding assessments'
+        $this->assertStringContainsString('isNoteFromPlugin(', $scrub, 'SCRUB must check the grade fingerprint');
+        $this->assertMatchesRegularExpression(
+            '/if \(\$plugin_note && !empty\(\$statuses\)\) \{.*?deleteFeedbackFiles\(\)/s',
+            $scrub,
+            'SCRUB deletes the service feedback files only together with a plugin grade'
         );
+        $this->assertStringContainsString('setPublishedReturnTime(null)', $scrub, 'SCRUB must allow publishing again');
     }
 
     /**

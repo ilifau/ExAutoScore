@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 // Copyright (c) 2020 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
+require_once (__DIR__ . '/../class.ilExAutoScoreDeadline.php');
+
 class ilExAutoScoreTask extends ActiveRecord
 {
     /**
@@ -282,6 +284,18 @@ class ilExAutoScoreTask extends ActiveRecord
      * @con_is_notnull false
      */
     protected ?string $published_return_time = null;
+
+    /**
+     * Fingerprint of the grade written into the ILIAS member status (see noteHash()).
+     * The pre-deadline reset may only clear a grade that still matches it.
+     *
+     * @var string
+     * @con_has_field  true
+     * @con_fieldtype  text
+     * @con_length     40
+     * @con_is_notnull false
+     */
+    protected ?string $published_note_hash = null;
 
     /**
      * Wrapper to declare the return type
@@ -847,13 +861,9 @@ class ilExAutoScoreTask extends ActiveRecord
             return false;
         }
 
-        $now = time();
         foreach ($affected as $uid) {
             // Deadline of the affected user (NOT the viewer) must have passed.
-            $personal_deadline  = (int) $ass->getPersonalDeadline($uid);
-            $general_deadline   = (int) ($ass->getDeadline() ?? 0);
-            $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
-            if ($effective_deadline > 0 && $now < $effective_deadline) {
+            if (!ilExAutoScoreDeadline::hasEnded($ass, (int) $uid)) {
                 return false;
             }
 
@@ -910,17 +920,13 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
     $ass    = new ilExAssignment($this->getAssignmentId());
     $plugin = ilExAutoScorePlugin::getInstance();
 
+    $written = false;
+    $note_hash = null;
     foreach ($user_ids as $user_id) {
 
         // Deadline-Guard (nicht für Tutoren / nicht bei force)
-        if (!$force && !$plugin->canDefine()) {
-            $personal_deadline  = (int) $ass->getPersonalDeadline($user_id);
-            $general_deadline   = (int) ($ass->getDeadline() ?? 0);
-            $effective_deadline = $personal_deadline > 0 ? $personal_deadline : $general_deadline;
-
-            if ($effective_deadline > 0 && time() < $effective_deadline) {
-                continue;
-            }
+        if (!$force && !$plugin->canDefine() && !ilExAutoScoreDeadline::hasEnded($ass, (int) $user_id)) {
+            continue;
         }
 
         // Kommentar (Plaintext-Fallback aus HTML)
@@ -945,14 +951,32 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
             $memberStatus->setStatus('notgraded');
             $memberStatus->setMark('');
             $memberStatus->setReturned(false);
+            $note_hash = null;
         } else {
+            $mark_text = $mark !== null ? (string) $mark : '';
             if (method_exists($memberStatus, 'setComment')) { $memberStatus->setComment($comment); }
             $memberStatus->setStatus($status);
-            $memberStatus->setMark($mark !== null ? (string) $mark : '');
+            $memberStatus->setMark($mark_text);
             $memberStatus->setReturned($this->getSubmitSuccess() ?? false);
+            $note_hash = self::noteHash($status, $mark_text, $comment);
         }
 
         $memberStatus->update();
+        $written = true;
+    }
+
+    // remember what was written, so the pre-deadline reset can tell it from a tutor grade
+    if ($written) {
+        $changed = $this->getPublishedNoteHash() !== $note_hash;
+        $this->setPublishedNoteHash($note_hash);
+        // a cleared grade must be publishable again
+        if ($force && $this->getPublishedReturnTime() !== null) {
+            $this->setPublishedReturnTime(null);
+            $changed = true;
+        }
+        if ($changed && $this->getId()) {
+            $this->update();
+        }
     }
 }
 
@@ -1022,5 +1046,32 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
     public function setPublishedReturnTime(?string $published_return_time): void
     {
         $this->published_return_time = $published_return_time;
+    }
+
+    public function getPublishedNoteHash(): ?string
+    {
+        return $this->published_note_hash;
+    }
+
+    public function setPublishedNoteHash(?string $published_note_hash): void
+    {
+        $this->published_note_hash = $published_note_hash;
+    }
+
+    /**
+     * Fingerprint of a member status, to recognize a grade written by this plugin
+     */
+    public static function noteHash(string $status, string $mark, string $comment): string
+    {
+        return sha1($status . "\n" . $mark . "\n" . $comment);
+    }
+
+    /**
+     * The grade of this member was written by the plugin and not changed since
+     */
+    public function isNoteFromPlugin(ilExAssignmentMemberStatus $status): bool
+    {
+        return $this->getPublishedNoteHash() !== null
+            && $this->getPublishedNoteHash() === self::noteHash($status->getStatus(), $status->getMark(), $status->getComment());
     }
 }
