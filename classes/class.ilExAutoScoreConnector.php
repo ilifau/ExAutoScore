@@ -19,6 +19,9 @@ class ilExAutoScoreConnector
     const NOTIFY_SEND_FAILURE = 'send_failure';
     const NOTIFY_RESULT_FAILURE = 'result_failure';
 
+    /** header in which the grading service sends the API key with every result */
+    const RESULT_KEY_HEADER = 'X-Autocor-Key';
+
     /** @var ilExAutoScorePlugin */
     protected ilExAutoScorePlugin $plugin;
 
@@ -277,6 +280,16 @@ class ilExAutoScoreConnector
     {
         global $DIC;
 
+        // results.php is public: only the grading service knows the shared key
+        if (!$this->hasValidResultKey()) {
+            $this->logger()->warning('[ExAutoScore] receive rejected: invalid or missing result key', [
+                'ip' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            ]);
+            http_response_code(403);
+            echo 'Forbidden';
+            return;
+        }
+
         $files = \GuzzleHttp\Psr7\ServerRequest::normalizeFiles($DIC->http()->request()->getUploadedFiles());
         $result = null;
 
@@ -493,6 +506,18 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             'text_size'  => strlen((string) $task->getProtectedFeedbackText()),
             'published'  => $published,
         ]);
+    }
+
+    /**
+     * The result carries the configured API key in the X-Autocor-Key header
+     */
+    protected function hasValidResultKey(): bool
+    {
+        global $DIC;
+
+        $expected = (string) $this->config->get('service_api_key');
+        $given = $DIC->http()->request()->getHeaderLine(self::RESULT_KEY_HEADER);
+        return $expected !== '' && hash_equals($expected, $given);
     }
 
     /**
