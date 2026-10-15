@@ -381,14 +381,8 @@ if (!$ilDB->tableColumnExists('exautoscore_assignment', 'hide_sample_solution'))
 <?php
 // Track which correction result has already been auto-published to the ILIAS
 // member status, so the auto-publish writes each result exactly once (no loop).
-//
-// NOTE: No backfill. Existing tutor corrections are protected by the
-// "only fill an EMPTY note" rule in publishAutoNoteIfDue() — not by the marker.
-// Leaving the marker NULL for existing tasks is intentional: it lets the
-// automatism fill still-empty notes of pre-existing submissions, while
-// non-empty (tutor/auto) notes are skipped anyway. (Earlier this step had a
-// backfill; it became redundant and counterproductive once the empty-note
-// guard was introduced — see CHANGELOG 2026-05-28.)
+// No backfill on purpose: the empty-note rule protects tutor grades, and a NULL
+// marker lets still-empty notes of existing submissions be filled.
 if (!$ilDB->tableColumnExists('exautoscore_task', 'published_return_time'))
 {
     $ilDB->addTableColumn("exautoscore_task", 'published_return_time', array(

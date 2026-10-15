@@ -73,7 +73,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $symbol = $trimmed;
         $title = $trimmed;
         
-        // Unicode-Symbole (AuDoscore)
+        // Unicode symbols (AuDoscore)
         if ($trimmed === '✓' || $trimmed === "\u{2713}") {
             $color = '#5cb85c';
             $title = 'Passed';
@@ -90,7 +90,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $color = '#f0ad4e';
             $title = 'Internal Error';
         }
-        // Text-basierte Werte (Standard-Container)
+        // Text-based values (standard containers)
         else {
             $lower = strtolower($trimmed);
             
@@ -383,7 +383,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
         $requiredFiles = ilExAutoScoreRequiredFile::getForAssignment($a_submission->getAssignment()->getId());
 
-        // Dateiliste (unverändert)
+        // File list
         $titles = [];
         $links = [];
         foreach (ilExAutoScoreSubmissionFiles::getFiles($a_submission) as $file) {
@@ -437,7 +437,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $a_info->addProperty('', $content);
         }
 
-        // Zeiten und Status (unverändert)
+        // Times and status
         if (!empty($task->getReturnTime())) {
             $time = new ilDateTime($task->getReturnTime(), IL_CAL_DATETIME);
             $content = ilDatePresentation::formatDate($time);
@@ -460,7 +460,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             }
         }
 
-        // GEÄNDERT: Sofortiger Status und Meldung hinzugefügt
+        // Instant status
         if (!empty($task->getInstantStatus())) {
             $a_info->addProperty(
                 $this->plugin->txt("instant_status"), 
@@ -468,7 +468,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             );
         }
 
-        // NEU: Sofortige Meldung hinzugefügt
+        // Instant message
         if (!empty($task->getInstantMessage())) {
             $a_info->addProperty(
                 $this->plugin->txt("instant_message"),
@@ -642,10 +642,10 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $this->submission->deleteAllFiles();
             $task = ilExAutoScoreTask::getSubmissionTask($this->submission);
             $task->clearSubmissionData();
-            $task->deleteFeedbackFiles(); // Feedback-Dateien auch löschen
+            $task->deleteFeedbackFiles(); // also delete the feedback files
             $task->save();
 
-            // Betroffene User ermitteln und Status auf "notgraded" zurücksetzen
+            // Reset the affected users' status to "notgraded"
             $uids = $task->getAffectedUserIds();
             $task->updateMemberStatus($uids, true);
         }
@@ -727,7 +727,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             $results[$result->getName()] = $result;
         }
 
-        // Validierung
+        // Validation
         $errors = false;
         foreach ($requiredFiles as $required) {
             $item = $form->getItemByPostVar('exautoscore_file_upload_' . $required->getId());
@@ -763,7 +763,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             exit;
         }
 
-        // Dateien sammeln
+        // Collect existing files
         $existing = [];
         foreach (ilExAutoScoreSubmissionFiles::getFiles($this->submission) as $file) {
             $existing[$file["filetitle"]][] = $file['returned_id'];
@@ -820,7 +820,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
             exit;
         }
 
-        // Cleanup und Team-ID setzen
+        // Clean up old files and set the team id
         if (!empty($new)) {
             foreach ($new as $requiredFile) {
                 $filename = $requiredFile->getFilename();
@@ -1040,21 +1040,12 @@ protected function downloadSubmittedFile()
 
         $task = ilExAutoScoreTask::getSubmissionTask($a_submission);
 
-        // Automatism: when a tutor opens "Abgaben und Noten", fill still-empty
-        // notes with the auto-correction grade. This hook fires per rendered
-        // row — but pagination/filters would then miss rows. So on the FIRST
-        // call for an assignment we publish ALL of its tasks in one bulk pass
-        // (covers every submission regardless of which rows are shown), guarded
-        // per assignment so it runs only once per request. publishToMemberStatusIfDue()
-        // is idempotent (marker + empty-note + deadline + non-null points), so a
-        // tutor grade is never overwritten.
-        //
-        // Hint via the ILIAS-native on-screen message (NOT addOnLoadCode):
-        // a previous raw-JS banner broke the ExerciseStatusFile multi-feedback
-        // button's JS (concatenated onLoad code). setOnScreenMessage renders in
-        // the standard message area of this request — no JS, no plugin conflict.
-        // The freshly written notes show on the next table render (the table
-        // reads its data before this per-row hook fires), hence the hint.
+        // When a tutor opens "Abgaben und Noten", fill still-empty notes with the
+        // auto-correction grade. The hook fires per rendered row, so the first call per
+        // assignment publishes all its tasks at once (pagination/filters would miss rows).
+        // publishToMemberStatusIfDue() is idempotent and never overwrites a tutor grade.
+        // The hint uses setOnScreenMessage, not addOnLoadCode: raw JS broke the
+        // ExerciseStatusFile multi-feedback button. New notes show on the next render.
         try {
             $ass = $a_submission->getAssignment();
             $ass_id = (int) $ass->getId();
@@ -1082,26 +1073,25 @@ protected function downloadSubmittedFile()
             $factory = $DIC->ui()->factory();
             $renderer = $DIC->ui()->renderer();
 
-            // Feedback HTML vorbereiten
-            // WICHTIG: stdout/stderr IMMER entfernen (gehört ins Debug-Protokoll)
+            // Always strip stdout/stderr (<details>), it belongs in the debug log
             $feedbackHtml = $task->getProtectedFeedbackHtml();
             $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
 
-            // Modal erstellen
+            // Create the modal
             $page = $factory->modal()->lightboxTextPage(
                 $this->plugin->purifyFeedbackHtml($feedbackHtml),
                 $this->plugin->txt('protected_feedback_html')
             );
             $modal = $factory->modal()->lightbox([$page]);
 
-            // Modal-HTML ins DOM einfügen (per JavaScript)
+            // Inject the modal HTML into the DOM via JavaScript
             $DIC->ui()->mainTemplate()->addOnLoadCode(
                 "document.body.insertAdjacentHTML('beforeend', " . 
                 json_encode($renderer->render($modal)) . 
                 ");"
             );
 
-            // Button als UI-Component
+            // Button as UI component
             $button = $factory->button()->shy(
                 $this->plugin->txt("protected_feedback_html"), 
                 ''
@@ -1143,15 +1133,15 @@ protected function downloadSubmittedFile()
             return;
         }
 
-        // Prüfe ob Korrektur eingerichtet wurde
+        // Is the correction set up?
         $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($sub->getAssignment()->getId());
         $correctionSetup = !empty($scoreAss->getUuid());
 
-        // Prüfe ob Docker-Build fehlgeschlagen ist
+        // Did the Docker build fail?
         $exampleTask = ilExAutoScoreTask::getExampleTask($sub->getAssignment()->getId());
         $hasDebugError = !empty($exampleTask->getDebugLogs());
 
-        // Wenn Korrektur nicht eingerichtet ist ODER Build fehlgeschlagen: verstecke submit-buttons
+        // Hide the submit buttons if the correction is not set up or the build failed
         if (!$correctionSetup || $hasDebugError) {
 
             if ($this->plugin->canDefine()) {
@@ -1206,15 +1196,15 @@ protected function downloadSubmittedFile()
         require_once __DIR__ . '/models/class.ilExAutoScoreTask.php';
         $task = \ilExAutoScoreTask::getSubmissionTask($sub);
 
-        // --- Pre-deadline SCRUB: Core-Bewertung vor Deadline IMMER leeren (außer für Tutoren) ---
+        // --- Pre-deadline SCRUB: before the deadline, clear a grade the plugin published (never for tutors) ---
         $did_scrub = false;
         try {
             $hide     = !$this->canShowAssessmentNow($ass, $sub);
             $is_tutor = $this->plugin->canDefine();
 
-            // Wenn Student und vor Deadline -> Bewertung aus ILIAS Core löschen
+            // Student before the deadline: clear the grade in the ILIAS core
             if ($hide && !$is_tutor) {
-                // Betroffene Nutzer (Team oder Einzel)
+                // Affected users (team or single)
                 $affected_user_ids = [$this->user->getId()];
                 if ($ass->hasTeam()) {
                     $team = $sub->getTeam();
@@ -1259,17 +1249,15 @@ protected function downloadSubmittedFile()
             $DIC->logger()->root()->error('ExAutoScore pre-deadline scrub failed: ' . $e->getMessage());
         }
 
-        // CRITICAL: If we just scrubbed data, redirect to get a fresh page load
-        // This ensures the UI shows the cleaned state immediately
+        // Redirect after scrubbing so the page shows the cleaned state
         if ($did_scrub) {
             $current_class = $DIC->ctrl()->getCmdClass();
             $DIC->ctrl()->redirectByClass($current_class, $DIC->ctrl()->getCmd());
         }
         // --- /SCRUB ---
 
-        // --- Auto-Publish der Core-Bewertung NACH Deadline (wenn Ergebnis vorhanden) ---
-        // Gemeinsame Regel mit der Management-Seite, siehe publishAutoNoteIfDue():
-        // genau einmal pro Ergebnis, nur in eine leere Note, nie über Tutor-Werte.
+        // --- Auto-publish the core grade after the deadline (if a result exists) ---
+        // Same rule as the management page, see publishAutoNoteIfDue().
         $did_publish = false;
         try {
             $did_publish = $this->publishAutoNoteIfDue($ass, $task);
@@ -1277,18 +1265,14 @@ protected function downloadSubmittedFile()
             $DIC->logger()->root()->error('ExAutoScore auto-publish after deadline failed: ' . $e->getMessage());
         }
 
-        // CRITICAL: If we just published results, redirect to get a fresh page load
-        // This is the same pattern used by standard assignment types (File, Text)
-        // Without redirect, the cached state from build() would still show old data
+        // Redirect after publishing, otherwise the state cached by build() would show old data
         if ($did_publish) {
-            // Redirect to current controller to force fresh page load with new data
-            // Use getCmdClass() to get the active controller, then redirect to it
             $current_class = $DIC->ctrl()->getCmdClass();
             $DIC->ctrl()->redirectByClass($current_class, $DIC->ctrl()->getCmd());
         }
         // --- /Auto-Publish ---
 
-        // Sofort-Infos IMMER in "Einreichung" sichtbar
+        // Instant info is always shown in the submission section
         if ($task && $task->getInstantStatus()) {
             $builder->addProperty(
                 $builder::SEC_SUBMISSION,
@@ -1304,7 +1288,7 @@ protected function downloadSubmittedFile()
             );
         }
 
-        // Bewertungssektion NUR nach wirksamer Deadline
+        // Assessment section only after the effective deadline
         if ($task && $this->canShowAssessmentNow($ass, $sub)) {
             if ($task->getReturnPoints() !== null) {
                 $builder->addProperty(
@@ -1314,13 +1298,13 @@ protected function downloadSubmittedFile()
                 );
             }
 
-            // Erweiterte Rückmeldung (Modal)
+            // Extended feedback (modal)
             if ($task->getProtectedFeedbackHtml() && $this->canShowExtendedFeedbackByDeadline($ass, $sub)) {
                 try {
                     $feedbackHtml = $task->getProtectedFeedbackHtml();
                     $feedbackHtml = preg_replace('/<details[^>]*>.*?<\/details>/is', '', $feedbackHtml);
 
-                    // Button in TUTOR_EVAL statt SUBMISSION => erscheint unten bei der Bewertung
+                    // TUTOR_EVAL instead of SUBMISSION, so the button appears below with the assessment
                     $builder->addProperty($builder::SEC_TUTOR_EVAL, '', $this->renderModalButton(
                         $this->plugin->txt('protected_feedback_html'),
                         $this->plugin->purifyFeedbackHtml($feedbackHtml),
@@ -1353,8 +1337,6 @@ protected function downloadSubmittedFile()
         }
     }
 
-    // 2. Vereinfache viewSubmission() - nur Dateiliste, keine Auswertung:
-
     protected function viewSubmission()
     {
         global $DIC;
@@ -1369,7 +1351,7 @@ protected function downloadSubmittedFile()
 
         $files = ilExAutoScoreSubmissionFiles::getFiles($this->submission);
 
-        // NUR DATEILISTE - KEINE AUSWERTUNG
+        // File list only, no assessment
         $files_html = '';
         if ($files && count($files)) {
             $files_html .= '<div class="ilBox"><h3>' . $this->lng->txt('exc_files_returned') . '</h3><ul>';

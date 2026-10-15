@@ -910,7 +910,7 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
         $mark = $this->getReturnPoints();
     }
 
-    // betroffene Nutzer (verwende Parameter oder ermittle aus Task)
+    // affected users (given as parameter or determined from the task)
     if (!empty($a_user_ids)) {
         $user_ids = $a_user_ids;
     } else {
@@ -924,12 +924,12 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
     $note_hash = null;
     foreach ($user_ids as $user_id) {
 
-        // Deadline-Guard (nicht für Tutoren / nicht bei force)
+        // deadline guard (skipped for tutors and on force)
         if (!$force && !$plugin->canDefine() && !ilExAutoScoreDeadline::hasEnded($ass, (int) $user_id)) {
             continue;
         }
 
-        // Kommentar (Plaintext-Fallback aus HTML)
+        // comment (plain text fallback from HTML)
         $comment = (string) ($this->getProtectedFeedbackText() ?? '');
         if ($comment === '' && method_exists($this, 'getProtectedFeedbackHtml')) {
             $html = (string) $this->getProtectedFeedbackHtml();
@@ -943,7 +943,7 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
             }
         }
 
-        // Core schreiben (ILIAS 9: nur diese Felder verwenden)
+        // write the core status (ILIAS 9: use only these fields)
         $memberStatus = new ilExAssignmentMemberStatus($ass->getId(), $user_id);
 
         if ($force) {
@@ -1003,13 +1003,13 @@ public function updateMemberStatus($a_user_ids = [], bool $force = false)
     {
         $assignment = new ilExAssignment($this->getAssignmentId());
 
-        // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
+        // affected users (works for teams and single users)
         $affected_users = $this->getAffectedUserIds();
         if (empty($affected_users)) {
             return;
         }
 
-        // Für Feedback-Dateien: nimm einen beliebigen User (bei Teams ist es egal welcher)
+        // any user will do for feedback files (same for all team members)
         $user_id = (int) $affected_users[0];
 
         require_once __DIR__ . '/../class.ilExAutoScoreSubmissionFiles.php';

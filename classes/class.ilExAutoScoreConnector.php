@@ -75,11 +75,8 @@ class ilExAutoScoreConnector
 
         $post = [];
         $post['api_key'] = $this->config->get('service_api_key');
-        // Bisherige Service-UUID mitschicken, damit der Service DIESELBE Aufgabe neu
-        // einrichtet. Sonst legt er jedes Mal eine neue an und baut ein weiteres Image,
-        // waehrend das alte getaggt liegen bleibt (August 2026: 48 GB solcher Leichen).
-        // service_uuid zuerst: uuid ist nach einem Zuruecksetzen leer. Kennt der
-        // Service die UUID nicht (oder das Feld nicht, aeltere Version), legt er neu an.
+        // Send the previous service UUID so the service rebuilds the SAME assignment instead
+        // of creating a new one (and leaving the old image behind). service_uuid first: uuid is empty after a reset.
         $previousUuid = $scoreAss->getServiceUuid() !== '' ? $scoreAss->getServiceUuid() : $scoreAss->getUuid();
         if ($previousUuid !== '') {
             $post['uuid'] = $previousUuid;
@@ -91,7 +88,7 @@ class ilExAutoScoreConnector
         $post['command'] = $scoreAss->getCommand();
         $post['timeout'] = $timeout;
         
-        // Debug-Modus mitschicken
+        // Pass debug mode to the service
         $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
         if ($debugEnabled) {
             $post['debug_mode'] = 'true';
@@ -121,7 +118,7 @@ class ilExAutoScoreConnector
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
         
-        // Debug-Logs speichern
+        // Store debug logs
         if ($debugEnabled && $this->debug_logs) {
             $scoreTask->setDebugLogs($this->debug_logs);
         }
@@ -159,7 +156,7 @@ class ilExAutoScoreConnector
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
 
-        // Debug-Modus mitschicken
+        // Pass debug mode to the service
         $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
         $post['debug_mode'] = $debugEnabled ? 'true' : 'false';
 
@@ -179,7 +176,7 @@ class ilExAutoScoreConnector
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
         
-        // Debug-Logs speichern
+        // Store debug logs
         if ($debugEnabled && $this->debug_logs) {
             $scoreTask->setDebugLogs($this->debug_logs);
         }
@@ -208,7 +205,7 @@ class ilExAutoScoreConnector
         $post['assignment'] = $scoreAss->getUuid();
         $post['user_identifier'] = $user->getLogin();
 
-        // Debug-Modus mitschicken
+        // Pass debug mode to the service
         $debugEnabled = $this->config->get('enable_debug_logs') && $scoreAss->getDebugMode();
         $post['debug_mode'] = $debugEnabled ? 'true' : 'false';
 
@@ -229,7 +226,7 @@ class ilExAutoScoreConnector
         $scoreTask->setSubmitSuccess($success);
         $scoreTask->setSubmitMessage($this->getResultMessage());
 
-        // Debug-Logs auch hier speichern!
+        // Store debug logs
         if ($debugEnabled && $this->debug_logs) {
             $scoreTask->setDebugLogs($this->debug_logs);
         }
@@ -257,21 +254,17 @@ class ilExAutoScoreConnector
             ]);
         }
 
-        // HINWEIS: updateMemberStatus() wird NICHT hier aufgerufen, da wir noch keine
-        // Korrektur-Ergebnisse haben. Die Bewertung wird erst in receiveResult() geschrieben,
-        // wenn die Deadline erreicht ist.
+        // No updateMemberStatus() here: there is no result yet; grading happens in receiveResult()
+        // once the deadline has passed.
 
         if (!$success) {
             $this->notifyFailure($assignment, $scoreTask, self::NOTIFY_SEND_FAILURE);
-            // Zusätzlich die Betreiber alarmieren: Wenn das Senden scheitert, liegt
-            // es am Service, nicht an der Aufgabe des Dozenten. Eigene Drossel, damit
-            // eine Störung EINE Mail auslöst und nicht eine pro betroffener Übung.
+            // Also alert the operators: a send failure is a service problem, not the tutor's.
+            // Globally throttled, so one outage triggers ONE mail, not one per exercise.
             $this->notifyServiceOutage($assignment);
         } else {
-            // Der Service nimmt wieder an. Die Drossel hier zurückzusetzen und nicht
-            // erst in receiveResult() schliesst eine Lücke: Ein Ergebnis trifft nur
-            // ein, wenn auch abgegeben wird — sonst bliebe der Alarm nach einer
-            // überstandenen Störung stumm geschaltet und die nächste ginge unter.
+            // Service accepts again: re-arm the outage alert here, not only in receiveResult(),
+            // since results only arrive when someone submits and the next outage would go unnoticed.
             $this->clearServiceOutageFlag();
         }
         return $success;
@@ -292,7 +285,7 @@ class ilExAutoScoreConnector
             $upload_filenames[] = $f->getClientFilename();
         }
 
-        // ZUERST: Prüfe ob result.json als File hochgeladen wurde (Standard für Multipart)
+        // First: check for an uploaded result.json (default for multipart)
         foreach ($files as $file) {
             $filename = $file->getClientFilename();
 
@@ -304,7 +297,7 @@ class ilExAutoScoreConnector
             }
         }
 
-        // FALLBACK: Versuche Body als JSON (für Nicht-Multipart Requests)
+        // Fallback: parse the body as JSON (non-multipart requests)
         $body_size = null;
         $body_preview = null;
         if (empty($result)) {
@@ -329,7 +322,7 @@ class ilExAutoScoreConnector
             return;
         }
 
-        // UUID extrahieren
+        // Extract UUID
         if (isset($result['assignment_uuid'])) {
             $this->result_uuid = (string) $result['assignment_uuid'];
         }
@@ -339,11 +332,11 @@ class ilExAutoScoreConnector
 
         $task = ilExAutoScoreTask::getByUuid($this->result_uuid);
 
-// Fallback: Build-Fehler ohne task_uuid -> schreibe Debug in alle Tasks des Assignments
+// Fallback: build error without task_uuid -> write debug info to all tasks of the assignment
 if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result['assignment_uuid'])) {
     $db = $DIC->database();
 
-    // 1) Assignment-ID via assignment_uuid ermitteln
+    // 1) Look up the assignment ID via assignment_uuid
     $set = $db->queryF(
         "SELECT id FROM exautoscore_assignment WHERE uuid = %s",
         ['text'],
@@ -354,18 +347,18 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     if ($row && !empty($row['id'])) {
         $ass_id = (int)$row['id'];
 
-        // 2) Alle Tasks des Assignments holen
+        // 2) Fetch all tasks of the assignment
         $set2 = $db->queryF(
             "SELECT id FROM exautoscore_task WHERE assignment_id = %s",
             ['integer'],
             [$ass_id]
         );
 
-        // 3) Debug/Status in JEDEM Task ablegen (damit GUI/Modal es anzeigt)
+        // 3) Store debug/status in EVERY task (so the GUI/modal shows it)
         $now = (new ilDateTime(time(), IL_CAL_UNIX))->get(IL_CAL_DATETIME);
         $touched = 0;
         while ($trow = $db->fetchAssoc($set2)) {
-            $t = new ilExAutoScoreTask((int)$trow['id']); // dein vorhandener ActiveRecord-Konstruktor
+            $t = new ilExAutoScoreTask((int)$trow['id']);
 
             if (isset($result['debug_logs'])) {
                 $t->setDebugLogs($result['debug_logs']);
@@ -390,7 +383,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             'tasks_updated'  => $touched,
         ]);
 
-        // Wir haben die Debug-Infos verteilt -> OK antworten und den regulären Pfad verlassen
+        // Debug info distributed -> answer OK and skip the regular path
         http_response_code(200);
         echo 'OK';
         return;
@@ -399,8 +392,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
 
 
         if (!isset($task)) {
-            // KEY for Issue 1 diagnosis: a result POST arrived but no task matches its uuid.
-            // Used to be a silent return — every lost callback was invisible.
+            // A result POST arrived but no task matches its uuid; log it so lost callbacks are visible.
             $this->logger()->warning('[ExAutoScore] receive task-not-found', [
                 'task_uuid'       => $this->result_uuid,
                 'assignment_uuid' => $result['assignment_uuid'] ?? null,
@@ -422,7 +414,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         $task->setProtectedFeedbackText(isset($result['protected_feedback_text']) ? $result['protected_feedback_text'] : null);
         $task->setProtectedFeedbackHtml(isset($result['protected_feedback_html']) ? $result['protected_feedback_html'] : null);
 
-        // Debug-Logs speichern wenn vorhanden
+        // Store debug logs if present
         if (isset($result['debug_logs'])) {
             $task->setDebugLogs($result['debug_logs']);
         }
@@ -455,21 +447,18 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
         $phase = $result['phase'] ?? null;
         $failed = empty($result['success']) || $success_failed;
         $isExample = ($task->getUserId() === null && $task->getTeamId() === null);
-        // Musterlösung gilt als fehlgeschlagen, wenn der Service-Erfolg fehlt ODER
-        // der Container zwar lief (success=true), aber instant_status 'failed' ist
-        // (z.B. Musterlösung kompiliert nicht).
+        // Sample solution counts as failed if success is missing OR the container ran
+        // but instant_status is 'failed' (e.g. the sample solution does not compile).
         $sampleFailed = $failed || strtolower((string) $task->getInstantStatus()) === 'failed';
 
         if ($phase === 'build') {
-            // Image ließ sich nicht bauen — Infrastruktur/Setup kaputt.
-            // Gedrosselte Fehler-Mail (ein nicht erreichbarer Service wird separat
-            // beim Senden über NOTIFY_SEND_FAILURE gemeldet).
+            // Image could not be built (setup broken): throttled failure mail.
+            // An unreachable service is reported separately via NOTIFY_SEND_FAILURE.
             $assignment = new ilExAssignment($task->getAssignmentId());
             $this->notifyFailure($assignment, $task, self::NOTIFY_RESULT_FAILURE);
         } elseif ($isExample) {
-            // Der Container LIEF (phase 'run'): dem Dozenten das Ergebnis seiner
-            // Musterlösung melden — Erfolg ODER Fehlschlag. Studentische Abgaben
-            // lösen hier bewusst nichts aus (Ergebnis = Sache des Dozenten-Skripts).
+            // Container ran: report the sample solution result (success OR failure) to the tutor.
+            // Student submissions intentionally trigger nothing here.
             $assignment = new ilExAssignment($task->getAssignmentId());
             $this->notifySampleResult(
                 $assignment,
@@ -478,17 +467,15 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             );
         }
 
-        // Drossel zurücksetzen, sobald der Service wieder ein echtes Lauf-Ergebnis
-        // liefert (er funktioniert dann wieder) — unabhängig vom Bewertungsausgang.
-        // Bei einem Build-Fehler bleibt sie gesetzt (Störung dauert an → eine Mail).
+        // Reset the failure-mail throttle once a real run result arrives, regardless of the score.
+        // On a build error it stays set (outage ongoing -> only one mail).
         if ($phase !== 'build') {
             $scoreAss = ilExAutoScoreAssignment::findOrGetInstance($task->getAssignmentId());
             if ($scoreAss->getFailureMailSent()) {
                 $scoreAss->setFailureMailSent(false);
                 $scoreAss->store();
             }
-            // Der Service hat geantwortet — also läuft er wieder. Damit ist der
-            // Betreiber-Alarm für die nächste Störung wieder scharf.
+            // Service responded, so it works again: re-arm the operator alert.
             $this->clearServiceOutageFlag();
         }
 
@@ -519,7 +506,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
 
         $assignment = new ilExAssignment($task->getAssignmentId());
 
-        // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
+        // Determine affected users (works for teams and single users)
         $affected_users = $task->getAffectedUserIds();
         if (empty($affected_users)) {
             return;
@@ -530,13 +517,12 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             return;
         }
 
-        // Für Feedback-Dateien: nimm einen beliebigen User (bei Teams ist es egal welcher)
+        // Any affected user will do for feedback files (for teams it does not matter which)
         $user_id = (int) $affected_users[0];
 
-        // HINWEIS: feedback.html wird NICHT mehr gespeichert, da das HTML über
-        // den "Erweitertes Feedback" Modal-Button angezeigt wird (nach Deadline).
+        // feedback.html is not stored; the HTML is shown via the extended feedback modal (after deadline).
 
-        // Überspringe result.json - das wurde bereits verarbeitet
+        // Skip result.json, it has already been processed
         $feedback_files = array_filter($files, fn($file) => $file->getClientFilename() !== 'result.json');
         ilExAutoScoreSubmissionFiles::replaceFeedbackFiles($assignment, $user_id, $feedback_files);
     }
@@ -557,15 +543,14 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     }
 
     /**
-     * Liegt der Host in einem privaten/lokalen Netz? Namen werden dafür aufgelöst.
-     * Im Zweifel (nicht auflösbar) false — dann bleibt es beim bisherigen
-     * Verhalten und der Request läuft über den Proxy.
+     * Is the host in a private/local network? Names are resolved for this.
+     * If unresolvable, returns false so the request goes through the proxy.
      */
     protected function isInternalHost(string $host): bool
     {
         $ip = filter_var($host, FILTER_VALIDATE_IP) !== false ? $host : gethostbyname($host);
 
-        // gethostbyname() gibt bei Fehlschlag den Namen unverändert zurück
+        // gethostbyname() returns the name unchanged on failure
         if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
             return false;
         }
@@ -598,9 +583,8 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
                 CURLOPT_HEADER => false,
             ]);
             
-            // Der Proxy ist der Weg nach draußen. Steht der Service im internen Netz,
-            // lehnt der Proxy das CONNECT ab (503) — solche Ziele direkt ansprechen.
-            $host = trim((string) parse_url($url, PHP_URL_HOST), '[]'); // IPv6 kommt geklammert
+            // The proxy only reaches outside; it rejects CONNECT to internal hosts (503), so call those directly.
+            $host = trim((string) parse_url($url, PHP_URL_HOST), '[]'); // IPv6 comes bracketed
             $is_internal = $host !== '' && $this->isInternalHost($host);
 
             if ($is_internal) {
@@ -625,7 +609,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             if ($curl_errno !== 0) {
                 $this->result_uuid = null;
 
-                // Spezifische Hinweise für häufige cURL Fehler
+                // Specific hints for common cURL errors
                 $hint = '';
                 switch ($curl_errno) {
                     case 6: // CURLE_COULDNT_RESOLVE_HOST
@@ -706,7 +690,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
                 $this->result_message = 'Success';
             }
             
-            // Debug-Logs extrahieren
+            // Extract debug logs
             if (isset($decoded_result['debug_logs'])) {
                 $this->debug_logs = $decoded_result['debug_logs'];
             }
@@ -858,7 +842,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
      */
     protected function notifyFailure($assignment, $scoreTask, $type)
     {
-        // Globaler Kill-Switch (Plugin-Konfiguration) — aus = gar keine Mails.
+        // Global kill switch (plugin config): off = no mails at all.
         if (!$this->config->get('enable_failure_mails')) {
             return;
         }
@@ -868,14 +852,13 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             return;
         }
 
-        // Drossel: pro Assignment nur EINE Fehler-Mail, bis wieder eine Korrektur
-        // erfolgreich war (das Flag setzt receiveResult() bei Erfolg zurück). So
-        // löst ein defekter Service eine Meldung pro Störung aus, nicht pro Abgabe.
+        // Throttle: only ONE failure mail per assignment until a run succeeds again
+        // (receiveResult() resets the flag), i.e. one mail per outage, not per submission.
         if ($scoreAss->getFailureMailSent()) {
             return;
         }
 
-        // Betreff/Text je Empfängersprache bauen (s. sendLocalizedNotification).
+        // Build subject/body per recipient language (see sendLocalizedNotification).
         $this->sendLocalizedNotification(
             $scoreAss->getFailureMails(),
             function (ilLanguage $lng, string $p) use ($assignment, $scoreTask, $type) {
@@ -888,7 +871,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
                 $info[$lng->txt('exc')] = ilObject::_lookupTitle($assignment->getExerciseId());
                 $info[$lng->txt('exc_assignment')] = $assignment->getTitle();
 
-                // Betroffene User ermitteln (funktioniert für Teams und Einzeluser)
+                // Determine affected users (works for teams and single users)
                 $affected_users = $scoreTask->getAffectedUserIds();
                 if (!empty($affected_users)) {
                     $names = [];
@@ -934,33 +917,20 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             }
         );
 
-        // Drossel scharf stellen — bis receiveResult() sie bei Erfolg zurücksetzt.
+        // Arm the throttle until receiveResult() resets it on success.
         $scoreAss->setFailureMailSent(true);
         $scoreAss->store();
     }
 
     /**
-     * Betreiber-Alarm: Der Korrektur-Service nimmt keine Abgaben mehr an.
+     * Operator alert: the scoring service no longer accepts submissions (NOTIFY_SEND_FAILURE only).
      *
-     * Bewusst getrennt von notifyFailure() und mit eigenen Regeln:
+     * Separate from notifyFailure(): recipients come from the plugin config, not the exercise;
+     * the throttle is global (an outage hits all exercises at once); and it has its own switch
+     * (enable_admin_failure_mails), independent of the tutor mails' kill switch: muting tutor mails
+     * must not blind operations, and the alert can be muted during maintenance without losing the recipients.
      *
-     * - Empfänger kommen aus der PLUGIN-Konfiguration, nicht aus der Übung. Das
-     *   Feld der Übung pflegt der Dozent; die Betreiber stünden dort nirgends und
-     *   erführen von einer Störung nur, wenn sich jemand meldet.
-     * - Die Drossel ist GLOBAL. Die in notifyFailure() hängt am Assignment — bei
-     *   einer Service-Störung sind aber alle Übungen gleichzeitig betroffen, das
-     *   gäbe eine Mail pro Übung. receiveResult() macht sie wieder scharf, sobald
-     *   der Service antwortet.
-     * - Mit eigenem Schalter (enable_admin_failure_mails) statt am Kill-Switch
-     *   enable_failure_mails: Der schaltet die Mails an die DOZENTEN ab. Ein
-     *   abgeschalteter Dozenten-Versand darf den Betrieb nicht blind machen —
-     *   und umgekehrt soll man den Betriebs-Alarm bei Wartung oder bekannter
-     *   Störung stummschalten können, ohne die Empfängerliste zu verlieren.
-     *
-     * Nur für NOTIFY_SEND_FAILURE gedacht: dass eine Korrektur inhaltlich
-     * fehlschlägt oder ein Dockerfile nicht baut, ist Sache des Dozenten.
-     *
-     * @param ilExAssignment $assignment  Übung, bei der die Störung auffiel
+     * @param ilExAssignment $assignment  assignment where the outage was noticed
      */
     protected function notifyServiceOutage($assignment): void
     {
@@ -973,10 +943,8 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             return;
         }
 
-        // Wie beim Zurücksetzen: Der Alarm ist eine Nebenwirkung. Scheitert er,
-        // wird das protokolliert — die Abgabe-Verarbeitung läuft unbeirrt weiter.
-        // Der Einstellungs-Zugriff gehört mit in den Block, sonst bliebe genau die
-        // Zeile ungeschützt, die als erste auf die Datenbank geht.
+        // The alert is a side effect: failures are only logged, submission processing continues.
+        // The settings access is inside the try because it is the first DB access.
         try {
             $settings = new ilSetting('exautoscore');
             if ((int) $settings->get('service_outage_mail_sent', '0')) {
@@ -992,9 +960,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     }
 
     /**
-     * Versand des Betreiber-Alarms — abgetrennt, damit notifyServiceOutage() die
-     * Vorbedingungen prüft und diese Methode nur noch die Mail baut und die
-     * Drossel scharf stellt.
+     * Send the operator alert and arm the throttle; preconditions are checked in notifyServiceOutage().
      *
      * @param ilExAssignment $assignment
      * @param string         $recipients
@@ -1002,7 +968,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
      */
     protected function sendServiceOutageMail($assignment, string $recipients, $settings): void
     {
-        // Betreff/Text je Empfängersprache bauen (s. sendLocalizedNotification).
+        // Build subject/body per recipient language (see sendLocalizedNotification).
         $this->sendLocalizedNotification(
             $recipients,
             function (ilLanguage $lng, string $p) use ($assignment) {
@@ -1012,7 +978,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
                 $body .= $lng->txt('exc') . ': '
                     . ilObject::_lookupTitle($assignment->getExerciseId()) . "\n";
                 $body .= $lng->txt('exc_assignment') . ': ' . $assignment->getTitle() . "\n";
-                // Sprachneutrales Format: die Mail geht an den Betrieb, nicht an Lernende.
+                // Language-neutral format: the mail goes to operators, not learners.
                 $body .= $lng->txt($p . 'outage_time') . ': ' . date('Y-m-d H:i') . "\n\n";
                 $body .= $lng->txt($p . 'outage_hint');
 
@@ -1024,14 +990,8 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     }
 
     /**
-     * Betreiber-Alarm wieder scharf stellen. Gerufen, sobald der Service wieder
-     * arbeitet — bei erfolgreichem Senden und bei eintreffendem Lauf-Ergebnis.
-     *
-     * Bewusst gekapselt: Diese Methode liegt auch im ERFOLGSFALL im Weg, also auf
-     * einem Pfad, auf dem vorher kein Benachrichtigungs-Code lief. Ein Fehler beim
-     * Zurücksetzen einer Mail-Drossel darf niemals eine funktionierende Abgabe
-     * scheitern lassen — schlimmstenfalls bleibt der Alarm stummgeschaltet, und
-     * das steht dann im Log.
+     * Re-arm the operator alert once the service works again (successful send or run result).
+     * Errors are caught and logged: resetting a mail throttle must never break a working submission.
      */
     protected function clearServiceOutageFlag(): void
     {
@@ -1048,12 +1008,8 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
     }
 
     /**
-     * Rückmeldung an die Benachrichtigungs-Empfänger über das Ergebnis der
-     * Musterlösungs-Korrektur — der "es funktioniert"- bzw. "schau mal, lief
-     * nicht"-Effekt, den der Dozent sonst nur durch aktives Nachschauen im
-     * Abgabe-Screen hätte. Wird NUR für den Musterlösungs-/Beispiel-Task
-     * ausgelöst, nie für studentische Abgaben. Der Betreff-Key unterscheidet
-     * Erfolg (sample_success_subject) und Fehlschlag (sample_failed_subject).
+     * Notify the recipients of the sample solution result, so the tutor need not check manually.
+     * Only for the sample/example task, never for student submissions; $subjectKey selects success or failure.
      *
      * @param ilExAssignment    $assignment
      * @param ilExAutoScoreTask $scoreTask
@@ -1061,7 +1017,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
      */
     protected function notifySampleResult($assignment, $scoreTask, string $subjectKey): void
     {
-        // Globaler Kill-Switch (Plugin-Konfiguration) — aus = gar keine Mails.
+        // Global kill switch (plugin config): off = no mails at all.
         if (!$this->config->get('enable_failure_mails')) {
             return;
         }
@@ -1071,7 +1027,7 @@ if (!isset($task) && (($result['phase'] ?? null) === 'build') && !empty($result[
             return;
         }
 
-        // Betreff/Text je Empfängersprache bauen (s. sendLocalizedNotification).
+        // Build subject/body per recipient language (see sendLocalizedNotification).
         $this->sendLocalizedNotification(
             $scoreAss->getFailureMails(),
             function (ilLanguage $lng, string $p) use ($assignment, $scoreTask, $subjectKey) {
