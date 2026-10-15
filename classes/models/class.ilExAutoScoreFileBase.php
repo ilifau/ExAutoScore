@@ -11,7 +11,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
 {
     /**
      *  Override: name of the sub sub directory for storing the files
-     *  z.B. "provided" oder "required"
+     *  e.g. "provided" or "required"
      * @var string
      */
     protected $storage_sub_directory = '';
@@ -269,14 +269,13 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     {
         $assignment_id = $this->getAssignmentId();
         
-        // ILIAS Schema: nimmt die ID als String und splittet sie
-        // 117428 → "117428" → Zeichen 0-1: "11", Zeichen 2-3: "74"
+        // ILIAS scheme: split the ID string, e.g. 117428 → "11" / "74"
         $id_str = (string) $assignment_id;
         
-        // Pad mit Nullen falls ID < 4 Stellen
+        // pad with zeros if the ID has fewer than 4 digits
         $id_str = str_pad($id_str, 4, '0', STR_PAD_LEFT);
         
-        // Nimm die ersten 2 und dann die nächsten 2 Zeichen
+        // first 2 and next 2 characters
         $level1 = substr($id_str, 0, 2);
         $level2 = substr($id_str, 2, 2);
 
@@ -312,14 +311,14 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
             return null;
         }
 
-        // 1. Aktueller Pfad
+        // 1. current path
         $current_path = $this->getStorageDirectoryPath() . '/' . $this->getStorageFilename();
 
         if (is_file($current_path)) {
             return $current_path;
         }
 
-        // 2. Legacy-Pfade
+        // 2. legacy paths
         global $DIC;
         $legacy_tried = [];
         foreach ($this->getLegacyPaths() as $legacy_path) {
@@ -335,7 +334,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
     }
 
     /**
-     * Gibt Legacy-Pfade für ILIAS 7 und ältere Versionen zurück
+     * Get the legacy paths of ILIAS 7 and older
      */
     protected function getLegacyPaths(): array
     {
@@ -344,7 +343,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
         $base = CLIENT_DATA_DIR . '/' . ilExAutoScorePlugin::getStorageDirectory();
         $subdir = $this->getStorageSubDirectory();
 
-        // Variante 1: Mit "assignment/" Zwischenverzeichnis
+        // variant 1: "assignment/" directory with two levels
         $path_part1 = sprintf('%02d', ($assignment_id % 100));
         $path_part2 = sprintf('%02d', floor($assignment_id / 100));
         
@@ -355,7 +354,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
         $legacy_paths[] = $legacy_base1 . '/' . $this->getStorageFilename();
         $legacy_paths[] = $legacy_base1 . '/' . $this->getFilename();
 
-        // Variante 2: Direkt unter assignment_id (ohne Ebenen)
+        // variant 2: directly under assignment_id (no levels)
         $legacy_base2 = $base . '/assignment/' . $assignment_id;
         if (!empty($subdir)) {
             $legacy_base2 .= '/' . $subdir;
@@ -363,7 +362,7 @@ abstract class ilExAutoScoreFileBase extends ActiveRecord
         $legacy_paths[] = $legacy_base2 . '/' . $this->getStorageFilename();
         $legacy_paths[] = $legacy_base2 . '/' . $this->getFilename();
 
-        // Variante 3: Ohne "assignment/" Zwischenverzeichnis
+        // variant 3: without the "assignment/" directory
         $legacy_base3 = $base . '/' . $assignment_id;
         if (!empty($subdir)) {
             $legacy_base3 .= '/' . $subdir;

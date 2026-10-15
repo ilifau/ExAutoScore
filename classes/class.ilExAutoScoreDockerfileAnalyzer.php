@@ -4,26 +4,13 @@ declare(strict_types=1);
 // Copyright (c) 2019 Institut fuer Lern-Innovation, Friedrich-Alexander-Universitaet Erlangen-Nuernberg, GPLv3, see LICENSE
 
 /**
- * Prueft ein Dockerfile darauf, ob es unnoetig Plattenplatz auf dem Korrekturserver kostet.
+ * Checks a Dockerfile for patterns that waste disk space on the grading server.
  *
- * Hintergrund (Messung 07.08.2026): 62 Korrektur-Images belegten 79,8 GB von 99 GB.
- * 21 davon brachten je rund 2,4 GB mit, die sie mit KEINEM anderen Image teilten —
- * obwohl sie fast identisch waren. Ursache war die Reihenfolge im Dockerfile:
+ * Copying task files before expensive RUN steps gives every assignment its own copy of
+ * those layers (e.g. ~2.4 GB of PyTorch each) instead of one shared cached layer.
  *
- *     ADD  . ./                                  <- 844 kB Aufgabendateien
- *     RUN  pip install torch ...                 <- 1,11 GB
- *     RUN  pip install -r requirements.txt       <-  611 MB
- *
- * Docker bildet fuer jeden Schritt einen Layer, dessen Identitaet vom Ergebnis aller
- * vorherigen Schritte abhaengt. Weil die kopierten Aufgabendateien sich von Aufgabe zu
- * Aufgabe unterscheiden, bekommt ab dem ADD jeder Folgeschritt einen eigenen Layer —
- * PyTorch wird also fuer jede Aufgabe erneut gebaut UND erneut gespeichert. Stuenden
- * die pip-Zeilen ueber dem ADD, teilten sich alle Aufgaben denselben Layer, und aus
- * 21 x 2,4 GB wuerden 2,4 GB plus kleine Deltas.
- *
- * Die Klasse kennt bewusst weder ILIAS noch Docker: sie bekommt den Dateiinhalt als
- * String und gibt Befunde als Datenstruktur zurueck. Das Formulieren und Anzeigen
- * uebernimmt ilExAutoScoreProvidedFilesGUI, das Uebersetzen die Sprachdateien.
+ * Deliberately knows neither ILIAS nor Docker: takes the file content as a string and
+ * returns findings as data; ilExAutoScoreProvidedFilesGUI formats and displays them.
  *
  * @see ilExAutoScoreProvidedFilesGUI::showDockerfileHints()
  */
@@ -33,20 +20,14 @@ class ilExAutoScoreDockerfileAnalyzer
     public const LEVEL_HINT = 'hint';
 
     /**
-     * Schritte, die den geteilten Cache-Strang beenden: sie holen Dateien aus dem
-     * Build-Kontext, und der ist bei jeder Aufgabe ein anderer.
+     * Instructions that end the shared cache chain: they take files from the build
+     * context, which differs for every assignment.
      */
     protected const BARRIER_INSTRUCTIONS = ['COPY', 'ADD'];
 
     /**
-     * Dateien, deren Kopieren KEINE Barriere ist.
-     *
-     * "COPY requirements.txt ." gefolgt von "RUN pip install -r requirements.txt" ist
-     * die empfohlene Bauweise und genau das Gegenteil des Problems: Die Abhaengigkeits-
-     * liste aendert sich selten, also bleibt die teure Installation im Cache, waehrend
-     * die Aufgabendateien darunter beliebig wechseln duerfen. Wer hier warnte, raet dem
-     * Dozenten, die Installation ueber das Kopieren der Liste zu ziehen — dann fehlt
-     * ihr die Datei und der Build scheitert.
+     * Files whose copying is NOT a barrier: copying a dependency list before installing
+     * it is best practice and keeps the expensive install cached.
      */
     protected const DEPENDENCY_MANIFESTS = [
         'requirements.txt', 'requirements-dev.txt', 'constraints.txt',
@@ -58,9 +39,8 @@ class ilExAutoScoreDockerfileAnalyzer
     ];
 
     /**
-     * Teure RUN-Schritte. Muster => Kurzname fuer die Meldung. Die Liste muss nicht
-     * vollstaendig sein: sie soll die grossen Faelle treffen, ohne bei harmlosen
-     * Zeilen (mkdir, chmod, echo) Laerm zu machen.
+     * Expensive RUN steps, pattern => short label for the message. Not exhaustive; meant
+     * to catch the big cases without flagging harmless lines (mkdir, chmod, echo).
      */
     protected const EXPENSIVE_PATTERNS = [
         '/\bpip3?\s+install\b/i' => 'pip install',
@@ -80,24 +60,23 @@ class ilExAutoScoreDockerfileAnalyzer
     ];
 
     /**
-     * Basis-Images, von denen es eine deutlich kleinere Variante gibt. Der Vorschlag
-     * bleibt ein Hinweis und keine Warnung: ob die schlanke Variante reicht, haengt an
-     * der Aufgabe (kompilierende Tests brauchen oft mehr als eine Laufzeitumgebung).
+     * Base images with a much smaller variant. Only a hint: whether the slim variant
+     * suffices depends on the assignment.
      */
     protected const SLIMMABLE_BASES = ['python', 'node'];
 
     /** @var array<int, array{level: string, line: int, key: string, args: array}> */
     protected array $findings = [];
 
-    /** Wurde PIP_NO_CACHE_DIR per ENV global gesetzt? Dann ist --no-cache-dir entbehrlich. */
+    /** Whether PIP_NO_CACHE_DIR was enabled via ENV; makes --no-cache-dir unnecessary. */
     protected bool $pipCacheDisabledGlobally = false;
 
     /**
-     * Untersucht den Inhalt eines Dockerfiles.
+     * Analyzes the content of a Dockerfile.
      *
-     * @param string $content roher Dateiinhalt
+     * @param string $content raw file content
      * @return array<int, array{level: string, line: int, key: string, args: array}>
-     *         Befunde, nach Zeilennummer sortiert. Leeres Array = nichts gefunden.
+     *         Findings, warnings first, then by line; empty array = nothing found.
      */
     public function analyze(string $content): array
     {
@@ -106,8 +85,8 @@ class ilExAutoScoreDockerfileAnalyzer
 
         $instructions = $this->parse($content);
 
-        // Zeile des ersten COPY/ADD der aktuellen Build-Stufe — ab hier kostet jeder
-        // teure Schritt Platz pro Aufgabe. null = noch alles im geteilten Bereich.
+        // Line of the first COPY/ADD in the current build stage; expensive steps after it
+        // cost space per assignment. null = still in the shared part.
         $barrierLine = null;
         $barrierKeyword = '';
 
@@ -122,8 +101,7 @@ class ilExAutoScoreDockerfileAnalyzer
             }
 
             if ($keyword === 'FROM') {
-                // Neue Build-Stufe: eigener Cache-Strang, die Barriere gilt nicht weiter.
-                // Auch ein ENV der vorherigen Stufe wirkt hier nicht mehr.
+        // New build stage: own cache chain, so reset the barrier and any ENV of the previous stage.
                 $barrierLine = null;
                 $barrierKeyword = '';
                 $this->pipCacheDisabledGlobally = false;
@@ -132,8 +110,8 @@ class ilExAutoScoreDockerfileAnalyzer
             }
 
             if (in_array($keyword, self::BARRIER_INSTRUCTIONS, true)) {
-                // "COPY --from=<stufe>" holt aus einer anderen Build-Stufe statt aus dem
-                // aufgabenspezifischen Kontext und bricht den geteilten Cache deshalb nicht.
+                // "COPY --from=<stage>" takes files from another build stage, not from the
+                // assignment-specific context, so it does not break the shared cache.
                 if (preg_match('/(^|\s)--from=/i', $args)) {
                     continue;
                 }
@@ -163,8 +141,7 @@ class ilExAutoScoreDockerfileAnalyzer
         }
 
         usort($this->findings, function (array $a, array $b): int {
-            // Warnungen zuerst, darin nach Zeile — der Dozent soll oben das lesen,
-            // was tatsaechlich Gigabyte kostet.
+            // Warnings first, then by line, so the lecturer sees the costly issues on top.
             if ($a['level'] !== $b['level']) {
                 return $a['level'] === self::LEVEL_WARNING ? -1 : 1;
             }
@@ -175,11 +152,10 @@ class ilExAutoScoreDockerfileAnalyzer
     }
 
     /**
-     * Zerlegt das Dockerfile in logische Anweisungen.
+     * Splits the Dockerfile into logical instructions.
      *
-     * Beruecksichtigt Zeilenfortsetzungen mit "\", denn genau dort steht das Teure:
-     * ein "RUN pip install \" ueber fuenf Zeilen ist eine Anweisung, und gemeldet
-     * werden muss ihre ERSTE Zeile — die sucht der Dozent im Editor.
+     * Handles "\" line continuations and reports the FIRST line of a multi-line
+     * instruction, since that is what the lecturer looks for in the editor.
      *
      * @return array<int, array{keyword: string, args: string, line: int}>
      */
@@ -197,16 +173,14 @@ class ilExAutoScoreDockerfileAnalyzer
             $trimmed = trim($raw);
 
             if ($buffer === '') {
-                // Leerzeilen und Kommentare ausserhalb einer Anweisung ueberspringen.
+                // Skip blank lines and comments outside an instruction.
                 if ($trimmed === '' || $trimmed[0] === '#') {
                     continue;
                 }
                 $startLine = $lineNumber;
             } elseif ($trimmed === '' || $trimmed[0] === '#') {
-                // Leerzeile oder Kommentar mitten in einer Fortsetzung. Docker ignoriert
-                // beides und setzt die Anweisung fort; wer hier abbricht, zerlegt ein
-                // "RUN ... && \" mit Leerzeile in zwei Anweisungen und meldet z.B. ein
-                // fehlendes Aufraeumen, das eine Zeile weiter unten steht.
+                // Blank line or comment inside a continuation: Docker ignores both and
+                // continues the instruction, so it must not be split here.
                 continue;
             }
 
@@ -220,7 +194,7 @@ class ilExAutoScoreDockerfileAnalyzer
             $buffer = '';
         }
 
-        // Datei endet mitten in einer Fortsetzung — trotzdem auswerten.
+        // File ends inside a continuation; evaluate it anyway.
         if ($buffer !== '') {
             $this->pushInstruction($instructions, $buffer, $startLine);
         }
@@ -244,18 +218,18 @@ class ilExAutoScoreDockerfileAnalyzer
     }
 
     /**
-     * Kopiert dieser Schritt ausschliesslich Abhaengigkeitslisten? Dann ist er keine
-     * Barriere, sondern gute Praxis (s. DEPENDENCY_MANIFESTS).
+     * Does this step copy only dependency lists? Then it is good practice, not a
+     * barrier (see DEPENDENCY_MANIFESTS).
      */
     protected function copiesOnlyDependencyManifests(string $args): bool
     {
-        // Flags (--chown=, --chmod=, ...) entfernen, dann Quellen vom Ziel trennen.
+        // Strip flags (--chown=, --chmod=, ...), then separate sources from the destination.
         $args = preg_replace('/(^|\s)--\S+/', ' ', $args) ?? $args;
         $parts = preg_split('/\s+/', trim($args), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         if (count($parts) < 2) {
             return false;
         }
-        array_pop($parts); // Ziel
+        array_pop($parts); // destination
 
         foreach ($parts as $source) {
             $name = strtolower(basename(trim($source, "\"'")));
@@ -267,7 +241,7 @@ class ilExAutoScoreDockerfileAnalyzer
     }
 
     /**
-     * Kurzname des teuren Schritts, oder null wenn die Zeile harmlos ist.
+     * Short label of the expensive step, or null if the line is harmless.
      */
     protected function expensiveLabel(string $args): ?string
     {
@@ -280,9 +254,8 @@ class ilExAutoScoreDockerfileAnalyzer
     }
 
     /**
-     * pip legt heruntergeladene Pakete unter ~/.cache/pip ab. Ohne --no-cache-dir
-     * landet dieser Cache im Layer und verdoppelt bei grossen Paketen beinahe die
-     * Groesse — bei PyTorch sind das mehrere hundert MB fuer nichts.
+     * Without --no-cache-dir, pip's download cache (~/.cache/pip) ends up in the layer,
+     * wasting several hundred MB for large packages such as PyTorch.
      */
     protected function checkPipCache(int $line, string $args): void
     {
@@ -299,8 +272,8 @@ class ilExAutoScoreDockerfileAnalyzer
     }
 
     /**
-     * apt-get laedt seine Paketlisten nach /var/lib/apt/lists. Werden sie nicht in
-     * DERSELBEN RUN-Zeile geloescht, bleiben sie im Layer liegen (rund 40 MB).
+     * apt-get package lists in /var/lib/apt/lists stay in the layer (about 40 MB) unless
+     * they are removed in the SAME RUN instruction.
      */
     protected function checkAptLists(int $line, string $args): void
     {
@@ -314,20 +287,20 @@ class ilExAutoScoreDockerfileAnalyzer
     }
 
     /**
-     * Weist auf die schlanke Variante gaengiger Basis-Images hin. python:3.12 bringt
-     * 1,62 GB mit, python:3.12-slim nur 179 MB.
+     * Suggests the slim variant of common base images (python:3.12 is 1.62 GB,
+     * python:3.12-slim only 179 MB).
      */
     protected function checkBaseImage(int $line, string $args): void
     {
-        // "FROM <image>[:<tag>] [AS <name>]", Flags wie --platform= ignorieren.
+        // "FROM <image>[:<tag>] [AS <name>]"; ignore flags such as --platform=.
         $args = preg_replace('/(^|\s)--\S+/', ' ', $args) ?? $args;
         if (!preg_match('/^\s*(\S+)/', $args, $matches)) {
             return;
         }
         $reference = $matches[1];
 
-        // Nur einfache Referenzen bewerten; alles mit Registry/Namespace oder Digest
-        // (fau.de/…, myorg/python, image@sha256:…) laesst sich so nicht sicher deuten.
+        // Only evaluate plain references; registry/namespace or digest references
+        // (fau.de/…, myorg/python, image@sha256:…) cannot be interpreted reliably.
         if (strpos($reference, '/') !== false || strpos($reference, '@') !== false) {
             return;
         }
@@ -339,9 +312,8 @@ class ilExAutoScoreDockerfileAnalyzer
         if (!in_array($image, self::SLIMMABLE_BASES, true)) {
             return;
         }
-        // Ohne ausdrueckliches Tag (oder mit "latest") laesst sich kein gueltiger
-        // Vorschlag bilden: aus "FROM python" wuerde "python:latest-slim", ein Tag, das
-        // es nicht gibt. Lieber schweigen als in die Irre schicken.
+        // Without an explicit tag (or with "latest") no valid suggestion exists:
+        // "FROM python" would yield "python:latest-slim", which does not exist.
         if ($tag === '' || strtolower($tag) === 'latest') {
             return;
         }

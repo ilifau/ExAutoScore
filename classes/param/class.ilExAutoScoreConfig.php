@@ -79,7 +79,7 @@ class ilExAutoScoreConfig
             []
         );
         
-        // NEU: Debug-Modus global aktivieren/deaktivieren
+        // Global switch for debug mode
         $params[] = ilExAutoScoreParam::_create(
             'enable_debug_logs',
             $this->plugin->txt('enable_debug_logs'),
@@ -88,9 +88,8 @@ class ilExAutoScoreConfig
             false
         );
 
-        // Globaler Schalter für die E-Mail-Benachrichtigungen (Fehler- und
-        // Musterlösungs-Erfolgsmails). Aus = das Empfänger-Feld je Übung wird
-        // ausgeblendet UND es werden keine Mails verschickt.
+        // Global switch for notification mails (failures and sample solution success).
+        // Off = the per-exercise recipient field is hidden AND no mails are sent.
         $params[] = ilExAutoScoreParam::_create(
             'enable_failure_mails',
             $this->plugin->txt('enable_failure_mails'),
@@ -99,10 +98,8 @@ class ilExAutoScoreConfig
             false
         );
 
-        // Eigener Schalter für den Betreiber-Alarm — bewusst getrennt von
-        // enable_failure_mails. Wer die Dozenten-Mails abschaltet, will den
-        // Betriebs-Alarm meist behalten; und wer ihn abschaltet (Wartung, Umzug,
-        // bekannte Störung), will die Empfänger-Adressen nicht dabei verlieren.
+        // Separate switch for the operator alarm, independent of enable_failure_mails,
+        // so it can be paused (e.g. maintenance) without losing the recipient addresses.
         $params[] = ilExAutoScoreParam::_create(
             'enable_admin_failure_mails',
             $this->plugin->txt('enable_admin_failure_mails'),
@@ -111,10 +108,8 @@ class ilExAutoScoreConfig
             false
         );
 
-        // Betreiber-Adresse(n) für Störungen des Korrektur-Service. Bewusst getrennt
-        // vom Empfänger-Feld der Übung: dort trägt sich der Dozent ein und bekommt
-        // auch fachliche Fehler seiner eigenen Aufgabe; hier steht, wer den Betrieb
-        // macht, und bekommt ausschliesslich "der Service antwortet nicht".
+        // Operator address(es) for correction service outages. Unlike the exercise's
+        // recipient field (lecturer, task errors), these only get "service not responding".
         $params[] = ilExAutoScoreParam::_create(
             'admin_failure_mails',
             $this->plugin->txt('admin_failure_mails'),

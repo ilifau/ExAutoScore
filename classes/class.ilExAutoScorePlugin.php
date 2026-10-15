@@ -66,11 +66,9 @@ class ilExAutoScorePlugin extends ilAssignmentHookPlugin
 
     /**
      * Fresh language for notification mails, with this plugin's module and the
-     * exercise module preloaded. Benachrichtigungs-Mails werden im Callback
-     * (results.php) OHNE Login-Session gebaut — die Umgebungssprache fällt dann
-     * auf die Installations-Default ('en') zurück. Der Aufrufer bestimmt die
-     * Sprache selbst (i.d.R. die des Empfängers, sonst 'de'). Plugin-Keys
-     * über getLangPrefix() lesen: $lng->txt($prefix . '_key').
+     * exercise module preloaded. The callback (results.php) has no login session, so
+     * the caller picks the language (usually the recipient's, else 'de') instead of the
+     * installation default. Read plugin keys via getLangPrefix(): $lng->txt($prefix . '_key').
      */
     public function getNotificationLanguage(string $lang_key = 'de'): ilLanguage
     {
