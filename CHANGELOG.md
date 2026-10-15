@@ -3,7 +3,23 @@
 Version scheme: `0.x` for StudOn 9 (branch `main-ilias9`), `10.x` for
 StudOn 10 (`dev-ilias10`), `11.x` for StudOn 11 (`dev-ilias11`).
 
-## Unreleased — StudOn 11
+## 11.0.1 (2026-10-15) — StudOn 11
+Fixes of 0.4.1 (StudOn 9), adapted to ILIAS 11:
+- Security: file names of provided files are no longer passed to `tar` as
+  options; temporary copies of submissions are removed after sending.
+- Security: the extended feedback HTML is filtered with HTMLPurifier;
+  service messages are escaped.
+- Fix: results, extended feedback and grades follow the effective deadline
+  of ILIAS. For the AutoScore team type the individual deadline of the team
+  is read by the plugin, because the ILIAS 10+ core resolves teams only for
+  upload team assignments.
+- Fix: the reset before the deadline only clears a grade the plugin wrote
+  itself; a tutor grade is never removed. Since ILIAS 10 service and tutor
+  feedback files share one collection, the reset removes both.
+- Small fixes: debug log time zone, removed developer command from the
+  configuration.
+- Requires a plugin update (new column `published_note_hash`).
+
 Preparation for ILIAS 12 (legacy UI components are removed there):
 - Action menus in the file tables use the UI framework dropdown
   (`ilAdvancedSelectionListGUI` is already removed in ILIAS 12).
