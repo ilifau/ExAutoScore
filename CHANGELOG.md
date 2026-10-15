@@ -3,6 +3,11 @@
 Version scheme: `0.x` for StudOn 9 (branch `main-ilias9`), `10.x` for
 StudOn 10 (`dev-ilias10`), `11.x` for StudOn 11 (`dev-ilias11`).
 
+## Unreleased — StudOn 9
+- Security: `results.php` only accepts results that carry the configured API
+  key in the `X-Autocor-Key` header. Deploy the grading service that sends
+  this header first, otherwise every result is rejected.
+
 ## 0.4.1 (2026-10-07) — StudOn 9
 - Security: file names of provided files are no longer passed to `tar` as
   options; temporary copies of submissions are removed after sending.
