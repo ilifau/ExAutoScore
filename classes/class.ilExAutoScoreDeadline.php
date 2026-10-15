@@ -21,9 +21,28 @@ class ilExAutoScoreDeadline
     {
         $key = $ass->getId() . ':' . $user_id;
         if (!isset(self::$cache[$key])) {
-            self::$cache[$key] = ilExcAssMemberState::getInstanceByIds($ass->getId(), $user_id)->getEffectiveDeadline();
+            self::$cache[$key] = self::getEffectiveDeadline($ass, $user_id);
         }
         return self::isOver(self::$cache[$key], time());
+    }
+
+    /**
+     * ilExcAssMemberState::getInstanceByIds() resolves teams only for TYPE_UPLOAD_TEAM,
+     * so the individual deadline of a team in a plugin team type is read here
+     */
+    private static function getEffectiveDeadline(ilExAssignment $ass, int $user_id): int
+    {
+        global $DIC;
+
+        if ($ass->getAssignmentType()->usesTeams() && $ass->getType() != ilExAssignment::TYPE_UPLOAD_TEAM) {
+            $team_id = ilExAssignmentTeam::getTeamId($ass->getId(), $user_id);
+            if ($team_id) {
+                $idl = ilExcIndividualDeadline::getInstance($ass->getId(), $team_id, true);
+                return ilExcAssMemberState::getInstance($ass, new ilObjUser($user_id), $idl, time(), $DIC->language())
+                    ->getEffectiveDeadline();
+            }
+        }
+        return ilExcAssMemberState::getInstanceByIds($ass->getId(), $user_id)->getEffectiveDeadline();
     }
 
     /**
