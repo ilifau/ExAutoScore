@@ -45,6 +45,15 @@ class DeadlineTest extends TestCase
         );
     }
 
+    /** Since ILIAS 10 the core finds the team of a member only for TYPE_UPLOAD_TEAM. */
+    public function testTeamDeadlineOfPluginTeamTypes(): void
+    {
+        $source = $this->source('class.ilExAutoScoreDeadline.php');
+        $this->assertStringContainsString('->usesTeams() && $ass->getType() != ilExAssignment::TYPE_UPLOAD_TEAM', $source);
+        $this->assertStringContainsString('ilExcIndividualDeadline::getInstance($ass->getId(), $team_id, true)', $source);
+        $this->assertStringContainsString('ilExcAssMemberState::getInstance($ass, ', $source);
+    }
+
     /** No grading or feedback code computes the deadline on its own any more. */
     public function testNoOwnDeadlineComputation(): void
     {
