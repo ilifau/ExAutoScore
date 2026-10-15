@@ -130,7 +130,7 @@ class ilExAutoScoreRequiredFilesGUI
 
         /** @var ilExAutoScoreRequiredFile $file */
         $file = ilExAutoScoreRequiredFile::find($id);
-        if (!isset($file) || $file->getAssignmentId() != $this->assignment->getId()) {
+        if ($file === null || $file->getAssignmentId() != $this->assignment->getId()) {
             $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->ctrl->returnToParent($this);
         }
@@ -152,7 +152,7 @@ class ilExAutoScoreRequiredFilesGUI
 
         /** @var ilExAutoScoreRequiredFile $file */
         $file = ilExAutoScoreRequiredFile::find($id);
-        if (!isset($file) || $file->getAssignmentId() != $this->assignment->getId()) {
+        if ($file === null || $file->getAssignmentId() != $this->assignment->getId()) {
             $this->tpl->setOnScreenMessage('failure', $this->lng->txt("permission_denied"), true);
             $this->ctrl->returnToParent($this);
         }

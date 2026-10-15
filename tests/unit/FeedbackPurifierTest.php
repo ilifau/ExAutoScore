@@ -12,20 +12,20 @@ use PHPUnit\Framework\TestCase;
 
 class FeedbackPurifierTest extends TestCase
 {
-    private const ILIAS_ROOT_LEVELS = 9;
+    private const ILIAS_ROOT_LEVELS = 10;
 
     private HTMLPurifier $purifier;
 
     public static function setUpBeforeClass(): void
     {
-        $root = dirname(__DIR__, self::ILIAS_ROOT_LEVELS);
-        $lib = $root . '/libs/composer/vendor/ezyang/htmlpurifier/library/HTMLPurifier.auto.php';
+        $root = getenv('ILIAS_ROOT') ?: dirname(__DIR__, self::ILIAS_ROOT_LEVELS);
+        $lib = $root . '/vendor/composer/vendor/ezyang/htmlpurifier/library/HTMLPurifier.auto.php';
         if (!is_file($lib)) {
             return;
         }
         require_once $lib;
-        require_once $root . '/Services/Html/interfaces/interface.ilHtmlPurifierInterface.php';
-        require_once $root . '/Services/Html/classes/class.ilHtmlPurifierAbstractLibWrapper.php';
+        require_once $root . '/components/ILIAS/Html/interfaces/interface.ilHtmlPurifierInterface.php';
+        require_once $root . '/components/ILIAS/Html/classes/class.ilHtmlPurifierAbstractLibWrapper.php';
         require_once __DIR__ . '/../../classes/class.ilExAutoScoreFeedbackPurifier.php';
     }
 

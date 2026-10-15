@@ -21,8 +21,8 @@ class InvalidFileIdTest extends TestCase
     public function testFindResultIsCheckedForNull(string $class): void
     {
         $source = file_get_contents(__DIR__ . '/../../classes/class.' . $class . '.php');
-        $count = preg_match_all('/\$file = \w+::find\(\(int\) \$_GET\[\'id\'\]\);\s*\n\s*if \(\$file === null \|\|/', $source);
-        $total = substr_count($source, "::find((int) \$_GET['id'])");
+        $count = preg_match_all('/\$file = \w+::find\(\$id\);\s*\n\s*if \(\$file === null \|\|/', $source);
+        $total = substr_count($source, '::find($id)');
         $this->assertGreaterThan(0, $total);
         $this->assertSame($total, $count, "find() result used without null check in $class");
     }

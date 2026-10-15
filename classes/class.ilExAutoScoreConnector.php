@@ -217,11 +217,11 @@ class ilExAutoScoreConnector
         $submitTime = new ilDateTime(time(), IL_CAL_UNIX);
 
         $success = $this->callService($url, $post, $timeout);
+        $this->removeTempDirs();
         foreach ($this->temp_files as $temp_file) {
             @unlink($temp_file);
         }
         $this->temp_files = [];
-        $this->removeTempDirs();
 
         $scoreTask->clearSubmissionData();
         $scoreTask->setSubmitTime($submitTime->get(IL_CAL_DATETIME));

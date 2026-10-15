@@ -1244,8 +1244,7 @@ protected function downloadSubmittedFile()
                         $ms->setReturned(false);
                         $ms->update();
                     }
-                    // the feedback directory only holds files of the grading service;
-                    // tutor feedback files are kept in the ILIAS resource storage
+                    // since ILIAS 10 service and tutor feedback files share one resource collection
                     $task->deleteFeedbackFiles();
 
                     // publish again once the (extended) submission phase is over
