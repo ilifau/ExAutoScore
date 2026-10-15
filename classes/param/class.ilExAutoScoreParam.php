@@ -158,9 +158,8 @@ class ilExAutoScoreParam
 
             case self::TYPE_BOOLEAN:
                 $item = new ilCheckboxInputGUI($title, $postvar);
-                $item->setValue('1');  // Der Wert wenn gecheckt
-                // FIX: Cast zu bool, nicht zu string
-                $item->setChecked((bool)$this->value);  // ← GEÄNDERT (statt setValue)
+                $item->setValue('1');  // value when checked
+                $item->setChecked((bool)$this->value);
                 break;
 
             case self::TYPE_FLOAT:

@@ -320,7 +320,7 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
         $tempfile = ilFileUtils::ilTempnam();
         copy($row['filename'], $tempfile);
 
-        // Simuliere einen Upload (Datei wird per rename verschoben)
+        // simulate an upload (the file is moved via rename)
         $post = [
             'name' => $row['filetitle'],
             'tmp_name' => $tempfile,
@@ -329,7 +329,7 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
         
         $deliver_result = $this->storage->uploadFile($post, $user_id, true);
 
-        // Speichere neuen Eintrag mit anderem User und neuem Upload-Pfad
+        // store a new entry with the other user and the new upload path
         if ($deliver_result) {
             $next_id = $db->nextId("exc_returned");
             $query = sprintf(
@@ -345,7 +345,7 @@ class ilExAssTypeAutoTeamHandler implements ilExAssignmentTypeTeamHandlerInterfa
                 $db->quote($row['ts'], "timestamp"),
                 $db->quote($row['ass_id'], "integer"),
                 $db->quote($row['late'], "integer"),
-                $db->quote(0, "integer")  // team_id=0 für Einzeluser
+                $db->quote(0, "integer")  // team_id=0 for single users
             );
             $db->manipulate($query);
             

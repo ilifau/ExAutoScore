@@ -212,7 +212,7 @@ class BasicFunctionalityTest extends TestCase
 
         // Should have comment explaining why feedback.html is not created
         $this->assertStringContainsString(
-            'HINWEIS: feedback.html wird NICHT mehr gespeichert',
+            'feedback.html is not stored',
             $content,
             'Should document that feedback.html is not created anymore'
         );

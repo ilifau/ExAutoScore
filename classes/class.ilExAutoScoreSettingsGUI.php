@@ -74,7 +74,7 @@ class ilExAutoScoreSettingsGUI
             $this->tpl->setOnScreenMessage('info', $this->plugin->txt('info_existing_tasks'));
         }
 
-        // Zeige Warnung wenn letzter sendAssignment Versuch fehlgeschlagen ist
+        // Warn if the last sendAssignment attempt failed
         $exampleTask = ilExAutoScoreTask::getExampleTask($this->assignment->getId());
         if (!empty($exampleTask->getSubmitTime()) && !$exampleTask->getSubmitSuccess()) {
             $errorMsg = $this->plugin->txt('warning_service_unreachable');
@@ -127,8 +127,8 @@ class ilExAutoScoreSettingsGUI
 
             $assAuto->setCommand((string) $params['exautoscore_docker_command']);
             $assAuto->setMinPoints((float) $params['exautoscore_min_points']);
-            // Nur übernehmen, wenn das Feld überhaupt angezeigt wurde (Schalter an) —
-            // sonst bliebe ein vorhandener Empfänger-Eintrag sonst leer.
+            // Only take the value if the field was shown (global switch on),
+            // otherwise an existing recipient entry would be cleared.
             if (isset($params['exautoscore_failure_mails'])) {
                 $assAuto->setFailureMails((string) $params['exautoscore_failure_mails']);
             }
@@ -136,7 +136,7 @@ class ilExAutoScoreSettingsGUI
                 isset($params['exautoscore_hide_sample_solution']) && (bool) $params['exautoscore_hide_sample_solution']
             );
 
-            // NEU: Debug-Modus speichern (nur für Admins)
+            // Save debug mode (admins only)
             if ($this->plugin->hasAdminAccess()) {
                 $assAuto->setDebugMode(isset($params['exautoscore_debug_mode']) && (bool) $params['exautoscore_debug_mode']);
             }
@@ -212,7 +212,7 @@ class ilExAutoScoreSettingsGUI
         $minPoints->setValue(empty($assAuto->getMinPoints()) ? null : $this->formatFloatForInput($assAuto->getMinPoints()));
         $form->addItem($minPoints);
 
-        // Empfänger-Feld nur zeigen, wenn die Mail-Benachrichtigung global aktiv ist.
+        // Show the recipient field only if failure mails are enabled globally.
         if ($this->plugin->getConfig()->get('enable_failure_mails')) {
             $failureMails = new ilTextInputGUI($this->plugin->txt('failure_mails'), 'exautoscore_failure_mails');
             $failureMails->setInfo($this->plugin->txt('failure_mails_info'));
@@ -230,7 +230,7 @@ class ilExAutoScoreSettingsGUI
         $hideSampleSolution->setChecked($assAuto->getHideSampleSolution());
         $form->addItem($hideSampleSolution);
 
-        // NEU: Debug-Modus (nur für Admins sichtbar/editierbar)
+        // Debug mode (visible/editable for admins only)
         if ($this->plugin->hasAdminAccess() && $this->plugin->getConfig()->get('enable_debug_logs')) {
             $debugMode = new ilCheckboxInputGUI(
                 $this->plugin->txt('debug_mode'), 
@@ -293,20 +293,18 @@ class ilExAutoScoreSettingsGUI
                 $form->addItem($taskDuration);
             }
 
-            // VEREINFACHT: Status mit gleichem Styling wie User-Ansicht
+            // Status with the same styling as the user view
             $status = $assTask->getInstantStatus() ?: $assTask->getProtectedStatus();
             if (!empty($status)) {
                 $statusField = new ilNonEditableValueGUI($this->plugin->txt('instant_status'), 'exautoscore_status', true);
-                // Verwende die gleiche getStyledStatusSymbol() Methode wie in der User-Ansicht
                 $statusField->setValue($this->parentGUI->getStyledStatusSymbol($status));
                 $form->addItem($statusField);
             }
 
-            // VEREINFACHT: Message mit gleichem Styling wie User-Ansicht
+            // Message with the same styling as the user view
             $message = $assTask->getInstantMessage() ?: $assTask->getProtectedFeedbackText();
             if (!empty($message)) {
                 $messageField = new ilNonEditableValueGUI($this->plugin->txt('instant_message'), 'exautoscore_message', true);
-                // Verwende die gleiche formatInstantMessage() Methode wie in der User-Ansicht
                 $messageField->setValue($this->parentGUI->formatInstantMessage($message));
                 $form->addItem($messageField);
             }
@@ -335,7 +333,7 @@ class ilExAutoScoreSettingsGUI
                 $form->addItem($protectedFeedbackHtml);
             }
 
-            // NEU: Debug-Logs anzeigen (nur wenn aktiviert und vorhanden)
+            // Show debug logs (only if enabled and present)
             if (!empty($assTask->getDebugLogs()) 
                 && $this->plugin->getConfig()->get('enable_debug_logs')
                 && $assAuto->getDebugMode()) {
@@ -346,7 +344,7 @@ class ilExAutoScoreSettingsGUI
                     true
                 );
 
-                // Zeige das Datum der Log-Erstellung
+                // Show the log creation date
                 $logDate = '';
                 if (!empty($assTask->getReturnTime())) {
                     $time = new ilDateTime($assTask->getReturnTime(), IL_CAL_DATETIME);
@@ -384,7 +382,7 @@ class ilExAutoScoreSettingsGUI
 
     public function sendAssignment()
     {
-        // Validierung: Prüfe ob Dockerfile vorhanden ist
+        // Validation: a Dockerfile must exist
         $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
         if (empty($assCont->getHash())) {
             $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('warning_no_dockerfile'), true);
@@ -392,7 +390,7 @@ class ilExAutoScoreSettingsGUI
             return;
         }
 
-        // Validierung: Prüfe ob required/example files vorhanden sind
+        // Validation: required/example files must exist
         $required = array_merge(
             ilExAutoScoreProvidedFile::getAssignmentSubmitFiles($this->assignment->getId()),
             ilExAutoScoreRequiredFile::getForAssignment($this->assignment->getId())
@@ -418,7 +416,7 @@ class ilExAutoScoreSettingsGUI
 
     public function sendExampleTask()
     {
-        // Validierung: Prüfe ob Dockerfile vorhanden ist
+        // Validation: a Dockerfile must exist
         $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
         if (empty($assCont->getHash())) {
             $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('warning_no_dockerfile'), true);
@@ -426,7 +424,7 @@ class ilExAutoScoreSettingsGUI
             return;
         }
 
-        // Validierung: Prüfe ob required/example files vorhanden sind
+        // Validation: required/example files must exist
         $required = array_merge(
             ilExAutoScoreProvidedFile::getAssignmentSubmitFiles($this->assignment->getId()),
             ilExAutoScoreRequiredFile::getForAssignment($this->assignment->getId())
@@ -504,7 +502,7 @@ class ilExAutoScoreSettingsGUI
 
     public function setToolbar(): void
     {
-        // Prüfe ob Dockerfile und Example Files vorhanden sind
+        // Check whether a Dockerfile and example files exist
         $assCont = ilExAutoScoreProvidedFile::getAssignmentDocker($this->assignment->getId());
         $hasDockerfile = !empty($assCont->getHash());
 

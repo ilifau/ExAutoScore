@@ -107,7 +107,7 @@ class ilExAutoScoreProvidedFilesGUI
             $file->setDescription((string) ($params['exautoscore_file_description'] ?? ''));
             $file->setPurpose((string) ($params['exautoscore_file_purpose'] ?? ''));
             
-            // Fix für Checkbox - in ILIAS 9 sind unchecked Checkboxes nicht im POST array
+            // In ILIAS 9 unchecked checkboxes are missing from the POST array
             $file->setPublic(isset($params['exautoscore_file_public']) && (bool) $params['exautoscore_file_public']);
             
             $file->save();
@@ -145,8 +145,8 @@ class ilExAutoScoreProvidedFilesGUI
             $this->ctrl->returnToParent($this);
         }
 
-        // createFile() und updateFile() leiten beide hierher weiter — der Dozent sieht
-        // die Auswertung damit unmittelbar nach dem Hochladen des Dockerfiles.
+        // createFile() and updateFile() both redirect here, so the lecturer sees the
+        // Dockerfile check right after uploading.
         $this->showInfoMessages();
 
         $form = $this->initFileForm($file);
@@ -211,16 +211,11 @@ class ilExAutoScoreProvidedFilesGUI
     }
 
     /**
-     * Wertet das hinterlegte Dockerfile aus und zeigt Hinweise zum Speicherplatz an.
+     * Analyse the stored Dockerfile and show disk-space hints.
      *
-     * Anlass (Messung 07.08.2026): Die Korrektur-Images belegten 79,8 GB von 99 GB,
-     * weil in vielen Dockerfiles das teure "RUN pip install" UNTER dem "ADD" der
-     * Aufgabendateien stand. Jede Aufgabe speichert dadurch ihre eigene Kopie von
-     * PyTorch & Co., statt sich einen gemeinsamen Layer zu teilen. Das faellt sonst
-     * niemandem auf: das Dockerfile funktioniert ja, es kostet nur ein Vielfaches.
-     *
-     * Bleibt bewusst still, wenn nichts zu meckern ist — die Seite wird oft
-     * aufgerufen, und eine Meldung, die immer da steht, liest bald niemand mehr.
+     * E.g. "RUN pip install" below the "ADD" of the task files gives every assignment
+     * its own copy of the dependencies instead of a shared layer, which nobody notices.
+     * Stays silent when there is nothing to report, so the hint does not become noise.
      */
     protected function showInfoMessages(): void
     {
@@ -235,9 +230,8 @@ class ilExAutoScoreProvidedFilesGUI
             $parts[] = $hints;
         }
 
-        // Eine einzige Meldung, nicht zwei: ilGlobalTemplate haelt pro Typ nur die
-        // zuletzt gesetzte fest. Getrennt gesetzt verschwand der Hinweis auf bereits
-        // vorhandene Abgaben genau dann, wenn es am Dockerfile auch etwas zu sagen gab.
+        // One combined message: ilGlobalTemplate keeps only the last message per type,
+        // so separate calls would drop the existing-tasks hint.
         if ($parts !== []) {
             $this->tpl->setOnScreenMessage('info', implode('', $parts));
         }
@@ -268,8 +262,7 @@ class ilExAutoScoreProvidedFilesGUI
 
         $items = '';
         foreach ($findings as $finding) {
-            // Argumente stammen teils aus dem Dockerfile (z.B. der Name des
-            // Basis-Images) und muessen deshalb maskiert werden.
+            // Some args come from the Dockerfile (e.g. the base image name) and must be escaped.
             $args = array_map(function ($arg): string {
                 return htmlspecialchars((string) $arg, ENT_QUOTES, 'UTF-8');
             }, $finding['args']);
@@ -368,7 +361,7 @@ class ilExAutoScoreProvidedFilesGUI
                 $this->ctrl->returnToParent($this);
             }
 
-            // WICHTIG: Cast to string für ILIAS 9
+            // ILIAS 9 requires a string value
             $conf_gui->addItem('ids[]', (string) $file->getId(), $file->getFilename());
         }
 

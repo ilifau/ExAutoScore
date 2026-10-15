@@ -44,15 +44,8 @@ class ilExAutoScoreAssignment extends ActiveRecord
     protected ?string $uuid = null;
 
     /**
-     * Die zuletzt vom Korrekturservice vergebene UUID — anders als $uuid wird sie beim
-     * Zuruecksetzen NICHT geleert.
-     *
-     * $uuid bedeutet "Korrektur ist eingerichtet": resetCorrection() leert sie, sobald
-     * sich Support-Dateien oder Einstellungen aendern, und blockiert damit Abgaben bis
-     * zum naechsten "Einrichten". Genau in diesem Moment braucht der Service aber die
-     * bisherige UUID, um dieselbe Aufgabe neu einzurichten statt eine weitere
-     * anzulegen. Ohne diese Spalte laege auf dem Korrekturserver fuer jedes Einrichten
-     * ein eigenes Image von mehreren GB (August 2026: 62 Stueck, 48 GB).
+     * UUID last assigned by the correction service; unlike $uuid it is NOT cleared on reset.
+     * Lets the next setup replace the same task on the service instead of creating another multi-GB image.
      *
      * @var string
      *
@@ -149,8 +142,7 @@ class ilExAutoScoreAssignment extends ActiveRecord
      */
     public static function resetCorrection($assignment_id) {
         $ass = self::findOrGetInstance($assignment_id);
-        // Nur $uuid leeren. $service_uuid bleibt absichtlich stehen, damit das naechste
-        // "Einrichten" dieselbe Aufgabe auf dem Service ersetzt (siehe $service_uuid).
+        // Clear only $uuid; $service_uuid is kept on purpose (see $service_uuid).
         $ass->setUuid('');
         $ass->save();
 
