@@ -25,6 +25,7 @@ service_api_key_info#:#The API key authenticates the service calls.
 service_timeout#:#Timeout
 service_timeout_info#:#Maximum time in seconds to wait for a response from the service
 creator_roles#:#Creator Roles
+unknown_roles#:#Unknown role(s): %s
 creator_roles_info#:#Only members of these roles can create new programming assignments or edit their grading settings and thus trigger the creation of a container on the grading server.
 basic_configuration#:#Basic Configuration
 docker_upload#:#Upload Dockerfile

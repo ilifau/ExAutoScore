@@ -77,6 +77,8 @@ class UiFrameworkMigrationTest extends TestCase
         $this->assertStringContainsString('form()->standard(', $gui);
         $this->assertStringContainsString('->withRequest(', $this->method($gui, 'saveBasicSettings'));
         $this->assertStringContainsString('->tag(', $this->method($param, 'getUiInput'), 'roles are entered as tags');
+        $this->assertStringContainsString('->withUserCreatedTagsAllowed(true)', $this->method($param, 'getUiInput'), 'any role can be entered, as in ILIAS 9');
+        $this->assertStringContainsString('getUnknownRoleTitles(', $this->method($param, 'getUiInput'), 'unknown roles are rejected with a message');
     }
 
     public function testFileTablesUseDataTable(): void

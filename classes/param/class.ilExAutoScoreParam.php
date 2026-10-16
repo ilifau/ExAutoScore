@@ -149,8 +149,15 @@ class ilExAutoScoreParam
                 $selected = $this->getRoleTitles();
                 $suggestions = array_values(array_unique(array_merge($this->getGlobalRoleTitles(), $selected)));
                 return $field->tag($this->title, $suggestions, $byline)
-                    ->withUserCreatedTagsAllowed(false)
-                    ->withValue($selected);
+                    ->withUserCreatedTagsAllowed(true)
+                    ->withValue($selected)
+                    ->withAdditionalTransformation($DIC->refinery()->custom()->constraint(
+                        fn($titles) => $this->getUnknownRoleTitles((array) $titles) === [],
+                        fn($txt, $titles) => sprintf(
+                            ilExAutoScorePlugin::getInstance()->txt('unknown_roles'),
+                            implode(', ', $this->getUnknownRoleTitles((array) $titles))
+                        )
+                    ));
 
             case self::TYPE_SELECT:
                 return $field->select($this->title, $this->options, $byline)->withValue($this->value);
@@ -208,6 +215,23 @@ class ilExAutoScoreParam
     }
 
     /** @return string[] */
+    /**
+     * Entered role titles that match no role, any role can be entered as in ILIAS 9
+     * @return string[]
+     */
+    private function getUnknownRoleTitles(array $titles): array
+    {
+        global $DIC;
+        $unknown = [];
+        foreach ($titles as $title) {
+            $title = trim((string) $title);
+            if ($title !== '' && !$DIC->rbac()->review()->roleExists($title)) {
+                $unknown[] = $title;
+            }
+        }
+        return $unknown;
+    }
+
     private function getGlobalRoleTitles(): array
     {
         global $DIC;

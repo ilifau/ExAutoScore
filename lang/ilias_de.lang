@@ -18,6 +18,7 @@ service_api_key_info#:#Der API-Key authentifiziert die Service-Aufrufe.
 service_timeout#:#Timeout
 service_timeout_info#:#Maximalzeit in Sekunden, in der auf eine Antwort des Services gewartet wird
 creator_roles#:#Erzeuger-Rollen
+unknown_roles#:#Unbekannte Rolle(n): %s
 creator_roles_info#:#Nur Mitglieder dieser Rollen können neue Programmieraufgaben erstellen oder ihre Korrektur-Einstellungen bearbeiten und damit die Erzeugung eines Containers auf dem Korrektur-Server anstoßen.
 basic_configuration#:#Basis-Konfiguration
 docker_upload#:#Dockerfile hochladen

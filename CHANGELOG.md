@@ -30,8 +30,9 @@ Preparation for ILIAS 12 (legacy UI components are removed there):
 - "Delete submission" and "Send all tasks" ask for confirmation in a dialog
   (UI framework interruptive modal) instead of a separate page, and only
   accept POST requests.
-- The plugin configuration is a UI framework form. Creator roles are chosen
-  as tags from the global roles; roles that are already configured are kept.
+- The plugin configuration is a UI framework form. Creator roles are entered
+  as tags (global roles are suggested, any role title can be typed as in
+  ILIAS 9); unknown role titles are rejected with a message.
 - The tables of provided and required files are UI framework data tables
   (sortable, paginated). "Edit file" is a row action; "Delete files" asks in
   a dialog and only accepts POST requests.
