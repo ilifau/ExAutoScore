@@ -4,6 +4,8 @@ Version scheme: `0.x` for StudOn 9 (branch `main-ilias9`), `10.x` for
 StudOn 10 (`dev-ilias10`), `11.x` for StudOn 11 (`dev-ilias11`).
 
 ## Unreleased — StudOn 9
+- Fix: editing a provided file that is not public saved nothing (the unchecked
+  checkbox is missing from the POST data and aborted the request).
 - Security: `results.php` only accepts results that carry the configured API
   key in the `X-Autocor-Key` header. Deploy the grading service that sends
   this header first, otherwise every result is rejected.
