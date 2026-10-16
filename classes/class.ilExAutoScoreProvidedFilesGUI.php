@@ -109,9 +109,9 @@ class ilExAutoScoreProvidedFilesGUI
 
             $file->setDescription((string) ($params['exautoscore_file_description'] ?? ''));
             $file->setPurpose((string) ($params['exautoscore_file_purpose'] ?? ''));
-            
-            // In ILIAS 9 unchecked checkboxes are missing from the POST array
-            $file->setPublic(isset($params['exautoscore_file_public']) && (bool) $params['exautoscore_file_public']);
+
+            // an unchecked checkbox is not posted
+            $file->setPublic(!empty($params['exautoscore_file_public']));
             
             $file->save();
             $file->storeUploadedFile();
@@ -184,14 +184,15 @@ class ilExAutoScoreProvidedFilesGUI
             $params = $request->getParsedBody();
 
             $oldPurpose = $file->getPurpose();
-            $newPurpose = (string) $params['exautoscore_file_purpose'];
+            $newPurpose = (string) ($params['exautoscore_file_purpose'] ?? '');
             $fileChanged = false;
             $resetAssignment = false;
             $resetTasks = false;
 
-            $file->setDescription((string) $params['exautoscore_file_description']);
-            $file->setPurpose((string) $params['exautoscore_file_purpose']);
-            $file->setPublic((bool) $params['exautoscore_file_public']);
+            $file->setDescription((string) ($params['exautoscore_file_description'] ?? ''));
+            $file->setPurpose($newPurpose);
+            // an unchecked checkbox is not posted
+            $file->setPublic(!empty($params['exautoscore_file_public']));
             $file->update();
 
             if ($file->storeUploadedFile()) {

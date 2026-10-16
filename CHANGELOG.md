@@ -21,6 +21,8 @@ Fixes of 0.4.1 and the API key check (StudOn 9), adapted to ILIAS 11:
   feedback files share one collection, the reset removes both.
 - Small fixes: debug log time zone, removed developer command from the
   configuration.
+- Fix: editing a provided file that is not public saved nothing (the unchecked
+  checkbox is missing from the POST data and aborted the request).
 - Requires a plugin update (new column `published_note_hash`).
 
 Preparation for ILIAS 12 (legacy UI components are removed there):
