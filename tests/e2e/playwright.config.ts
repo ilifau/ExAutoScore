@@ -12,7 +12,6 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'ilias10', use: { baseURL: process.env.ILIAS10_URL ?? 'http://131.188.192.30/ilias10/' } },
     { name: 'ilias11', use: { baseURL: process.env.ILIAS11_URL ?? 'http://131.188.192.30/ilias11/' } },
   ],
 });

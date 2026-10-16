@@ -1,6 +1,6 @@
 # Browser-Tests ExAutoScore (Playwright)
 
-Laufen kopflos (z. B. auf dem Testserver) gegen ilias10 und ilias11.
+Laufen kopflos (z. B. auf dem Testserver) gegen ilias11 (die Firma springt von StudOn 9 direkt auf 11).
 Die Ergebnisse kommen vom echten Bewertungsdienst; die Attrappe in
 `mock/` ist fuer Faelle gedacht, die der echte Dienst nicht gezielt liefert.
 
@@ -10,7 +10,7 @@ npm ci                    # einmalig: Abhaengigkeiten
 npx playwright install --with-deps chromium   # einmalig: Browser
 cp .env.example .env      # einmalig, Passwoerter und Ref-IDs eintragen
 npm run mock &            # Attrappe des Bewertungsdienstes auf 127.0.0.1:8099
-npm test                  # alle Tests, beide Instanzen
+npm test                  # alle Tests
 npm run test:11           # nur ilias11
 npx playwright test --ui-port=9323 --ui-host=0.0.0.0   # UI-Modus im Browser
 npm run report            # HTML-Bericht des letzten Laufs
