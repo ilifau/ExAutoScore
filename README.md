@@ -61,6 +61,10 @@ needed. Then install and activate the plugin in the administration as above.
 ### Updates
 A new plugin version deactivates the plugin until *Update* is clicked in the
 plugin administration. Plan updates of the code and the click together.
+From ILIAS 10 on ILIAS reads the plugin version from the setup artifacts:
+after new code with a new version run `composer install --no-dev` (or
+`php cli/setup.php build`) first, otherwise ILIAS keeps showing the old
+version and offers no *Update*.
 
 ## Configuration
 *Administration → Plugins → ExAutoScore → Configure*
