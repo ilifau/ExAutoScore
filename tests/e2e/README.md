@@ -1,8 +1,14 @@
 # Browser-Tests ExAutoScore (Playwright)
 
 Laufen kopflos (z. B. auf dem Testserver) gegen ilias11 (die Firma springt von StudOn 9 direkt auf 11).
-Die Ergebnisse kommen vom echten Bewertungsdienst; die Attrappe in
-`mock/` ist fuer Faelle gedacht, die der echte Dienst nicht gezielt liefert.
+Die Ergebnisse kommen vom echten Bewertungsdienst (Testaufgabe in
+`fixtures/sample-task/`, Laufzeit etwa 2 Minuten); die Attrappe in `mock/`
+ist fuer Faelle gedacht, die der echte Dienst nicht gezielt liefert.
+
+Voraussetzungen in der ILIAS-Instanz: vier Testkonten und ein Kurs mit Uebung
+(siehe `.env.example`), die Kursadmin-Rolle als Erzeuger-Rolle in der
+Plugin-Konfiguration, `py` als erlaubte Dateiendung (Administration →
+Datei-Services) und kein Passwortwechsel bei der ersten Anmeldung.
 
 ```bash
 cd <Plugin-Checkout>/tests/e2e
