@@ -23,6 +23,10 @@ Fixes of 0.4.1 and the API key check (StudOn 9), adapted to ILIAS 11:
   configuration.
 - Fix: editing a provided file that is not public saved nothing (the unchecked
   checkbox is missing from the POST data and aborted the request).
+- Fix: a required file whose extension is not enabled in the ILIAS file
+  services (e.g. `.py`) is renamed by ILIAS and was sent as an empty
+  submission. The upload is now rejected with a message that names the
+  extension; enable it under Administration → Datei-Services.
 - Requires a plugin update (new column `published_note_hash`).
 
 Preparation for ILIAS 12 (legacy UI components are removed there):

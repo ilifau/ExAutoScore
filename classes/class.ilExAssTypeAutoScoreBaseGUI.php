@@ -729,9 +729,21 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
 
         // Validation
         $errors = false;
+        $suffix_error = null;
         foreach ($requiredFiles as $required) {
             $item = $form->getItemByPostVar('exautoscore_file_upload_' . $required->getId());
             $uploadedFile = $results[$required->getFilename()] ?? null;
+
+            // ILIAS renames files with a suffix that is not whitelisted, the submission would not be found
+            if (ilFileUtils::getValidFilename($required->getFilename()) !== $required->getFilename()) {
+                $suffix_error = sprintf(
+                    $this->plugin->txt('upload_error_suffix'),
+                    pathinfo($required->getFilename(), PATHINFO_EXTENSION)
+                );
+                $item->setAlert($suffix_error);
+                $errors = true;
+                continue;
+            }
 
             if ($uploadedFile === null) {
                 if ($item->getRequired()) {
@@ -757,7 +769,7 @@ abstract class ilExAssTypeAutoScoreBaseGUI implements ilExAssignmentTypeExtended
         }
         
         if ($errors) {
-            $this->tpl->setOnScreenMessage('failure', $this->plugin->txt('upload_error_file'));
+            $this->tpl->setOnScreenMessage('failure', $suffix_error ?? $this->plugin->txt('upload_error_file'));
             $this->tpl->setContent($form->getHTML());
             $this->tpl->printToStdout();
             exit;
