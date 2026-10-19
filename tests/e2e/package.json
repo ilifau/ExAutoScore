@@ -6,7 +6,7 @@
     "mock": "node mock/autocor-mock.mjs",
     "test": "playwright test",
     "test:11": "playwright test --project=ilias11",
-    "report": "playwright show-report --host 0.0.0.0"
+    "report": "playwright show-report --host 127.0.0.1"
   },
   "keywords": [],
   "author": "",

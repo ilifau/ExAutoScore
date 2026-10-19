@@ -18,7 +18,7 @@ cp .env.example .env      # einmalig, Passwoerter und Ref-IDs eintragen
 npm run mock &            # Attrappe des Bewertungsdienstes auf 127.0.0.1:8099
 npm test                  # alle Tests
 npm run test:11           # nur ilias11
-npx playwright test --ui-port=9323 --ui-host=0.0.0.0   # UI-Modus im Browser
+npx playwright test --ui --ui-host=127.0.0.1 --ui-port=9323   # UI-Modus, nur lokal (kein Passwort!), per SSH-Tunnel öffnen
 npm run report            # HTML-Bericht des letzten Laufs
 ```
 
