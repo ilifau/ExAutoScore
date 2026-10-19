@@ -1,132 +1,50 @@
-import { test, expect, Page, Browser } from '@playwright/test';
-import * as fs from 'node:fs';
-import { Role, createAutoScoreAssignment, deleteAssignment, editorUrl, exerciseRefId, login, openExercise } from './support/ilias';
+import { test, expect } from '@playwright/test';
+import { deleteAssignment, exerciseRefId } from './support/ilias';
+import {
+  SAMPLE, Task, asUser, openOverview, openSubmissionForm, setUpSampleTask, submit, tab, upload, waitForSetup, waitForText,
+} from './support/autoscore';
 
 // Runs against the real grading service with the sample task in fixtures/sample-task
 test.describe.configure({ mode: 'serial' });
 
-const F = 'fixtures/sample-task';
-const title = `E2E Bewertungsdienst ${Date.now()}`;
-let refId = '';
-let assId = '';
-
-async function tab(page: Page, name: string) {
-  await page.goto(editorUrl(refId, 'editAssignment', assId));
-  await page.getByRole('link', { name }).click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function upload(page: Page, file: string) {
-  await page.locator('main form input[type="file"]').setInputFiles({
-    name: file.split('/').pop()!, mimeType: 'application/octet-stream', buffer: fs.readFileSync(file),
-  });
-}
-
-/** Reloads a page until its main text matches, the grading service answers asynchronously */
-async function waitForText(page: Page, open: () => Promise<void>, pattern: RegExp, minutes = 8): Promise<string> {
-  const end = Date.now() + minutes * 60_000;
-  let text = '';
-  while (Date.now() < end) {
-    await open();
-    text = (await page.locator('main').innerText()).replace(/\s+/g, ' ');
-    if (pattern.test(text)) return text;
-    await page.waitForTimeout(20_000);
-  }
-  throw new Error(`timeout waiting for ${pattern}, last text: ${text.slice(0, 1500)}`);
-}
-
-async function asUser(browser: Browser, role: Role): Promise<Page> {
-  const page = await browser.newPage({ baseURL: test.info().project.use.baseURL });
-  await login(page, role);
-  return page;
-}
-
-async function openSubmissionForm(page: Page) {
-  await openExercise(page, refId);
-  await page.getByRole('link', { name: title }).first().click();
-  // before the first submission there is a button, afterwards the tab
-  const button = page.getByRole('button', { name: 'Datei abgeben' });
-  if (await button.count() > 0) {
-    await button.click();
-  } else {
-    await page.getByRole('link', { name: 'Einreichung' }).click();
-  }
-}
-
-async function submit(page: Page, file: string) {
-  await openSubmissionForm(page);
-  await upload(page, file);
-  await page.getByRole('button', { name: 'Hochladen' }).click();
-  await page.waitForLoadState('networkidle');
-  const failure = page.locator('[role=status], .alert-danger').filter({ hasText: /Fehler/ });
-  if (await failure.count() > 0) {
-    throw new Error('Abgabe nicht eingesendet: ' + (await failure.first().innerText()).replace(/\s+/g, ' '));
-  }
-}
-
-async function openOverview(page: Page) {
-  await openExercise(page, refId);
-  await page.getByRole('link', { name: title }).first().click();
-  await page.waitForLoadState('networkidle');
-}
+let task: Task;
 
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(10 * 60_000);
-  refId = exerciseRefId(test.info());
+  test.setTimeout(5 * 60_000);
   const page = await asUser(browser, 'TUTOR');
+  const refId = exerciseRefId(test.info());
   await deleteAssignment(page, refId, 'E2E Bewertungsdienst');
   await deleteAssignment(page, refId, 'E2E-Erkundung');
-  assId = await createAutoScoreAssignment(page, refId, title);
-
-  await tab(page, 'Korrektur-Einstellungen');
-  await upload(page, `${F}/Dockerfile`);
-  await page.getByRole('textbox', { name: 'Korrektur-Kommando' }).fill('python grade.py');
-  await page.getByRole('textbox', { name: 'Punkte zum Bestehen' }).fill('5');
-  await page.getByRole('button', { name: 'Einstellungen speichern' }).first().click();
-
-  for (const f of ['grade.py']) {
-    await tab(page, 'Bereitgestellte Dateien');
-    await page.getByRole('button', { name: 'Datei hinzufügen' }).first().click();
-    await upload(page, `${F}/${f}`);
-    await page.getByRole('radio', { name: 'Einrichtung' }).check();
-    await page.getByRole('button', { name: 'Datei hinzufügen' }).last().click();
-    await expect(page).toHaveURL(/cmd=editFile/);
-  }
-  await tab(page, 'Geforderte Dateien');
-  await page.getByRole('button', { name: 'Datei hinzufügen' }).first().click();
-  await upload(page, `${F}/submissions/correct/aufgabe.py`);
-  await page.getByRole('button', { name: 'Datei hinzufügen' }).last().click();
-
-  await tab(page, 'Korrektur-Einstellungen');
-  await page.getByRole('button', { name: 'Korrektur einrichten' }).click();
-  await expect(page.getByText('Image will be created and tested').first()).toBeVisible();
+  task = await setUpSampleTask(page, refId, `E2E Bewertungsdienst ${Date.now()}`);
   await page.close();
 });
 
-test('Einrichtung: Musterlösung erhält 10 von 10 Punkten', async ({ page }) => {
+test('Einrichtung: Musterlösung erhält 10 von 10 Punkten', async ({ browser }) => {
   test.setTimeout(10 * 60_000);
-  await login(page, 'TUTOR');
-  const text = await waitForText(page, () => tab(page, 'Korrektur-Einstellungen'), /Erreichte Punkte/);
+  const page = await asUser(browser, 'TUTOR');
+  const text = await waitForSetup(page, task);
   expect(text).toContain('Erreichte Punkte 10');
   expect(text).toContain('6/6 Tests bestanden');
+  await page.close();
 });
 
-test('Erweitertes Feedback wird formatiert und ohne Skripte angezeigt', async ({ page }) => {
-  await login(page, 'TUTOR');
-  await tab(page, 'Korrektur-Einstellungen');
+test('Erweitertes Feedback wird formatiert und ohne Skripte angezeigt', async ({ browser }) => {
+  const page = await asUser(browser, 'TUTOR');
+  await tab(page, task, 'Korrektur-Einstellungen');
   await page.getByRole('button', { name: 'Erweitertes Feedback anzeigen' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('fakultaet(0) == 1');
   await expect(dialog.getByRole('heading', { name: /Result: PASSED/ })).toBeVisible();
   await expect(dialog.locator('p[style*="pre-wrap"]').first()).toBeVisible();
   await expect(dialog.locator('script')).toHaveCount(0);
+  await page.close();
 });
 
 test('Studentin 1 gibt die richtige Lösung ab und erhält 10 Punkte', async ({ browser }) => {
   test.setTimeout(10 * 60_000);
   const page = await asUser(browser, 'STUDENT1');
-  await submit(page, `${F}/submissions/correct/aufgabe.py`);
-  const text = await waitForText(page, () => openOverview(page), /Tests bestanden/);
+  await submit(page, task, `${SAMPLE}/submissions/correct/aufgabe.py`);
+  const text = await waitForText(page, () => openOverview(page, task), /Tests bestanden/);
   expect(text).toContain('Punkte: 10.0 / 10.0 (6/6 Tests bestanden)');
   await page.close();
 });
@@ -134,25 +52,56 @@ test('Studentin 1 gibt die richtige Lösung ab und erhält 10 Punkte', async ({ 
 test('Studentin 2 gibt eine fehlerhafte Lösung ab und erhält 7 Punkte', async ({ browser }) => {
   test.setTimeout(10 * 60_000);
   const page = await asUser(browser, 'STUDENT2');
-  await submit(page, `${F}/submissions/wrong/aufgabe.py`);
-  const text = await waitForText(page, () => openOverview(page), /Tests bestanden/);
+  await submit(page, task, `${SAMPLE}/submissions/wrong/aufgabe.py`);
+  const text = await waitForText(page, () => openOverview(page, task), /Tests bestanden/);
   expect(text).toContain('Punkte: 7.0 / 10.0 (4/6 Tests bestanden)');
   expect(text).toContain('FEHLER [0.0/2.0] fakultaet(0) == 1');
   await page.close();
 });
 
+test('Tutor: „Alle Abgaben korrigieren“ fragt im Dialog nach und sendet erneut', async ({ browser }) => {
+  test.setTimeout(10 * 60_000);
+  const page = await asUser(browser, 'TUTOR');
+  await tab(page, task, 'Korrektur-Einstellungen');
+  await page.getByRole('button', { name: 'Alle Abgaben korrigieren' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Möchten Sie alle Abgaben erneut an den Korrekturservice senden?');
+  await dialog.getByRole('button', { name: 'Senden' }).click();
+  await expect(page.getByText('Alle Abgaben wurden an den Korrekturservice gesandt.').first()).toBeVisible();
+  await page.close();
+
+  // the results come back again
+  const student = await asUser(browser, 'STUDENT1');
+  const text = await waitForText(student, () => openOverview(student, task), /Tests bestanden/);
+  expect(text).toContain('Punkte: 10.0 / 10.0 (6/6 Tests bestanden)');
+  await student.close();
+});
+
+test('Studentin: „Einreichung löschen“ fragt im Dialog nach und löscht die Abgabe', async ({ browser }) => {
+  const page = await asUser(browser, 'STUDENT2');
+  await openSubmissionForm(page, task);
+  await page.getByRole('button', { name: 'Einreichung löschen' }).first().click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Möchten Sie die Einreichung und alle hochgeladenen Dateien löschen?');
+  await dialog.getByRole('button', { name: 'Einreichung löschen' }).click();
+  await expect(page.getByText('Die Einreichung wurde gelöscht und Ihr Status zurückgesetzt.').first()).toBeVisible();
+  await openOverview(page, task);
+  await expect(page.locator('main')).toContainText('Bisher keine Abgabe');
+  await page.close();
+});
+
 test('Abgabe mit nicht freigeschalteter Dateiendung wird mit Hinweis abgelehnt', async ({ browser }) => {
   const tutor = await asUser(browser, 'TUTOR');
-  await tab(tutor, 'Geforderte Dateien');
+  await tab(tutor, task, 'Geforderte Dateien');
   await tutor.getByRole('button', { name: 'Datei hinzufügen' }).first().click();
   await tutor.locator('main form input[type="file"]').setInputFiles({ name: 'zusatz.xyz', mimeType: 'text/plain', buffer: Buffer.from('x\n') });
   await tutor.getByRole('button', { name: 'Datei hinzufügen' }).last().click();
   await tutor.close();
 
   const page = await asUser(browser, 'STUDENT1');
-  await openSubmissionForm(page);
+  await openSubmissionForm(page, task);
   const inputs = page.locator('main form input[type="file"]');
-  await inputs.nth(0).setInputFiles({ name: 'aufgabe.py', mimeType: 'text/x-python', buffer: fs.readFileSync(`${F}/submissions/correct/aufgabe.py`) });
+  await upload(page, `${SAMPLE}/submissions/correct/aufgabe.py`, inputs.nth(0));
   await inputs.nth(1).setInputFiles({ name: 'zusatz.xyz', mimeType: 'text/plain', buffer: Buffer.from('y\n') });
   await page.getByRole('button', { name: 'Hochladen' }).click();
   await expect(page.getByText('Die Dateiendung .xyz ist in ILIAS nicht freigeschaltet').first()).toBeVisible();
@@ -163,6 +112,6 @@ test('Abgabe mit nicht freigeschalteter Dateiendung wird mit Hinweis abgelehnt',
 test.afterAll(async ({ browser }) => {
   test.setTimeout(5 * 60_000);
   const page = await asUser(browser, 'TUTOR');
-  await deleteAssignment(page, refId, 'E2E Bewertungsdienst');
+  await deleteAssignment(page, task.refId, 'E2E Bewertungsdienst');
   await page.close();
 });
