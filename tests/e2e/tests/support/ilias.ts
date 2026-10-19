@@ -1,6 +1,6 @@
 import { Page, TestInfo, test } from '@playwright/test';
 
-export type Role = 'TUTOR' | 'STUDENT1' | 'STUDENT2' | 'NOCREATOR';
+export type Role = 'ADMIN' | 'TUTOR' | 'STUDENT1' | 'STUDENT2' | 'NOCREATOR';
 
 export function credentials(role: Role) {
   return {
