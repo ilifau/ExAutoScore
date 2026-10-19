@@ -5,3 +5,4 @@ playwright-report/
 .auth/
 explore/
 explore.config.ts
+test-results-cli/

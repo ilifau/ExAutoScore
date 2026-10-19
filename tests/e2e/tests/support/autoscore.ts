@@ -83,8 +83,8 @@ export async function submit(page: Page, task: Task, file: string) {
  * Creates the sample task and sets up the correction at the real grading service
  * (Docker build and test of the sample solution, about one minute)
  */
-export async function setUpSampleTask(page: Page, refId: string, title: string): Promise<Task> {
-  const task: Task = { refId, title, assId: await createAutoScoreAssignment(page, refId, title) };
+export async function setUpSampleTask(page: Page, refId: string, title: string, team = false): Promise<Task> {
+  const task: Task = { refId, title, assId: await createAutoScoreAssignment(page, refId, title, team) };
 
   await tab(page, task, 'Korrektur-Einstellungen');
   await upload(page, `${SAMPLE}/Dockerfile`);
@@ -146,4 +146,15 @@ export async function setIndividualDeadline(page: Page, task: Task, rowText: Reg
   await dialog.getByRole('textbox').first().fill(iliasDateTime(offsetMinutes));
   await dialog.getByRole('button', { name: 'Speichern' }).click();
   await expect(dialog).toBeHidden();
+}
+
+/** Creates one team of the given rows in "Abgaben und Noten" of a team assignment */
+export async function createTeam(page: Page, task: Task, rowTexts: RegExp[]) {
+  await openGrades(page, task);
+  for (const rowText of rowTexts) {
+    await page.getByRole('row', { name: rowText }).getByRole('checkbox').check();
+  }
+  await page.locator('select').filter({ hasText: 'Team erstellen' }).first().selectOption({ label: 'Team erstellen' });
+  await page.getByRole('button', { name: 'Ausführen' }).first().click();
+  await page.waitForLoadState('networkidle');
 }
