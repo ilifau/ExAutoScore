@@ -20,7 +20,10 @@ export async function asUser(browser: Browser, role: Role): Promise<Page> {
 /** Opens a tab of the assignment settings as tutor */
 export async function tab(page: Page, task: Task, name: string) {
   await page.goto(editorUrl(task.refId, 'editAssignment', task.assId));
-  await page.getByRole('link', { name }).click();
+  // editAssignment opens the tab "Einstellungen", whose name is also part of "Korrektur-Einstellungen"
+  if (name !== 'Einstellungen') {
+    await page.getByRole('link', { name }).click();
+  }
   await page.waitForLoadState('networkidle');
 }
 
@@ -45,7 +48,12 @@ export async function waitForText(page: Page, open: () => Promise<void>, pattern
 
 export async function openOverview(page: Page, task: Task) {
   await openExercise(page, task.refId);
-  await page.getByRole('link', { name: task.title }).first().click();
+  const link = page.getByRole('link', { name: task.title }).first();
+  // after the deadline the assignment moves from "Laufende" to "Vergangene"
+  if (await link.count() === 0) {
+    await page.getByRole('button', { name: 'Alle', exact: true }).click();
+  }
+  await link.click();
   await page.waitForLoadState('networkidle');
 }
 
@@ -105,4 +113,21 @@ export async function setUpSampleTask(page: Page, refId: string, title: string):
 /** Waits until the sample solution has been graded after setUpSampleTask() */
 export async function waitForSetup(page: Page, task: Task): Promise<string> {
   return waitForText(page, () => tab(page, task, 'Korrektur-Einstellungen'), /Erreichte Punkte/);
+}
+
+/** Value for a datetime-local field in the time zone of ILIAS (Europe/Berlin), offset in minutes from now */
+export function iliasDateTime(offsetMinutes: number): string {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('de-DE', {
+    timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date(Date.now() + offsetMinutes * 60_000)).map(p => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+/** Sets a fixed deadline as tutor, offset in minutes from now (negative = in the past) */
+export async function setDeadline(page: Page, task: Task, offsetMinutes: number) {
+  await tab(page, task, 'Einstellungen');
+  await page.getByRole('radio', { name: 'Festes Datum' }).check();
+  await page.getByRole('textbox', { name: /^Datum/ }).fill(iliasDateTime(offsetMinutes));
+  await page.getByRole('button', { name: 'Speichern' }).first().click();
+  await expect(page.getByText('Änderungen gespeichert').first()).toBeVisible();
 }
