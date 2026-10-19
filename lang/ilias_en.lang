@@ -92,6 +92,7 @@ files_missing#:#Still to be submitted
 upload_error_file#:#An uploaded file does not match the expected format!
 upload_error_filename#:#This file does not have the required name.
 upload_error_max_size#:#This file exceeds the maximum size.
+upload_error_suffix#:#The file extension .%s is not enabled in ILIAS, so the file cannot be submitted. Please contact the support.
 upload_error_encoding#:#This file does not have the required encoding.
 submission_no_upload#:#You have not uploaded a new file. Your submission has not been changed.
 submission_upload_error#:#The upload of file "%s" failed. Your submission has not been changed.

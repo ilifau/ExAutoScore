@@ -4,6 +4,10 @@ Version scheme: `0.x` for StudOn 9 (branch `main-ilias9`), `10.x` for
 StudOn 10 (`dev-ilias10`), `11.x` for StudOn 11 (`dev-ilias11`).
 
 ## Unreleased — StudOn 9
+- Fix: a required file whose extension is not enabled in the ILIAS file
+  services (e.g. `.py`) is renamed by ILIAS and was sent as an empty
+  submission. The upload is now rejected with a message that names the
+  extension; enable it under Administration → Datei-Services.
 - Fix: editing a provided file that is not public saved nothing (the unchecked
   checkbox is missing from the POST data and aborted the request).
 - Security: `results.php` only accepts results that carry the configured API

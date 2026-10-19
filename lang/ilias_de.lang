@@ -85,6 +85,7 @@ files_missing#:#Noch abzugeben
 upload_error_file#:#Eine hochgeladene Datei entspricht nicht dem erwarteten Format!
 upload_error_filename#:#Diese Datei hat nicht den geforderten Namen.
 upload_error_max_size#:#Diese Datei überschreitet die maximale Größe.
+upload_error_suffix#:#Die Dateiendung .%s ist in ILIAS nicht freigeschaltet, die Datei kann deshalb nicht eingesendet werden. Bitte wenden Sie sich an den Support.
 upload_error_encoding#:#Diese Datei hat nicht die geforderte Codierung.
 submission_no_upload#:#Sie haben keine neue Datei hochgeladen. Ihre Abgabe wurde nicht verändert.
 submission_upload_error#:#Der Upload der Datei "%s" schlug fehl. Ihre Abgabe wurde nicht verändert.
