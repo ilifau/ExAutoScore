@@ -131,3 +131,19 @@ export async function setDeadline(page: Page, task: Task, offsetMinutes: number)
   await page.getByRole('button', { name: 'Speichern' }).first().click();
   await expect(page.getByText('Änderungen gespeichert').first()).toBeVisible();
 }
+
+export async function openGrades(page: Page, task: Task) {
+  await page.goto(`ilias.php?baseClass=ilexercisehandlergui&cmdNode=d3:ms:d4&cmdClass=ilexercisemanagementgui&cmd=members&ref_id=${task.refId}&ass_id=${task.assId}`);
+}
+
+/** Sets an individual deadline in "Abgaben und Noten" for the row matching the login (or team member) */
+export async function setIndividualDeadline(page: Page, task: Task, rowText: RegExp, offsetMinutes: number) {
+  await openGrades(page, task);
+  await page.getByRole('row', { name: rowText }).getByRole('checkbox').check();
+  await page.locator('select').filter({ hasText: 'Individuellen Abgabetermin' }).first().selectOption({ label: 'Individuellen Abgabetermin setzen' });
+  await page.getByRole('button', { name: 'Ausführen' }).first().click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('textbox').first().fill(iliasDateTime(offsetMinutes));
+  await dialog.getByRole('button', { name: 'Speichern' }).click();
+  await expect(dialog).toBeHidden();
+}
