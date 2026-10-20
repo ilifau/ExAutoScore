@@ -8,7 +8,8 @@ ist fuer Faelle gedacht, die der echte Dienst nicht gezielt liefert.
 Voraussetzungen in der ILIAS-Instanz: vier Testkonten und ein Kurs mit Uebung
 (siehe `.env.example`), die Kursadmin-Rolle als Erzeuger-Rolle in der
 Plugin-Konfiguration, `py` als erlaubte Dateiendung (Administration →
-Datei-Services) und kein Passwortwechsel bei der ersten Anmeldung.
+Datei-Services) kein Passwortwechsel bei der ersten Anmeldung und fuer `single-teams.spec.ts`
+der StudOn-Core-Patch `exTeamSingles` samt seiner Sprachtexte (lokal installiert).
 
 ```bash
 cd <Plugin-Checkout>/tests/e2e
