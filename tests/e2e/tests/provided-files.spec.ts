@@ -8,7 +8,7 @@ let refId = '';
 let assId = '';
 
 async function openTab(page: Page) {
-  await page.goto(editorUrl(refId, 'editAssignment', assId));
+  await page.goto(await editorUrl(page, refId, 'editAssignment', assId));
   await page.getByRole('link', { name: 'Bereitgestellte Dateien' }).click();
 }
 
@@ -128,7 +128,7 @@ test.afterAll(async ({ browser }) => {
   for (const leftover of ['E2E Bereitgestellte Dateien', 'E2E-Erkundung']) {
     await deleteAssignment(page, refId, leftover);
   }
-  await page.goto(editorUrl(refId));
+  await page.goto(await editorUrl(page, refId));
   await expect(page.getByRole('row', { name: /E2E Bereitgestellte Dateien|E2E-Erkundung/ })).toHaveCount(0);
   await page.close();
 });

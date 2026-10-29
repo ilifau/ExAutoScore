@@ -29,14 +29,31 @@ export async function openExercise(page: Page, refId: string): Promise<void> {
   await page.goto(`goto.php?target=exc_${refId}`);
 }
 
-export function editorUrl(refId: string, cmd = 'listAssignments', assId?: string): string {
-  return `ilias.php?baseClass=ilexercisehandlergui&cmdNode=d3:ms:cd&cmdClass=ilExAssignmentEditorGUI&cmd=${cmd}&ref_id=${refId}`
+// cmdNode values differ between ILIAS instances, so they are read once from the exercise tabs
+const cmdNodes: Record<string, string> = {};
+
+async function cmdNode(page: Page, refId: string, tab: string): Promise<string> {
+  const key = `${test.info().project.name}:${tab}`;
+  if (!cmdNodes[key]) {
+    await openExercise(page, refId);
+    const href = await page.getByRole('link', { name: tab, exact: true }).first().getAttribute('href') ?? '';
+    cmdNodes[key] = new URL(href, page.url()).searchParams.get('cmdNode') ?? '';
+  }
+  return cmdNodes[key];
+}
+
+export async function editorUrl(page: Page, refId: string, cmd = 'listAssignments', assId?: string): Promise<string> {
+  return `ilias.php?baseClass=ilexercisehandlergui&cmdNode=${await cmdNode(page, refId, 'Bearbeiten')}&cmdClass=ilExAssignmentEditorGUI&cmd=${cmd}&ref_id=${refId}`
     + (assId ? `&ass_id=${assId}` : '');
+}
+
+export async function membersUrl(page: Page, refId: string, assId: string): Promise<string> {
+  return `ilias.php?baseClass=ilexercisehandlergui&cmdNode=${await cmdNode(page, refId, 'Abgaben und Noten')}&cmdClass=ilexercisemanagementgui&cmd=members&ref_id=${refId}&ass_id=${assId}`;
 }
 
 /** Creates an AutoScore assignment without deadline and returns its id */
 export async function createAutoScoreAssignment(page: Page, refId: string, title: string, team = false): Promise<string> {
-  await page.goto(editorUrl(refId));
+  await page.goto(await editorUrl(page, refId));
   await page.getByRole('combobox', { name: 'Abgabetyp' })
     .selectOption({ label: team ? 'Programmieraufgabe (als Team)' : 'Programmieraufgabe (Einzelnutzer)' });
   await page.getByRole('button', { name: 'Übungseinheit hinzufügen' }).click();
@@ -48,7 +65,7 @@ export async function createAutoScoreAssignment(page: Page, refId: string, title
 }
 
 export async function deleteAssignment(page: Page, refId: string, title: string): Promise<void> {
-  await page.goto(editorUrl(refId));
+  await page.goto(await editorUrl(page, refId));
   const rows = page.getByRole('row', { name: new RegExp(title) });
   const count = await rows.count();
   if (count === 0) return;

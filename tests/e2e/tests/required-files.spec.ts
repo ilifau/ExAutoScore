@@ -10,7 +10,7 @@ const table = (page: Page) => page.getByRole('grid', { name: 'Geforderte Dateien
 const fileRow = (page: Page, name: string) => table(page).getByRole('row', { name: new RegExp(`^${name.replace('.', '\\.')} `) });
 
 async function openTab(page: Page) {
-  await page.goto(editorUrl(refId, 'editAssignment', assId));
+  await page.goto(await editorUrl(page, refId, 'editAssignment', assId));
   await page.getByRole('link', { name: 'Geforderte Dateien' }).click();
 }
 

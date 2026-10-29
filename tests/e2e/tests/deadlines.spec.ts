@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { deleteAssignment, exerciseRefId } from './support/ilias';
+import { deleteAssignment, exerciseRefId, membersUrl } from './support/ilias';
 import {
   SAMPLE, Task, asUser, openOverview, setDeadline, setUpSampleTask, submit, waitForSetup, waitForText,
 } from './support/autoscore';
@@ -16,7 +16,7 @@ async function overviewText(page: Page): Promise<string> {
 }
 
 async function openGrades(page: Page) {
-  await page.goto(`ilias.php?baseClass=ilexercisehandlergui&cmdNode=d3:ms:d4&cmdClass=ilexercisemanagementgui&cmd=members&ref_id=${task.refId}&ass_id=${task.assId}`);
+  await page.goto(await membersUrl(page, task.refId, task.assId));
 }
 
 const gradeRow = (page: Page, login: string) => page.getByRole('row', { name: new RegExp(login) });

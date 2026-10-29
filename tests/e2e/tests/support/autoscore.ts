@@ -1,6 +1,6 @@
 import { expect, Page, Browser, test } from '@playwright/test';
 import * as fs from 'node:fs';
-import { Role, createAutoScoreAssignment, editorUrl, login, openExercise } from './ilias';
+import { Role, createAutoScoreAssignment, editorUrl, login, membersUrl, openExercise } from './ilias';
 
 /** Sample task of the browser tests, see fixtures/sample-task */
 export const SAMPLE = 'fixtures/sample-task';
@@ -19,7 +19,7 @@ export async function asUser(browser: Browser, role: Role): Promise<Page> {
 
 /** Opens a tab of the assignment settings as tutor */
 export async function tab(page: Page, task: Task, name: string) {
-  await page.goto(editorUrl(task.refId, 'editAssignment', task.assId));
+  await page.goto(await editorUrl(page, task.refId, 'editAssignment', task.assId));
   // editAssignment opens the tab "Einstellungen", whose name is also part of "Korrektur-Einstellungen"
   if (name !== 'Einstellungen') {
     await page.getByRole('link', { name }).click();
@@ -133,7 +133,7 @@ export async function setDeadline(page: Page, task: Task, offsetMinutes: number)
 }
 
 export async function openGrades(page: Page, task: Task) {
-  await page.goto(`ilias.php?baseClass=ilexercisehandlergui&cmdNode=d3:ms:d4&cmdClass=ilexercisemanagementgui&cmd=members&ref_id=${task.refId}&ass_id=${task.assId}`);
+  await page.goto(await membersUrl(page, task.refId, task.assId));
 }
 
 /** Sets an individual deadline in "Abgaben und Noten" for the row matching the login (or team member) */

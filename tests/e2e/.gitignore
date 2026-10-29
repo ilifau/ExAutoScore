@@ -1,8 +1,10 @@
 node_modules/
 .env
+.env.studon11
 test-results/
 playwright-report/
 .auth/
 explore/
 explore.config.ts
 test-results-cli/
+test-results-*/

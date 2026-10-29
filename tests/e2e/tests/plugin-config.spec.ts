@@ -78,7 +78,7 @@ test('Tutor ohne Erzeuger-Rolle kann keine Programmieraufgabe anlegen', async ({
   const refId = exerciseRefId(info);
   await page.context().clearCookies();
   await login(page, 'NOCREATOR');
-  await page.goto(editorUrl(refId));
+  await page.goto(await editorUrl(page, refId));
   const types = page.getByRole('combobox', { name: 'Abgabetyp' });
   await expect(types).toBeVisible();
   const options = await types.locator('option').allInnerTexts();

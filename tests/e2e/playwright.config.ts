@@ -16,5 +16,6 @@ export default defineConfig({
   },
   projects: [
     { name: 'ilias11', use: { baseURL: process.env.ILIAS11_URL ?? 'http://131.188.192.30/ilias11/' } },
+    { name: 'studon11', use: { baseURL: process.env.STUDON11_URL ?? 'http://131.188.192.30/studon11/' } },
   ],
 });
