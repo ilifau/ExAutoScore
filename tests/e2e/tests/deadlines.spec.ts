@@ -4,6 +4,10 @@ import {
   SAMPLE, Task, asUser, openOverview, setDeadline, setUpSampleTask, submit, waitForSetup, waitForText,
 } from './support/autoscore';
 
+// ILIAS labels the mark "Note", StudOn "Note/Punkte"
+const NOTE = /Note(\/Punkte)? \d/;
+const note = (points: number) => new RegExp(`Note(\\/Punkte)? ${points}\\b`);
+
 // Points, grade and extended feedback are only shown after the deadline; a grade the plugin
 // published is withdrawn when the deadline is extended, a grade set by a tutor is kept
 test.describe.configure({ mode: 'serial' });
@@ -41,9 +45,10 @@ test('Vor der Frist: nur die sofortige Rückmeldung, keine Bewertung', async ({ 
     await submit(page, task, `${SAMPLE}/submissions/${file}/aufgabe.py`);
     const text = await waitForText(page, () => openOverview(page, task), /Tests bestanden/);
     expect(text).toContain('Sofortige Rückmeldung');
-    for (const hidden of ['Erreichte Punkte', 'Erweitertes Feedback anzeigen', 'Musterlösung', 'Note ']) {
+    for (const hidden of ['Erreichte Punkte', 'Erweitertes Feedback anzeigen', 'Musterlösung']) {
       expect(text, `${role} sieht vor der Frist "${hidden}"`).not.toContain(hidden);
     }
+    expect(text, `${role} sieht vor der Frist eine Note`).not.toMatch(NOTE);
     await page.close();
   }
 });
@@ -55,7 +60,8 @@ test('Nach der Frist: Punkte, Note, Status, erweitertes Feedback und Musterlösu
 
   const page = await asUser(browser, 'STUDENT1');
   const text = await overviewText(page);
-  for (const shown of ['Erreichte Punkte 10', 'Erweitertes Feedback anzeigen', 'Musterlösung', 'Note 10', 'Status Bestanden']) {
+  expect(text).toMatch(note(10));
+  for (const shown of ['Erreichte Punkte 10', 'Erweitertes Feedback anzeigen', 'Musterlösung', 'Status Bestanden']) {
     expect(text).toContain(shown);
   }
   await page.close();
@@ -63,7 +69,7 @@ test('Nach der Frist: Punkte, Note, Status, erweitertes Feedback und Musterlösu
   const page2 = await asUser(browser, 'STUDENT2');
   const text2 = await overviewText(page2);
   expect(text2).toContain('Erreichte Punkte 7');
-  expect(text2).toContain('Note 7');
+  expect(text2).toMatch(note(7));
   await page2.close();
 });
 
@@ -104,7 +110,7 @@ test('Nach dem neuen Fristende wird die Plugin-Note wieder veröffentlicht', asy
 
   const page = await asUser(browser, 'STUDENT2');
   const text = await overviewText(page);
-  expect(text).toContain('Note 7');
+  expect(text).toMatch(note(7));
   await page.close();
 
   await openGrades(tutor);

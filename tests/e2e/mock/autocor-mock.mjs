@@ -10,9 +10,17 @@
 //
 // Results are posted back to the return address with the api key in X-Autocor-Key,
 // as the real service does.
+//
+// If an assignment provides a grade.py (like fixtures/sample-task), the mock runs it like the
+// real service (without Docker): first for the example solution, then for each submission.
+// A result queued with /_control/next always takes precedence.
 
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { mkdtemp, mkdir, writeFile, readFile, rm, access } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const PORT = Number(process.env.MOCK_PORT ?? 8099);
 const HOST = process.env.MOCK_HOST ?? '127.0.0.1';
@@ -50,7 +58,7 @@ async function readForm(req) {
     const files = [];
     for (const [name, value] of form.entries()) {
       if (typeof value === 'string') fields[name] = value;
-      else files.push({ field: name, name: value.name, size: value.size });
+      else files.push({ field: name, name: value.name, size: value.size, data: Buffer.from(await value.arrayBuffer()) });
     }
     return { fields, files };
   }
@@ -75,7 +83,52 @@ function log(message) {
 }
 
 function nextResult() {
-  return { ...defaults, ...(queued.shift() ?? {}) };
+  const control = queued.shift();
+  return { ...defaults, ...(control ?? {}), controlled: control !== undefined };
+}
+
+function run(cmd, args, options) {
+  return new Promise((resolve, reject) => execFile(cmd, args, { timeout: 20_000, ...options },
+    (error, stdout, stderr) => (error ? reject(new Error(stderr || error.message)) : resolve(stdout))));
+}
+
+/** Stores the files of an upload field in a directory, unpacking a .tgz */
+async function storeFile(dir, file) {
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, file.name), file.data);
+  if (file.name.endsWith('.tgz') && file.name !== 'required.tgz') {
+    await run('tar', ['xzf', file.name], { cwd: dir });
+  }
+}
+
+/** Runs the grade.py of an assignment for submitted files, like the real service in its container */
+async function grade(assignment, file) {
+  const base = await mkdtemp(join(tmpdir(), 'autocor-mock-'));
+  try {
+    const dirs = { REQUIREDDIR: join(base, 'user'), WORKDIR: join(base, 'work'), RESULTDIR: join(base, 'result') };
+    await storeFile(dirs.REQUIREDDIR, file);
+    await mkdir(dirs.WORKDIR); await mkdir(dirs.RESULTDIR);
+    await run('python3', [join(assignment.providedDir, 'grade.py')], { cwd: dirs.WORKDIR, env: { ...process.env, ...dirs } });
+    const result = JSON.parse(await readFile(join(dirs.RESULTDIR, 'results.json'), 'utf8'));
+    const status = String(result.instant_status ?? 'failed').toUpperCase();
+    const text = String(result.protected_feedback_text ?? result.instant_message ?? '');
+    return {
+      ...result,
+      task_returncode: 0,
+      task_time: 1.5,
+      protected_feedback_html: '<div style="font-family:system-ui,Arial;line-height:1.35"><h3 style="margin:0 0 8px">'
+        + `Result: ${status} • ${Number(result.points ?? 0).toFixed(1)} pts</h3><p style="white-space:pre-wrap">`
+        + text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p></div>',
+    };
+  } catch (e) {
+    return { success: false, instant_status: 'failed', instant_message: 'Mock: grade.py failed: ' + e.message, points: 0 };
+  } finally {
+    await rm(base, { recursive: true, force: true });
+  }
+}
+
+async function hasGrader(assignment) {
+  try { await access(join(assignment.providedDir ?? '/nonexistent', 'grade.py')); return true; } catch { return false; }
 }
 
 const server = http.createServer(async (req, res) => {
@@ -100,7 +153,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && (path === '/assignment' || path === '/task')) {
       const { fields, files } = await readForm(req);
       const { api_key, ...visible } = fields;
-      requests.push({ path, time: new Date().toISOString(), fields: visible, has_api_key: Boolean(api_key), files });
+      requests.push({ path, time: new Date().toISOString(), fields: visible, has_api_key: Boolean(api_key),
+        files: files.map(({ data, ...meta }) => meta) });
 
       const result = nextResult();
       if (result.reject) {
@@ -109,9 +163,21 @@ const server = http.createServer(async (req, res) => {
 
       if (path === '/assignment') {
         const uuid = fields.uuid || randomUUID();
-        assignments.set(uuid, { returnAddress: fields.return_address, apiKey: api_key });
-        log(`assignment ${uuid} "${fields.name ?? ''}"`);
-        json(res, 200, { success: true, assignment_uuid: uuid, message: 'Mock: Aufgabe angelegt' });
+        const assignment = { returnAddress: fields.return_address, apiKey: api_key, providedDir: null };
+        const provided = files.find(f => f.field === 'files');
+        if (provided) {
+          assignment.providedDir = await mkdtemp(join(tmpdir(), 'autocor-mock-provided-'));
+          await storeFile(assignment.providedDir, provided);
+        }
+        assignments.set(uuid, assignment);
+        log(`assignment ${uuid} "${fields.name ?? ''}"${await hasGrader(assignment) ? ' (grade.py)' : ''}`);
+        json(res, 200, { success: true, assignment_uuid: uuid, message: 'Post request successful. Image will be created and tested' });
+        const example = files.find(f => f.field === 'example');
+        if (!result.controlled && result.phase !== 'build' && example && await hasGrader(assignment)) {
+          setTimeout(async () => postResult(fields.return_address, api_key, {
+            assignment_uuid: uuid, ...(await grade(assignment, example)),
+          }), result.delay_ms);
+        }
         if (result.phase === 'build') {
           setTimeout(() => postResult(fields.return_address, api_key, {
             assignment_uuid: uuid, phase: 'build', success: false,
@@ -128,7 +194,14 @@ const server = http.createServer(async (req, res) => {
       }
       const taskUuid = randomUUID();
       log(`task ${taskUuid} for ${fields.user_identifier ?? '?'} (${files.map(f => f.name).join(', ')})`);
-      json(res, 200, { success: true, task_uuid: taskUuid, message: 'Mock: Abgabe angenommen' });
+      json(res, 200, { success: true, task_uuid: taskUuid, message: 'Task has been queued for execution.' });
+      const submitted = files.find(f => f.field === 'user_file');
+      if (!result.controlled && submitted && await hasGrader(assignment)) {
+        setTimeout(async () => postResult(assignment.returnAddress, assignment.apiKey, {
+          task_uuid: taskUuid, assignment_uuid: fields.assignment, ...(await grade(assignment, submitted)),
+        }), result.delay_ms);
+        return;
+      }
       setTimeout(() => postResult(assignment.returnAddress, assignment.apiKey, {
         task_uuid: taskUuid,
         assignment_uuid: fields.assignment,

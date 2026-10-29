@@ -27,6 +27,10 @@ Attrappe: in der Plugin-Konfiguration der Testinstanz
 `service_assignment_url = http://127.0.0.1:8099/assignment` und
 `service_task_url = http://127.0.0.1:8099/task`. Das naechste Ergebnis
 steuern die Tests ueber `POST /_control/next` (z. B. `{"points": 7}`).
+Stellt eine Aufgabe ein `grade.py` bereit (wie `fixtures/sample-task/`), fuehrt die Attrappe es
+wie der echte Dienst aus (ohne Docker, mit `python3`) und meldet dieselben Texte und Punkte;
+so laufen alle Tests auch gegen eine Instanz ohne echten Dienst, z. B. studon11:
+`DOTENV_CONFIG_PATH=.env.studon11 npx playwright test --project=studon11`.
 
 Neue Tests aufnehmen (auf einem Rechner mit Bildschirm):
 `npx playwright codegen http://131.188.192.30/ilias11/`
