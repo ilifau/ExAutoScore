@@ -1033,7 +1033,8 @@ protected function downloadSubmittedFile()
 
         if (isset($this->submission)) {
             $access = false;
-            if ($file->getAssignmentId() != $this->assignment->getId()) {
+            if ($file->getAssignmentId() != $this->assignment->getId()
+                || !$this->shouldShowSampleSolution($this->assignment)) {
                 $access = false;
             } elseif ($this->assignment->getFeedbackDate() == ilExAssignment::FEEDBACK_DATE_DEADLINE) {
                 $state = ilExcAssMemberState::getInstanceByIds($this->assignment->getId(), $this->user->getId());
