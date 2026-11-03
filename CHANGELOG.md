@@ -21,6 +21,8 @@ Fixes of 0.4.1 and the API key check (StudOn 9), adapted to ILIAS 10:
   feedback files share one collection, the reset removes both.
 - Small fixes: unknown file ids, debug log time zone, removed developer
   command from the configuration.
+- Security: "Hide sample solution" also blocks the download. A student who
+  had submitted could still fetch the file through a known link.
 - Requires a plugin update (new column `published_note_hash`).
 
 ## 10.0.0 (2026-10-05) — StudOn 10
