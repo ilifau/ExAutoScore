@@ -27,6 +27,8 @@ Fixes of 0.4.1 and the API key check (StudOn 9), adapted to ILIAS 11:
   services (e.g. `.py`) is renamed by ILIAS and was sent as an empty
   submission. The upload is now rejected with a message that names the
   extension; enable it under Administration → Datei-Services.
+- Security: "Hide sample solution" also blocks the download. A student who
+  had submitted could still fetch the file through a known link.
 - Requires a plugin update (new column `published_note_hash`).
 
 Preparation for ILIAS 12 (legacy UI components are removed there):
