@@ -3,7 +3,7 @@
 Version scheme: `0.x` for StudOn 9 (branch `main-ilias9`), `10.x` for
 StudOn 10 (`dev-ilias10`), `11.x` for StudOn 11 (`dev-ilias11`).
 
-## Unreleased — StudOn 9
+## 0.4.3 (2026-11-04) — StudOn 9
 - Security: "Hide sample solution" also blocks the download. A student who
   had submitted could still fetch the file through a known link.
 
